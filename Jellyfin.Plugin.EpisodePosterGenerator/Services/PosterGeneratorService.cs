@@ -53,6 +53,7 @@ public class PosterGeneratorService
             PosterStyle.Cutout => new CutoutPosterGenerator().Generate(
                 inputPath,
                 outputPath,
+                episode.ParentIndexNumber ?? 0,
                 episode.IndexNumber ?? 0,
                 episode.Name ?? "-",
                 config),

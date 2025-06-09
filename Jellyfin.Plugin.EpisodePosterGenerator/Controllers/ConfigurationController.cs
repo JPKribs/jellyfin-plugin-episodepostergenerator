@@ -51,6 +51,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
 
                 config.PosterFill = newConfig.PosterFill;
                 config.PosterStyle = newConfig.PosterStyle;
+                config.CutoutType = newConfig.CutoutType;
                 config.EpisodeFontSize = newConfig.EpisodeFontSize;
                 config.TitleFontSize = newConfig.TitleFontSize;
                 config.TextColor = newConfig.TextColor;

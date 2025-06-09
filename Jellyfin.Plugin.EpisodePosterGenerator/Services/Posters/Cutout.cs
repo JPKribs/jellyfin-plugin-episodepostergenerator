@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using J2N.Numerics;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
+using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
 using SkiaSharp;
 
@@ -10,11 +11,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
 
 public class CutoutPosterGenerator
 {
-    public string? Generate(string inputImagePath, string outputPath, int episodeNumber, string episodeTitle, PluginConfiguration config)
+    private static readonly char[] WordSeparators = { ' ', '-' };
+
+    // MARK: Generate
+    public string? Generate(string inputImagePath, string outputPath, int seasonNumber, int episodeNumber, string episodeTitle, PluginConfiguration config)
     {
         try
         {
-            var episodeWords = NumberUtils.NumberToWords(episodeNumber).Split(new[] { ' ', '-' }, StringSplitOptions.RemoveEmptyEntries);
+            var cutoutText = GetCutoutText(config.CutoutType, seasonNumber, episodeNumber);
+            var episodeWords = cutoutText.Split(WordSeparators, StringSplitOptions.RemoveEmptyEntries);
 
             using var original = SKBitmap.Decode(inputImagePath);
             if (original == null)
@@ -26,10 +31,8 @@ public class CutoutPosterGenerator
             using var surface = SKSurface.Create(info);
             var canvas = surface.Canvas;
 
-            // Clear to transparent
             canvas.Clear(SKColors.Transparent);
 
-            // Draw overlay
             var overlayColor = ColorUtils.ParseHexColor(config.OverlayColor);
             using var overlayPaint = new SKPaint
             {
@@ -39,12 +42,17 @@ public class CutoutPosterGenerator
             };
             canvas.DrawRect(SKRect.Create(width, height), overlayPaint);
 
-            // Determine dynamic cutout font size
-            float horizontalPadding = width * 0.1f; // 10% padding on each side
+            // Calculate fixed reserved space for title at bottom (using actual config font size)
+            float titleReservedHeight = config.TitleFontSize + 60f; // Fixed padding around title
+            float availableHeightForCutout = height - titleReservedHeight;
+
+            // Maximize episode number width with minimal horizontal padding
+            float horizontalPadding = width * 0.05f; // Reduced padding for maximum width
             float maxAllowedWidth = width - 2 * horizontalPadding;
-            float initialSize = width * 0.25f;
-            float fontSize = initialSize;
-            const float minFontSize = 12f;
+            
+            // Start with large font size and work down to fit both width and available height
+            float fontSize = width * 0.4f; // Start much larger to maximize width usage
+            const float minFontSize = 20f; // Higher minimum for better visibility
 
             using var measurePaint = new SKPaint
             {
@@ -52,10 +60,13 @@ public class CutoutPosterGenerator
                 Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Bold),
             };
 
+            // Find largest font size that fits all words within width and height constraints
             while (fontSize > minFontSize)
             {
                 measurePaint.TextSize = fontSize;
                 float maxWordWidth = 0;
+                
+                // Check if ALL words fit at this size
                 foreach (var word in episodeWords)
                 {
                     var wordWidth = measurePaint.MeasureText(word);
@@ -63,26 +74,31 @@ public class CutoutPosterGenerator
                         maxWordWidth = wordWidth;
                 }
 
-                if (maxWordWidth <= maxAllowedWidth)
+                float totalTextHeight = episodeWords.Length * fontSize * 1.2f;
+                
+                // Both width AND height must fit, prioritizing width usage
+                if (maxWordWidth <= maxAllowedWidth && totalTextHeight <= availableHeightForCutout * 0.85f)
                     break;
 
-                fontSize -= 1f;
+                fontSize -= 2f; // Larger decrements for faster sizing
             }
 
-            // Cut out each word centered
+            // Draw original image first
+            using var originalPaint = new SKPaint();
+            canvas.DrawBitmap(original, 0, 0, originalPaint);
+
+            // All words use the same maximized font size and configured text color
             using var cutoutPaint = new SKPaint
             {
-                Color = SKColors.Transparent,
-                BlendMode = SKBlendMode.Clear,
+                Color = ColorUtils.ParseHexColor(config.TextColor), // Use configured text color
                 IsAntialias = true,
-                TextSize = fontSize,
+                TextSize = fontSize, // Same size for all words
                 Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Bold),
                 TextAlign = SKTextAlign.Center
             };
 
-            float totalTextHeight = episodeWords.Length * fontSize * 1.2f;
-            float startY = (height - totalTextHeight) / 2f + fontSize;
-
+            float finalTextHeight = episodeWords.Length * fontSize * 1.2f;
+            float startY = (availableHeightForCutout - finalTextHeight) / 2f + fontSize;
             float centerX = width / 2f;
 
             foreach (var word in episodeWords)
@@ -91,27 +107,9 @@ public class CutoutPosterGenerator
                 startY += fontSize * 1.2f;
             }
 
-            // Draw original image behind
-            using var originalPaint = new SKPaint
-            {
-                BlendMode = SKBlendMode.DstOver
-            };
-            canvas.DrawBitmap(original, 0, 0, originalPaint);
+            // Draw episode title in the reserved space at bottom (fixed size)
+            DrawEpisodeTitle(canvas, episodeTitle, width, height, config);
 
-            // Draw episode title at bottom
-            using var titlePaint = new SKPaint
-            {
-                Color = ColorUtils.ParseHexColor(config.TextColor),
-                TextSize = config.TitleFontSize,
-                IsAntialias = true,
-                Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Normal),
-                TextAlign = SKTextAlign.Center
-            };
-
-            float titleY = height - config.TitleFontSize - 40;
-            canvas.DrawText(episodeTitle, centerX, titleY, titlePaint);
-
-            // Save to file
             using var finalImage = surface.Snapshot();
             using var data = finalImage.Encode(SKEncodedImageFormat.Jpeg, 95);
             using var outputStream = File.OpenWrite(outputPath);
@@ -124,5 +122,34 @@ public class CutoutPosterGenerator
             Console.WriteLine($"Poster generation failed: {ex}");
             return null;
         }
+    }
+
+    // MARK: GetCutoutText
+    private string GetCutoutText(CutoutType cutoutType, int seasonNumber, int episodeNumber)
+    {
+        return cutoutType switch
+        {
+            CutoutType.Text => NumberUtils.NumberToWords(episodeNumber),
+            CutoutType.Code => $"S{seasonNumber:D2}E{episodeNumber:D2}",
+            _ => NumberUtils.NumberToWords(episodeNumber)
+        };
+    }
+
+    // MARK: DrawEpisodeTitle
+    private void DrawEpisodeTitle(SKCanvas canvas, string episodeTitle, int width, int height, PluginConfiguration config)
+    {
+        float horizontalPadding = width * 0.05f;
+        float titleY = height - config.TitleFontSize - 30f; // Fixed position based on actual font size
+
+        using var titlePaint = new SKPaint
+        {
+            Color = ColorUtils.ParseHexColor(config.TextColor),
+            TextSize = config.TitleFontSize, // Always use exact config size
+            IsAntialias = true,
+            Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Normal),
+            TextAlign = SKTextAlign.Center
+        };
+
+        canvas.DrawText(episodeTitle, width / 2f, titleY, titlePaint);
     }
 }

@@ -11,8 +11,6 @@
                 <div class="verticalSection verticalSection-extrabottompadding">
                     <div class="sectionTitleContainer flex align-items-center">
                         <h2 class="sectionTitle">Episode Poster Generator Settings</h2>
-                        <!-- Optional Help Button -->
-                        <!-- <a is="emby-button" class="raised button-alt headerHelpButton" target="_blank" href="https://your-plugin-doc-url">${Help}</a> -->
                     </div>
 
                     <label class="checkboxContainer">
@@ -37,25 +35,39 @@
                         </select>
                     </div>
 
-                    <div class="inputContainer">
+                    <!-- Cutout Style Only -->
+                    <div class="inputContainer" id="cutoutTypeContainer">
+                        <label for="selectCutoutType">Cutout Display Type:</label>
+                        <select is="emby-select" id="selectCutoutType">
+                            <option value="Text">Text</option>
+                            <option value="Code">Code</option>
+                        </select>
+                        <div class="fieldDescription">Choose how episode numbers are displayed in cutout style.</div>
+                    </div>
+
+                    <!-- Standard Style Only -->
+                    <div class="inputContainer" id="episodeFontSizeContainer">
                         <label for="txtEpisodeFontSize">Episode Font Size:</label>
                         <input is="emby-input" type="number" id="txtEpisodeFontSize" min="12" max="128" />
-                        <div class="fieldDescription">Font size for the episode number (in px).</div>
+                        <div class="fieldDescription">Font size for the episode number/season info (in px).</div>
                     </div>
 
-                    <div class="inputContainer">
+                    <!-- Both Styles -->
+                    <div class="inputContainer" id="titleFontSizeContainer">
                         <label for="txtTitleFontSize">Title Font Size:</label>
                         <input is="emby-input" type="number" id="txtTitleFontSize" min="12" max="128" />
-                        <div class="fieldDescription">Font size for the episode title (in px).</div>
+                        <div class="fieldDescription">Font size for the episode title at bottom (in px).</div>
                     </div>
 
-                    <div class="inputContainer">
+                    <!-- Both Styles -->
+                    <div class="inputContainer" id="textColorContainer">
                         <label for="txtTextColor">Text Color:</label>
                         <input is="emby-input" type="text" id="txtTextColor" placeholder="#FFFFFF" />
-                        <div class="fieldDescription">Hex color code (e.g., #FFFFFF for white).</div>
+                        <div class="fieldDescription">Hex color code for all text elements (e.g., #FFFFFF for white).</div>
                     </div>
 
-                    <div class="inputContainer">
+                    <!-- Standard Style Only -->
+                    <div class="inputContainer" id="textPositionContainer">
                         <label for="selectTextPosition">Text Position:</label>
                         <select is="emby-select" id="selectTextPosition">
                             <option value="Bottom">Bottom</option>
@@ -65,10 +77,11 @@
                         </select>
                     </div>
 
-                    <div class="inputContainer">
-                        <label for="txtOverlayColor">Overlay Color:</label>
+                    <!-- Cutout Style Only -->
+                    <div class="inputContainer" id="overlayColorContainer">
+                        <label for="txtOverlayColor">Background Overlay Color:</label>
                         <input is="emby-input" type="text" id="txtOverlayColor" placeholder="#66000000" />
-                        <div class="fieldDescription">ARGB hex (e.g., #66000000 for semi-transparent black).</div>
+                        <div class="fieldDescription">ARGB hex for background overlay (e.g., #66000000 for semi-transparent black).</div>
                     </div>
 
                     <div>
@@ -85,17 +98,37 @@
         var EpisodePosterGeneratorConfig = {
             pluginId: 'b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e',
 
+            updateVisibility: function() {
+                var posterStyle = document.getElementById('selectPosterStyle').value;
+                var isStandard = posterStyle === 'Standard';
+                var isCutout = posterStyle === 'Cutout';
+
+                // Show/hide based on poster style
+                document.getElementById('cutoutTypeContainer').style.display = isCutout ? 'block' : 'none';
+                document.getElementById('episodeFontSizeContainer').style.display = isStandard ? 'block' : 'none';
+                document.getElementById('textPositionContainer').style.display = isStandard ? 'block' : 'none';
+                document.getElementById('overlayColorContainer').style.display = isCutout ? 'block' : 'none';
+                
+                // These are shown for both styles
+                document.getElementById('titleFontSizeContainer').style.display = 'block';
+                document.getElementById('textColorContainer').style.display = 'block';
+            },
+
             loadConfig: function () {
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(this.pluginId).then(function (config) {
                     document.getElementById('chkEnablePlugin').checked = config.EnablePlugin || false;
                     document.getElementById('selectPosterFill').value = config.PosterFill || 'Original';
                     document.getElementById('selectPosterStyle').value = config.PosterStyle || 'Standard';
+                    document.getElementById('selectCutoutType').value = config.CutoutType || 'Text';
                     document.getElementById('txtEpisodeFontSize').value = config.EpisodeFontSize || 32;
                     document.getElementById('txtTitleFontSize').value = config.TitleFontSize || 32;
                     document.getElementById('txtTextColor').value = config.TextColor || '#FFFFFF';
                     document.getElementById('selectTextPosition').value = config.TextPosition || 'Bottom';
                     document.getElementById('txtOverlayColor').value = config.OverlayColor || '#66000000';
+                    
+                    // Update visibility after loading
+                    EpisodePosterGeneratorConfig.updateVisibility();
                     Dashboard.hideLoadingMsg();
                 });
             },
@@ -106,6 +139,7 @@
                     EnablePlugin: document.getElementById('chkEnablePlugin').checked,
                     PosterFill: document.getElementById('selectPosterFill').value,
                     PosterStyle: document.getElementById('selectPosterStyle').value,
+                    CutoutType: document.getElementById('selectCutoutType').value,
                     EpisodeFontSize: parseInt(document.getElementById('txtEpisodeFontSize').value, 10),
                     TitleFontSize: parseInt(document.getElementById('txtTitleFontSize').value, 10),
                     TextColor: document.getElementById('txtTextColor').value,
@@ -126,6 +160,11 @@
         document.getElementById('EpisodePosterGeneratorConfigForm').addEventListener('submit', function (e) {
             e.preventDefault();
             EpisodePosterGeneratorConfig.saveConfig();
+        });
+
+        // Listen for poster style changes
+        document.getElementById('selectPosterStyle').addEventListener('change', function() {
+            EpisodePosterGeneratorConfig.updateVisibility();
         });
     </script>
 </div>

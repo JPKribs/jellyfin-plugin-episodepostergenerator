@@ -24,6 +24,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public PosterStyle PosterStyle { get; set; } = PosterStyle.Standard;
 
         /// <summary>
+        /// Gets or sets the type of cutout display for episode numbers.
+        /// </summary>
+        public CutoutType CutoutType { get; set; } = CutoutType.Text;
+
+        /// <summary>
         /// Gets or sets the hex color of the text.
         /// </summary>
         public string TextColor { get; set; } = "#FFFFFF";
