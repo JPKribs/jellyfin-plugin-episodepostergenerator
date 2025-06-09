@@ -67,6 +67,13 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
         _logger.LogInformation("GetImage called for item: \"{ItemName}\" (Type: \"{ItemType}\"), ImageType: {ImageType}", 
             item.Name, item.GetType().Name, type);
 
+        var config = Plugin.Instance?.Configuration;
+        if (config == null || !config.EnablePlugin)
+        {
+            _logger.LogInformation("Episode Poster Generator is disabled via configuration. Enable it to generate posters.");
+            return new DynamicImageResponse { HasImage = false };
+        }
+
         if (item is not Episode episode)
         {
             _logger.LogWarning("Item is not an Episode, returning empty response");
@@ -126,7 +133,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
             }
 
             var ffmpegService = new FFmpegService(Microsoft.Extensions.Logging.Abstractions.NullLogger<FFmpegService>.Instance);
-            var imageService = new ImageProcessingService(Microsoft.Extensions.Logging.Abstractions.NullLogger<ImageProcessingService>.Instance);
+            var imageService = new PosterGeneratorService(Microsoft.Extensions.Logging.Abstractions.NullLogger<PosterGeneratorService>.Instance);
             
             var tempDir = Path.Combine(_appPaths.TempDirectory, "episodeposter");
             Directory.CreateDirectory(tempDir);

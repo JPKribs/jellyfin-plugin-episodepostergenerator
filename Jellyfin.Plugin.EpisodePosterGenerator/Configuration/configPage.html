@@ -1,83 +1,75 @@
 <!DOCTYPE html>
-<html lang="en-US">
+<html lang="en">
 <head>
     <title>Episode Poster Generator</title>
 </head>
 <body>
-<div id="episodePosterConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
+<div id="EpisodePosterGeneratorConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
     <div data-role="content">
         <div class="content-primary">
-            <form class="episodePosterConfigurationForm">
+            <form id="EpisodePosterGeneratorConfigForm">
                 <div class="verticalSection verticalSection-extrabottompadding">
                     <div class="sectionTitleContainer flex align-items-center">
                         <h2 class="sectionTitle">Episode Poster Generator Settings</h2>
+                        <!-- Optional Help Button -->
+                        <!-- <a is="emby-button" class="raised button-alt headerHelpButton" target="_blank" href="https://your-plugin-doc-url">${Help}</a> -->
                     </div>
 
                     <label class="checkboxContainer">
-                        <input is="emby-checkbox" type="checkbox" id="enablePlugin" />
+                        <input is="emby-checkbox" type="checkbox" id="chkEnablePlugin" />
                         <span>Enable Plugin</span>
                     </label>
 
                     <div class="inputContainer">
-                        <label for="blackDetectionThreshold">Black Detection Threshold:</label>
-                        <input type="number" step="0.01" id="blackDetectionThreshold" is="emby-input" />
-                        <div class="fieldDescription">
-                            Threshold to detect black frames (0 to 1).
-                        </div>
+                        <label for="selectPosterFill">Poster Fill:</label>
+                        <select is="emby-select" id="selectPosterFill">
+                            <option value="Original">Original</option>
+                            <option value="Fill">Fill</option>
+                            <option value="Fit">Fit</option>
+                        </select>
                     </div>
 
                     <div class="inputContainer">
-                        <label for="blackDurationThreshold">Black Duration Threshold:</label>
-                        <input type="number" step="0.01" id="blackDurationThreshold" is="emby-input" />
-                        <div class="fieldDescription">
-                            Minimum duration of black frames to be considered.
-                        </div>
+                        <label for="selectPosterStyle">Poster Style:</label>
+                        <select is="emby-select" id="selectPosterStyle">
+                            <option value="Standard">Standard</option>
+                            <option value="Cutout">Cutout</option>
+                        </select>
                     </div>
 
                     <div class="inputContainer">
-                        <label for="episodeFontSize">Episode Font Size:</label>
-                        <input type="number" id="episodeFontSize" is="emby-input" />
-                        <div class="fieldDescription">
-                            Font size used for episode numbers.
-                        </div>
+                        <label for="txtEpisodeFontSize">Episode Font Size:</label>
+                        <input is="emby-input" type="number" id="txtEpisodeFontSize" min="12" max="128" />
+                        <div class="fieldDescription">Font size for the episode number (in px).</div>
                     </div>
 
                     <div class="inputContainer">
-                        <label for="titleFontSize">Title Font Size:</label>
-                        <input type="number" id="titleFontSize" is="emby-input" />
-                        <div class="fieldDescription">
-                            Font size used for episode titles.
-                        </div>
+                        <label for="txtTitleFontSize">Title Font Size:</label>
+                        <input is="emby-input" type="number" id="txtTitleFontSize" min="12" max="128" />
+                        <div class="fieldDescription">Font size for the episode title (in px).</div>
                     </div>
 
                     <div class="inputContainer">
-                        <label for="textColor">Text Color:</label>
-                        <input type="text" id="textColor" is="emby-input" />
-                        <div class="fieldDescription">
-                            Color of the text (e.g., White, Black, #FF0000).
-                        </div>
+                        <label for="txtTextColor">Text Color:</label>
+                        <input is="emby-input" type="text" id="txtTextColor" placeholder="#FFFFFF" />
+                        <div class="fieldDescription">Hex color code (e.g., #FFFFFF for white).</div>
                     </div>
 
                     <div class="inputContainer">
-                        <label for="textPosition">Text Position:</label>
-                        <input type="text" id="textPosition" is="emby-input" />
-                        <div class="fieldDescription">
-                            Text position on the poster (e.g., Top, Bottom, Center).
-                        </div>
+                        <label for="selectTextPosition">Text Position:</label>
+                        <select is="emby-select" id="selectTextPosition">
+                            <option value="Bottom">Bottom</option>
+                            <option value="Top">Top</option>
+                            <option value="BottomLeft">Bottom Left</option>
+                            <option value="BottomRight">Bottom Right</option>
+                        </select>
                     </div>
 
                     <div class="inputContainer">
-                        <label for="overlayImagePath">Overlay Image Path:</label>
-                        <input type="text" id="overlayImagePath" is="emby-input" />
-                        <div class="fieldDescription">
-                            Optional path to an overlay image to apply to posters.
-                        </div>
+                        <label for="txtOverlayColor">Overlay Color:</label>
+                        <input is="emby-input" type="text" id="txtOverlayColor" placeholder="#66000000" />
+                        <div class="fieldDescription">ARGB hex (e.g., #66000000 for semi-transparent black).</div>
                     </div>
-
-                    <label class="checkboxContainer">
-                        <input is="emby-checkbox" type="checkbox" id="useOverlay" />
-                        <span>Use Overlay Image</span>
-                    </label>
 
                     <div>
                         <button is="emby-button" type="submit" data-theme="b" class="raised button-submit block">
@@ -90,55 +82,50 @@
     </div>
 
     <script type="text/javascript">
-        var EpisodePosterConfiguration = {
-            uniquePluginId: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e",
+        var EpisodePosterGeneratorConfig = {
+            pluginId: 'b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e',
 
-            loadConfiguration: function () {
+            loadConfig: function () {
                 Dashboard.showLoadingMsg();
-
-                ApiClient.getPluginConfiguration(EpisodePosterConfiguration.uniquePluginId).then(function (config) {
-                    document.getElementById('enablePlugin').checked = config.EnablePlugin;
-                    document.getElementById('blackDetectionThreshold').value = config.BlackDetectionThreshold;
-                    document.getElementById('blackDurationThreshold').value = config.BlackDurationThreshold;
-                    document.getElementById('episodeFontSize').value = config.EpisodeFontSize;
-                    document.getElementById('titleFontSize').value = config.TitleFontSize;
-                    document.getElementById('textColor').value = config.TextColor;
-                    document.getElementById('textPosition').value = config.TextPosition;
-                    document.getElementById('overlayImagePath').value = config.OverlayImagePath || '';
-                    document.getElementById('useOverlay').checked = config.UseOverlay;
-
+                ApiClient.getPluginConfiguration(this.pluginId).then(function (config) {
+                    document.getElementById('chkEnablePlugin').checked = config.EnablePlugin || false;
+                    document.getElementById('selectPosterFill').value = config.PosterFill || 'Original';
+                    document.getElementById('selectPosterStyle').value = config.PosterStyle || 'Standard';
+                    document.getElementById('txtEpisodeFontSize').value = config.EpisodeFontSize || 32;
+                    document.getElementById('txtTitleFontSize').value = config.TitleFontSize || 32;
+                    document.getElementById('txtTextColor').value = config.TextColor || '#FFFFFF';
+                    document.getElementById('selectTextPosition').value = config.TextPosition || 'Bottom';
+                    document.getElementById('txtOverlayColor').value = config.OverlayColor || '#66000000';
                     Dashboard.hideLoadingMsg();
                 });
             },
 
-            saveConfiguration: function () {
+            saveConfig: function () {
                 Dashboard.showLoadingMsg();
+                var config = {
+                    EnablePlugin: document.getElementById('chkEnablePlugin').checked,
+                    PosterFill: document.getElementById('selectPosterFill').value,
+                    PosterStyle: document.getElementById('selectPosterStyle').value,
+                    EpisodeFontSize: parseInt(document.getElementById('txtEpisodeFontSize').value, 10),
+                    TitleFontSize: parseInt(document.getElementById('txtTitleFontSize').value, 10),
+                    TextColor: document.getElementById('txtTextColor').value,
+                    TextPosition: document.getElementById('selectTextPosition').value,
+                    OverlayColor: document.getElementById('txtOverlayColor').value
+                };
 
-                ApiClient.getPluginConfiguration(EpisodePosterConfiguration.uniquePluginId).then(function (config) {
-                    config.EnablePlugin = document.getElementById('enablePlugin').checked;
-                    config.BlackDetectionThreshold = parseFloat(document.getElementById('blackDetectionThreshold').value);
-                    config.BlackDurationThreshold = parseFloat(document.getElementById('blackDurationThreshold').value);
-                    config.EpisodeFontSize = parseInt(document.getElementById('episodeFontSize').value);
-                    config.TitleFontSize = parseInt(document.getElementById('titleFontSize').value);
-                    config.TextColor = document.getElementById('textColor').value;
-                    config.TextPosition = document.getElementById('textPosition').value;
-                    config.OverlayImagePath = document.getElementById('overlayImagePath').value;
-                    config.UseOverlay = document.getElementById('useOverlay').checked;
-
-                    ApiClient.updatePluginConfiguration(EpisodePosterConfiguration.uniquePluginId, config).then(function (result) {
-                        Dashboard.processPluginConfigurationUpdateResult(result);
-                    });
+                ApiClient.updatePluginConfiguration(this.pluginId, config).then(function (result) {
+                    Dashboard.processPluginConfigurationUpdateResult(result);
                 });
-            },
+            }
         };
 
-        document.getElementById('episodePosterConfigurationPage').addEventListener('pageshow', function () {
-            EpisodePosterConfiguration.loadConfiguration();
+        document.getElementById('EpisodePosterGeneratorConfigPage').addEventListener('pageshow', function () {
+            EpisodePosterGeneratorConfig.loadConfig();
         });
 
-        document.getElementById('episodePosterConfigurationPage').addEventListener('submit', function (e) {
+        document.getElementById('EpisodePosterGeneratorConfigForm').addEventListener('submit', function (e) {
             e.preventDefault();
-            EpisodePosterConfiguration.saveConfiguration();
+            EpisodePosterGeneratorConfig.saveConfig();
         });
     </script>
 </div>
