@@ -1,17 +1,18 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.MediaEncoding;
+using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator;
 
-public class Plugin : BasePlugin<PluginConfiguration>
+// MARK: Plugin
+public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
     public static Plugin? Instance { get; private set; }
 
@@ -45,25 +46,27 @@ public class Plugin : BasePlugin<PluginConfiguration>
 
     public ILibraryManager LibraryManager => _libraryManager;
 
+    // MARK: GetPages
+    public IEnumerable<PluginPageInfo> GetPages()
+    {
+        yield return new PluginPageInfo
+        {
+            Name = "Episode Poster Generator",
+            EmbeddedResourcePath = typeof(Plugin).Namespace + ".Configuration.configPage.html"
+        };
+    }
+
+    // MARK: GetFFmpegPath
     public string GetFFmpegPath()
     {
         var path = _mediaEncoder.EncoderPath;
         if (string.IsNullOrEmpty(path))
         {
-            _logger.LogWarning("MediaEncoder.EncoderPath is empty, using fallback detection");
-            var args = Environment.GetCommandLineArgs();
-            for (int i = 0; i < args.Length - 1; i++)
-            {
-                if (args[i] == "--ffmpeg")
-                {
-                    _logger.LogInformation("Found FFmpeg from command line: {Path}", args[i + 1]);
-                    return args[i + 1];
-                }
-            }
-            _logger.LogInformation("Using macOS fallback FFmpeg path");
-            return "/Applications/Jellyfin.app/Contents/MacOS/ffmpeg";
+            _logger.LogError("FFmpeg path not available from MediaEncoder. Jellyfin is not properly configured with FFmpeg.");
+            throw new InvalidOperationException("FFmpeg is not available. Please ensure Jellyfin is properly configured with FFmpeg.");
         }
-        _logger.LogInformation("Using MediaEncoder FFmpeg path: {Path}", path);
+        
+        _logger.LogDebug("Using FFmpeg path: {Path}", path);
         return path;
     }
 }
