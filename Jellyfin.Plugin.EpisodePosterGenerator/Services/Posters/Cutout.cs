@@ -1,5 +1,7 @@
 using System;
+using System.Globalization;
 using System.IO;
+using J2N.Numerics;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
 using SkiaSharp;
@@ -8,10 +10,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
 
 public class CutoutPosterGenerator
 {
-    public string? Generate(string inputImagePath, string outputPath, string episodeCode, string episodeTitle, PluginConfiguration config)
+    public string? Generate(string inputImagePath, string outputPath, int episodeNumber, string episodeTitle, PluginConfiguration config)
     {
         try
         {
+            var episodeWords = NumberUtils.NumberToWords(episodeNumber).Split(new[] { ' ', '-' }, StringSplitOptions.RemoveEmptyEntries);
+
             using var original = SKBitmap.Decode(inputImagePath);
             if (original == null)
                 return null;
@@ -25,7 +29,7 @@ public class CutoutPosterGenerator
             // Clear to transparent
             canvas.Clear(SKColors.Transparent);
 
-            // Create and draw the overlay rectangle
+            // Draw overlay
             var overlayColor = ColorUtils.ParseHexColor(config.OverlayColor);
             using var overlayPaint = new SKPaint
             {
@@ -35,22 +39,59 @@ public class CutoutPosterGenerator
             };
             canvas.DrawRect(SKRect.Create(width, height), overlayPaint);
 
-            // Cut out transparent episode code using BlendMode.Clear
+            // Determine dynamic cutout font size
+            float horizontalPadding = width * 0.1f; // 10% padding on each side
+            float maxAllowedWidth = width - 2 * horizontalPadding;
+            float initialSize = width * 0.25f;
+            float fontSize = initialSize;
+            const float minFontSize = 12f;
+
+            using var measurePaint = new SKPaint
+            {
+                IsAntialias = true,
+                Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Bold),
+            };
+
+            while (fontSize > minFontSize)
+            {
+                measurePaint.TextSize = fontSize;
+                float maxWordWidth = 0;
+                foreach (var word in episodeWords)
+                {
+                    var wordWidth = measurePaint.MeasureText(word);
+                    if (wordWidth > maxWordWidth)
+                        maxWordWidth = wordWidth;
+                }
+
+                if (maxWordWidth <= maxAllowedWidth)
+                    break;
+
+                fontSize -= 1f;
+            }
+
+            // Cut out each word centered
             using var cutoutPaint = new SKPaint
             {
                 Color = SKColors.Transparent,
                 BlendMode = SKBlendMode.Clear,
                 IsAntialias = true,
-                TextSize = width * 0.25f,
+                TextSize = fontSize,
                 Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Bold),
                 TextAlign = SKTextAlign.Center
             };
 
-            float centerX = width / 2f;
-            float centerY = height / 2f + cutoutPaint.TextSize / 3;
-            canvas.DrawText(episodeCode, centerX, centerY, cutoutPaint);
+            float totalTextHeight = episodeWords.Length * fontSize * 1.2f;
+            float startY = (height - totalTextHeight) / 2f + fontSize;
 
-            // Draw original image behind the cutout
+            float centerX = width / 2f;
+
+            foreach (var word in episodeWords)
+            {
+                canvas.DrawText(word, centerX, startY, cutoutPaint);
+                startY += fontSize * 1.2f;
+            }
+
+            // Draw original image behind
             using var originalPaint = new SKPaint
             {
                 BlendMode = SKBlendMode.DstOver

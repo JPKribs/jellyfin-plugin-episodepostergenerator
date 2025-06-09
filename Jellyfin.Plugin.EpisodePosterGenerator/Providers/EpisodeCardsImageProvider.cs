@@ -133,7 +133,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
             }
 
             var ffmpegService = new FFmpegService(Microsoft.Extensions.Logging.Abstractions.NullLogger<FFmpegService>.Instance);
-            var imageService = new PosterGeneratorService(Microsoft.Extensions.Logging.Abstractions.NullLogger<PosterGeneratorService>.Instance);
+            var imageService = new PosterGeneratorService();
             
             var tempDir = Path.Combine(_appPaths.TempDirectory, "episodeposter");
             Directory.CreateDirectory(tempDir);
