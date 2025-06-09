@@ -89,7 +89,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
         {
             _logger.LogInformation("Processing episode: \"{EpisodeName}\" at \"{Path}\"", episode.Name, episode.Path);
 
-            var imageStream = await GenerateEpisodeImageAsync(episode, cancellationToken);
+            var imageStream = await GenerateEpisodeImageAsync(episode, cancellationToken).ConfigureAwait(false);
             if (imageStream == null)
             {
                 _logger.LogWarning("Failed to generate image for episode: \"{EpisodeName}\"", episode.Name);
@@ -112,6 +112,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
         }
     }
 
+    // MARK: GenerateEpisodeImageAsync
     private async Task<Stream?> GenerateEpisodeImageAsync(Episode episode, CancellationToken cancellationToken)
     {
         try
@@ -125,14 +126,17 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
             }
 
             var ffmpegService = new FFmpegService(Microsoft.Extensions.Logging.Abstractions.NullLogger<FFmpegService>.Instance);
+            var imageService = new ImageProcessingService(Microsoft.Extensions.Logging.Abstractions.NullLogger<ImageProcessingService>.Instance);
+            
             var tempDir = Path.Combine(_appPaths.TempDirectory, "episodeposter");
             Directory.CreateDirectory(tempDir);
 
-            var tempImagePath = Path.Combine(tempDir, $"poster_{episode.Id}_{DateTime.UtcNow.Ticks}.jpg");
+            var tempFramePath = Path.Combine(tempDir, $"frame_{episode.Id}_{DateTime.UtcNow.Ticks}.jpg");
+            var tempPosterPath = Path.Combine(tempDir, $"poster_{episode.Id}_{DateTime.UtcNow.Ticks}.jpg");
 
             try
             {
-                var duration = await ffmpegService.GetVideoDurationAsync(episode.Path, cancellationToken);
+                var duration = await ffmpegService.GetVideoDurationAsync(episode.Path, cancellationToken).ConfigureAwait(false);
                 if (!duration.HasValue)
                 {
                     _logger.LogWarning("Could not get video duration for: \"{Path}\"", episode.Path);
@@ -141,36 +145,60 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
 
                 _logger.LogInformation("Video duration: {Duration}", duration.Value);
 
-                var blackIntervals = await ffmpegService.DetectBlackScenesAsync(episode.Path, 0.1, 0.1, cancellationToken);
+                var blackIntervals = await ffmpegService.DetectBlackScenesAsync(episode.Path, 0.1, 0.1, cancellationToken).ConfigureAwait(false);
                 _logger.LogInformation("Detected {Count} black intervals", blackIntervals.Count);
 
                 var selectedTimestamp = SelectOptimalTimestamp(duration.Value, blackIntervals);
                 _logger.LogInformation("Selected timestamp: {Timestamp}", selectedTimestamp);
 
-                var extractedPath = await ffmpegService.ExtractFrameWithTextAsync(episode.Path, selectedTimestamp, tempImagePath, episode, cancellationToken);
-                if (extractedPath == null || !File.Exists(extractedPath))
+                var extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, cancellationToken).ConfigureAwait(false);
+                if (extractedFramePath == null || !File.Exists(extractedFramePath))
                 {
-                    _logger.LogWarning("Failed to extract frame with text at timestamp: {Timestamp}", selectedTimestamp);
+                    _logger.LogWarning("Failed to extract frame at timestamp: {Timestamp}", selectedTimestamp);
                     return null;
                 }
 
-                _logger.LogInformation("Successfully extracted frame with text overlay to: \"{Path}\"", extractedPath);
+                _logger.LogInformation("Successfully extracted frame to: \"{Path}\"", extractedFramePath);
 
-                var imageBytes = await File.ReadAllBytesAsync(extractedPath, cancellationToken);
+                var config = Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
+                var processedPath = imageService.ProcessImageWithText(extractedFramePath, tempPosterPath, episode, config);
+                
+                if (processedPath == null || !File.Exists(processedPath))
+                {
+                    _logger.LogWarning("Failed to process image with text overlay");
+                    return null;
+                }
+
+                _logger.LogInformation("Successfully processed image with text overlay to: \"{Path}\"", processedPath);
+
+                var imageBytes = await File.ReadAllBytesAsync(processedPath, cancellationToken).ConfigureAwait(false);
                 return new MemoryStream(imageBytes);
             }
             finally
             {
-                if (File.Exists(tempImagePath))
+                if (File.Exists(tempFramePath))
                 {
                     try
                     {
-                        File.Delete(tempImagePath);
-                        _logger.LogDebug("Cleaned up temp file: \"{Path}\"", tempImagePath);
+                        File.Delete(tempFramePath);
+                        _logger.LogDebug("Cleaned up temp frame file: \"{Path}\"", tempFramePath);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to clean up temp file: \"{Path}\"", tempImagePath);
+                        _logger.LogWarning(ex, "Failed to clean up temp frame file: \"{Path}\"", tempFramePath);
+                    }
+                }
+                
+                if (File.Exists(tempPosterPath))
+                {
+                    try
+                    {
+                        File.Delete(tempPosterPath);
+                        _logger.LogDebug("Cleaned up temp poster file: \"{Path}\"", tempPosterPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to clean up temp poster file: \"{Path}\"", tempPosterPath);
                     }
                 }
             }
@@ -182,6 +210,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
         }
     }
 
+    // MARK: SelectOptimalTimestamp
     private TimeSpan SelectOptimalTimestamp(TimeSpan duration, List<BlackInterval> blackIntervals)
     {
         var candidates = new[]

@@ -192,7 +192,7 @@ public class ConfigurationController : ControllerBase
 
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                await file.CopyToAsync(stream);
+                await file.CopyToAsync(stream).ConfigureAwait(false);
             }
 
             var config = plugin.Configuration;

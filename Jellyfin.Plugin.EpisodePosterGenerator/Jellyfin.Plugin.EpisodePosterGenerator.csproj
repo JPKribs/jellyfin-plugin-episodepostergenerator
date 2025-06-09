@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="Jellyfin.Controller" Version="10.10.7" />
     <PackageReference Include="Jellyfin.Model" Version="10.10.7" />
+    <PackageReference Include="SkiaSharp" Version="2.88.8" />
   </ItemGroup>
 
   <ItemGroup>
