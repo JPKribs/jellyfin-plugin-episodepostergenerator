@@ -46,6 +46,9 @@ public class CutoutPosterGenerator
             float titleReservedHeight = config.TitleFontSize + 60f; // Fixed padding around title
             float availableHeightForCutout = height - titleReservedHeight;
 
+            // EPISODE NUMBER: Maximize width usage with dynamic sizing
+            // (Episode title below will use fixed config.TitleFontSize)
+
             // Maximize episode number width with minimal horizontal padding
             float horizontalPadding = width * 0.05f; // Reduced padding for maximum width
             float maxAllowedWidth = width - 2 * horizontalPadding;
@@ -83,14 +86,11 @@ public class CutoutPosterGenerator
                 fontSize -= 2f; // Larger decrements for faster sizing
             }
 
-            // Draw original image first
-            using var originalPaint = new SKPaint();
-            canvas.DrawBitmap(original, 0, 0, originalPaint);
-
-            // All words use the same maximized font size and configured text color
+            // Create transparent cutout text that shows the original image through
             using var cutoutPaint = new SKPaint
             {
-                Color = ColorUtils.ParseHexColor(config.TextColor), // Use configured text color
+                Color = SKColors.Transparent,
+                BlendMode = SKBlendMode.Clear, // This creates transparent holes
                 IsAntialias = true,
                 TextSize = fontSize, // Same size for all words
                 Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Bold),
@@ -106,6 +106,13 @@ public class CutoutPosterGenerator
                 canvas.DrawText(word, centerX, startY, cutoutPaint);
                 startY += fontSize * 1.2f;
             }
+
+            // Draw original image behind the overlay (shows through transparent text holes)
+            using var originalPaint = new SKPaint
+            {
+                BlendMode = SKBlendMode.DstOver
+            };
+            canvas.DrawBitmap(original, 0, 0, originalPaint);
 
             // Draw episode title in the reserved space at bottom (fixed size)
             DrawEpisodeTitle(canvas, episodeTitle, width, height, config);

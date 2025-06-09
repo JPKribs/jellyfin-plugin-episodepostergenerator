@@ -102,6 +102,8 @@
                 var posterStyle = document.getElementById('selectPosterStyle').value;
                 var isStandard = posterStyle === 'Standard';
                 var isCutout = posterStyle === 'Cutout';
+                
+                console.log('UpdateVisibility - PosterStyle:', posterStyle, 'isStandard:', isStandard, 'isCutout:', isCutout);
 
                 // Show/hide based on poster style
                 document.getElementById('cutoutTypeContainer').style.display = isCutout ? 'block' : 'none';
@@ -112,6 +114,8 @@
                 // These are shown for both styles
                 document.getElementById('titleFontSizeContainer').style.display = 'block';
                 document.getElementById('textColorContainer').style.display = 'block';
+                
+                console.log('CutoutType display:', document.getElementById('cutoutTypeContainer').style.display);
             },
 
             loadConfig: function () {
@@ -127,7 +131,12 @@
                     document.getElementById('selectTextPosition').value = config.TextPosition || 'Bottom';
                     document.getElementById('txtOverlayColor').value = config.OverlayColor || '#66000000';
                     
-                    // Update visibility after loading
+                    // Update visibility after loading config
+                    EpisodePosterGeneratorConfig.updateVisibility();
+                    Dashboard.hideLoadingMsg();
+                }).catch(function(error) {
+                    console.error('Failed to load config:', error);
+                    // Set initial visibility even if config fails to load
                     EpisodePosterGeneratorConfig.updateVisibility();
                     Dashboard.hideLoadingMsg();
                 });
@@ -154,6 +163,8 @@
         };
 
         document.getElementById('EpisodePosterGeneratorConfigPage').addEventListener('pageshow', function () {
+            // Set initial visibility before loading config
+            EpisodePosterGeneratorConfig.updateVisibility();
             EpisodePosterGeneratorConfig.loadConfig();
         });
 
