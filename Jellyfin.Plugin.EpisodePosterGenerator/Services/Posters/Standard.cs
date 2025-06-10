@@ -55,6 +55,9 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
     // MARK: DrawTextOverlay
     private void DrawTextOverlay(SKCanvas canvas, Episode episode, PluginConfiguration config, float safeLeft, float safeTop, float safeWidth, float safeHeight)
     {
+        var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, safeHeight);
+        var titleFontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, safeHeight);
+
         var episodeText = $"S{episode.ParentIndexNumber ?? 0:D2}E{episode.IndexNumber ?? 0:D2}";
         var titleText = episode.Name ?? "Unknown Episode";
 
@@ -62,10 +65,10 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
         var titleColor = ColorUtils.ParseHexColor(config.TitleFontColor ?? "#FFFFFF");
         var shadowColor = SKColors.Black.WithAlpha(180);
 
-        using var episodePaint = CreateTextPaint(episodeColor, config.EpisodeFontSize);
-        using var titlePaint = CreateTextPaint(titleColor, config.TitleFontSize);
-        using var episodeShadow = CreateTextPaint(shadowColor, config.EpisodeFontSize);
-        using var titleShadow = CreateTextPaint(shadowColor, config.TitleFontSize);
+        using var episodePaint = CreateTextPaint(episodeColor, episodeFontSize);
+        using var titlePaint = CreateTextPaint(titleColor, titleFontSize);
+        using var episodeShadow = CreateTextPaint(shadowColor, episodeFontSize);
+        using var titleShadow = CreateTextPaint(shadowColor, titleFontSize);
 
         // Position at bottom of safe area
         float maxTitleWidth = safeWidth * 0.9f;

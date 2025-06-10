@@ -15,11 +15,21 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
     {
         private readonly ILogger<ConfigurationController> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConfigurationController"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
         public ConfigurationController(ILogger<ConfigurationController> logger)
         {
             _logger = logger;
         }
 
+        // MARK: GET
+
+        /// <summary>
+        /// Retrieves the current plugin configuration.
+        /// </summary>
+        /// <returns>The plugin configuration or an error response.</returns>
         [HttpGet("Configuration")]
         public IActionResult GetConfiguration()
         {
@@ -33,6 +43,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
             return Ok(plugin.Configuration);
         }
 
+        // MARK: POST
+
+        /// <summary>
+        /// Updates the plugin configuration.
+        /// </summary>
+        /// <param name="newConfig">The new configuration to apply.</param>
+        /// <returns>Result of the update operation.</returns>
         [HttpPost("Configuration")]
         public IActionResult UpdateConfiguration([FromBody] PluginConfiguration newConfig)
         {
@@ -47,6 +64,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
 
                 _logger.LogInformation("Received config: {@newConfig}", newConfig);
 
+                // Copy values from the new config to the current config
                 var config = plugin.Configuration;
 
                 config.EnablePlugin = newConfig.EnablePlugin;

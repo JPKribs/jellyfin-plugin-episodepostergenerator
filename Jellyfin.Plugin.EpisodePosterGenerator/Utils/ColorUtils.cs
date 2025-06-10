@@ -4,8 +4,17 @@ using System.Globalization;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils;
 
+/// <summary>
+/// Utility class for color-related helper methods.
+/// </summary>
 public static class ColorUtils
 {
+    /// <summary>
+    /// Parses a hexadecimal color string (e.g. "#RRGGBB" or "#AARRGGBB") into an SKColor.
+    /// Returns white if the input is null, empty, or invalid.
+    /// </summary>
+    /// <param name="hex">Hexadecimal color string, optionally starting with '#'.</param>
+    /// <returns>Parsed SKColor.</returns>
     public static SKColor ParseHexColor(string hex)
     {
         if (string.IsNullOrWhiteSpace(hex))

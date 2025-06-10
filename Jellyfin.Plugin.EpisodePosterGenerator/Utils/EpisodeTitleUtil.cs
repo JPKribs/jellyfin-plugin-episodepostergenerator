@@ -5,6 +5,9 @@ using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils;
 
+/// <summary>
+/// Positions where the episode title can be drawn on the poster.
+/// </summary>
 public enum TitlePosition
 {
     Top,
@@ -12,6 +15,9 @@ public enum TitlePosition
     Bottom
 }
 
+/// <summary>
+/// Utility class for drawing episode titles onto posters.
+/// </summary>
 public static class EpisodeTitleUtil
 {
     private const float SafeAreaMargin = 0.05f;
@@ -20,7 +26,15 @@ public static class EpisodeTitleUtil
     private const float LineSpacingMultiplier = 1.2f;
     private const float HorizontalPadding = 0.9f;
 
-    // MARK: DrawTitle
+    /// <summary>
+    /// Draws the episode title on the given canvas with shadow and wrapping according to config.
+    /// </summary>
+    /// <param name="canvas">Canvas to draw on.</param>
+    /// <param name="title">Title text.</param>
+    /// <param name="position">Vertical position for the title.</param>
+    /// <param name="config">Plugin configuration with font settings.</param>
+    /// <param name="canvasWidth">Canvas width in pixels.</param>
+    /// <param name="canvasHeight">Canvas height in pixels.</param>
     public static void DrawTitle(
         SKCanvas canvas,
         string title,
@@ -32,22 +46,25 @@ public static class EpisodeTitleUtil
         if (string.IsNullOrWhiteSpace(title))
             return;
 
-        using var titlePaint = CreateTextPaint(config.TitleFontColor, config.TitleFontSize, config.TitleFontFamily, config.TitleFontStyle);
-        using var shadowPaint = CreateShadowPaint(config.TitleFontSize, config.TitleFontFamily, config.TitleFontStyle);
+        var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight, (100f * SafeAreaMargin));
+
+        using var titlePaint = CreateTextPaint(config.TitleFontColor, fontSize, config.TitleFontFamily, config.TitleFontStyle);
+        using var shadowPaint = CreateShadowPaint(fontSize, config.TitleFontFamily, config.TitleFontStyle);
 
         var safeArea = CalculateSafeArea(canvasWidth, canvasHeight);
         var maxTextWidth = safeArea.Width * HorizontalPadding;
         
         var lines = WrapText(title, titlePaint, maxTextWidth);
-        var textBounds = CalculateTextBounds(lines, titlePaint, config.TitleFontSize);
+        var textBounds = CalculateTextBounds(lines, titlePaint, fontSize);
         
         var centerX = canvasWidth / 2f;
-        var baseY = CalculateBaseY(position, safeArea, textBounds.Height, config.TitleFontSize);
+        var baseY = CalculateBaseY(position, safeArea, textBounds.Height, fontSize);
         
-        DrawTextLines(canvas, lines, centerX, baseY, config.TitleFontSize, titlePaint, shadowPaint);
+        DrawTextLines(canvas, lines, centerX, baseY, fontSize, titlePaint, shadowPaint);
     }
 
     // MARK: CreateTextPaint
+    // Creates paint for the main title text.
     private static SKPaint CreateTextPaint(string hexColor, int fontSize, string fontFamily, string fontStyle)
     {
         return new SKPaint
@@ -61,6 +78,7 @@ public static class EpisodeTitleUtil
     }
 
     // MARK: CreateShadowPaint
+    // Creates paint for the text shadow.
     private static SKPaint CreateShadowPaint(int fontSize, string fontFamily, string fontStyle)
     {
         return new SKPaint
@@ -74,6 +92,7 @@ public static class EpisodeTitleUtil
     }
 
     // MARK: ParseFontStyle
+    // Parses string font style to SKFontStyle.
     private static SKFontStyle ParseFontStyle(string fontStyle)
     {
         return fontStyle?.ToLowerInvariant() switch
@@ -82,11 +101,12 @@ public static class EpisodeTitleUtil
             "bold" => SKFontStyle.Bold,
             "italic" => SKFontStyle.Italic,
             "bolditalic" => new SKFontStyle(SKFontStyleWeight.Bold, SKFontStyleWidth.Normal, SKFontStyleSlant.Italic),
-            _ => SKFontStyle.Bold // Default to Bold if not recognized
+            _ => SKFontStyle.Bold
         };
     }
 
     // MARK: CalculateSafeArea
+    // Calculates a margin-inset area inside the canvas for safe drawing.
     private static SKRect CalculateSafeArea(float canvasWidth, float canvasHeight)
     {
         var marginX = canvasWidth * SafeAreaMargin;
@@ -101,6 +121,7 @@ public static class EpisodeTitleUtil
     }
 
     // MARK: WrapText
+    // Wraps and truncates text to fit within maxWidth, splitting into up to two lines.
     private static List<string> WrapText(string text, SKPaint paint, float maxWidth)
     {
         var lines = new List<string>();
@@ -162,6 +183,7 @@ public static class EpisodeTitleUtil
     }
 
     // MARK: FindOptimalSplitPoint
+    // Finds the best word index to split text into two lines of similar width under maxWidth.
     private static int FindOptimalSplitPoint(string[] words, SKPaint paint, float maxWidth)
     {
         int bestSplit = words.Length / 2;
@@ -190,6 +212,7 @@ public static class EpisodeTitleUtil
     }
 
     // MARK: TruncateWithEllipsis
+    // Truncates text and appends ellipsis to fit within maxWidth.
     private static string TruncateWithEllipsis(string text, SKPaint paint, float maxWidth)
     {
         const string ellipsis = "...";
@@ -213,6 +236,7 @@ public static class EpisodeTitleUtil
     }
 
     // MARK: CalculateTextBounds
+    // Calculates bounding rectangle of all text lines combined.
     private static SKRect CalculateTextBounds(List<string> lines, SKPaint paint, int fontSize)
     {
         float maxWidth = 0;
@@ -223,7 +247,6 @@ public static class EpisodeTitleUtil
                 maxWidth = width;
         }
 
-        // Calculate total height including line spacing but not extra space after last line
         float lineHeight = fontSize * LineSpacingMultiplier;
         float totalHeight = (lines.Count - 1) * lineHeight + fontSize;
         
@@ -231,6 +254,7 @@ public static class EpisodeTitleUtil
     }
 
     // MARK: CalculateBaseY
+    // Calculates the vertical start position for the text block based on position enum.
     private static float CalculateBaseY(TitlePosition position, SKRect safeArea, float textHeight, int fontSize)
     {
         float textOffset = fontSize * 0.35f;
@@ -246,6 +270,7 @@ public static class EpisodeTitleUtil
     }
 
     // MARK: DrawTextLines
+    // Draws each text line with shadow offset then main text centered horizontally.
     private static void DrawTextLines(
         SKCanvas canvas,
         List<string> lines,

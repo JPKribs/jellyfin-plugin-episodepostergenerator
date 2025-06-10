@@ -17,11 +17,19 @@ using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers;
 
+/// <summary>
+/// Provides dynamic episode poster images.
+/// </summary>
 public class EpisodePosterImageProvider : IDynamicImageProvider
 {
     private readonly ILogger<EpisodePosterImageProvider> _logger;
     private readonly IApplicationPaths _appPaths;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EpisodePosterImageProvider"/> class.
+    /// </summary>
+    /// <param name="logger">Logger instance.</param>
+    /// <param name="appPaths">Application path info.</param>
     public EpisodePosterImageProvider(ILogger<EpisodePosterImageProvider> logger, IApplicationPaths appPaths)
     {
         _logger = logger;
@@ -29,29 +37,32 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
         _logger.LogInformation("Episode Poster Generator image provider initialized");
     }
 
+    /// <inheritdoc/>
     public string Name => "Episode Poster Generator";
 
+    /// <inheritdoc/>
     public bool Supports(BaseItem item)
     {
         var isEpisode = item is Episode;
-        
-        _logger.LogInformation("Supports check - Item: \"{ItemName}\", IsEpisode: {IsEpisode}", 
+
+        _logger.LogInformation("Supports check - Item: \"{ItemName}\", IsEpisode: {IsEpisode}",
             item.Name ?? "null", isEpisode);
-        
+
         if (isEpisode)
         {
             _logger.LogInformation("Supporting episode for library-level configuration");
             return true;
         }
-        
+
         _logger.LogInformation("Not supporting item type: \"{ItemType}\"", item.GetType().Name);
         return false;
     }
 
+    /// <inheritdoc/>
     public IEnumerable<ImageType> GetSupportedImages(BaseItem item)
     {
         _logger.LogInformation("GetSupportedImages called for item: \"{ItemName}\" (Type: \"{ItemType}\")", item.Name, item.GetType().Name);
-        
+
         if (item is Episode)
         {
             _logger.LogInformation("Returning Primary image support for episode: \"{EpisodeName}\"", item.Name);
@@ -63,33 +74,34 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
         }
     }
 
+    /// <inheritdoc/>
     public async Task<DynamicImageResponse> GetImage(BaseItem item, ImageType type, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("GetImage called for item: \"{ItemName}\" (Type: \"{ItemType}\"), ImageType: {ImageType}", 
+        _logger.LogInformation("GetImage called for item: \"{ItemName}\" (Type: \"{ItemType}\"), ImageType: {ImageType}",
             item.Name, item.GetType().Name, type);
 
         var config = Plugin.Instance?.Configuration;
         if (config == null || !config.EnablePlugin)
         {
-            _logger.LogInformation("Episode Poster Generator is disabled via configuration. Enable it to generate posters.");
+            _logger.LogInformation("Episode Poster Generator is disabled via configuration.");
             return new DynamicImageResponse { HasImage = false };
         }
 
         if (item is not Episode episode)
         {
-            _logger.LogWarning("Item is not an Episode, returning empty response");
+            _logger.LogWarning("Item is not an Episode.");
             return new DynamicImageResponse { HasImage = false };
         }
 
         if (type != ImageType.Primary)
         {
-            _logger.LogInformation("Image type {ImageType} not supported, only Primary is supported", type);
+            _logger.LogInformation("Image type {ImageType} not supported.", type);
             return new DynamicImageResponse { HasImage = false };
         }
 
         if (config.PosterStyle != PosterStyle.Numeral && (string.IsNullOrEmpty(episode.Path) || !File.Exists(episode.Path)))
         {
-            _logger.LogInformation("Episode \"{EpisodeName}\" has no valid video file, skipping", episode.Name);
+            _logger.LogInformation("Episode \"{EpisodeName}\" has no valid video file.", episode.Name);
             return new DynamicImageResponse { HasImage = false };
         }
 
@@ -105,7 +117,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
             }
 
             _logger.LogInformation("Successfully generated poster for episode: \"{EpisodeName}\"", episode.Name);
-            
+
             return new DynamicImageResponse
             {
                 HasImage = true,
@@ -121,6 +133,10 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
     }
 
     // MARK: GenerateEpisodeImageAsync
+
+    /// <summary>
+    /// Generates an image for the given episode.
+    /// </summary>
     private async Task<Stream?> GenerateEpisodeImageAsync(Episode episode, CancellationToken cancellationToken)
     {
         try
@@ -129,7 +145,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
 
             var config = Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
             var imageService = new PosterGeneratorService();
-            
+
             var tempDir = Path.Combine(_appPaths.TempDirectory, "episodeposter");
             Directory.CreateDirectory(tempDir);
 
@@ -162,13 +178,8 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
                         return null;
                     }
 
-                    _logger.LogInformation("Video duration: {Duration}", duration.Value);
-
                     var blackIntervals = await ffmpegService.DetectBlackScenesAsync(episode.Path, 0.1, 0.1, cancellationToken).ConfigureAwait(false);
-                    _logger.LogInformation("Detected {Count} black intervals", blackIntervals.Count);
-
                     var selectedTimestamp = SelectOptimalTimestamp(duration.Value, blackIntervals);
-                    _logger.LogInformation("Selected timestamp: {Timestamp}", selectedTimestamp);
 
                     extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, cancellationToken).ConfigureAwait(false);
                 }
@@ -179,47 +190,27 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
                     return null;
                 }
 
-                _logger.LogInformation("Successfully created source image at: \"{Path}\"", extractedFramePath);
-
                 var processedPath = imageService.ProcessImageWithText(extractedFramePath, tempPosterPath, episode, config);
-                
                 if (processedPath == null || !File.Exists(processedPath))
                 {
                     _logger.LogWarning("Failed to process image with text overlay");
                     return null;
                 }
 
-                _logger.LogInformation("Successfully processed image with text overlay to: \"{Path}\"", processedPath);
-
                 var imageBytes = await File.ReadAllBytesAsync(processedPath, cancellationToken).ConfigureAwait(false);
                 return new MemoryStream(imageBytes);
             }
             finally
             {
+                // Clean up temporary files
                 if (File.Exists(tempFramePath))
                 {
-                    try
-                    {
-                        File.Delete(tempFramePath);
-                        _logger.LogDebug("Cleaned up temp frame file: \"{Path}\"", tempFramePath);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to clean up temp frame file: \"{Path}\"", tempFramePath);
-                    }
+                    try { File.Delete(tempFramePath); } catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete temp frame: \"{Path}\"", tempFramePath); }
                 }
-                
+
                 if (File.Exists(tempPosterPath))
                 {
-                    try
-                    {
-                        File.Delete(tempPosterPath);
-                        _logger.LogDebug("Cleaned up temp poster file: \"{Path}\"", tempPosterPath);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to clean up temp poster file: \"{Path}\"", tempPosterPath);
-                    }
+                    try { File.Delete(tempPosterPath); } catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete temp poster: \"{Path}\"", tempPosterPath); }
                 }
             }
         }
@@ -231,13 +222,17 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
     }
 
     // MARK: CreateTransparentImage
+
+    /// <summary>
+    /// Creates a transparent JPEG placeholder image.
+    /// </summary>
     private string? CreateTransparentImage(string outputPath)
     {
         try
         {
             using var bitmap = new SKBitmap(3000, 2000);
             using var canvas = new SKCanvas(bitmap);
-            
+
             canvas.Clear(SKColors.Transparent);
 
             using var image = SKImage.FromBitmap(bitmap);
@@ -255,6 +250,10 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
     }
 
     // MARK: SelectOptimalTimestamp
+
+    /// <summary>
+    /// Chooses the best timestamp to extract a video frame, avoiding black intervals.
+    /// </summary>
     private TimeSpan SelectOptimalTimestamp(TimeSpan duration, List<BlackInterval> blackIntervals)
     {
         var candidates = new[]
@@ -268,7 +267,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
 
         foreach (var candidate in candidates)
         {
-            var isInBlackInterval = blackIntervals.Any(interval => 
+            var isInBlackInterval = blackIntervals.Any(interval =>
                 candidate >= interval.Start && candidate <= interval.End);
 
             if (!isInBlackInterval)
@@ -277,6 +276,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
             }
         }
 
+        // Fallback to middle timestamp
         return TimeSpan.FromSeconds(duration.TotalSeconds * 0.5);
     }
 }

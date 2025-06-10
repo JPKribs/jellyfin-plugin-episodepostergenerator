@@ -41,9 +41,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public string EpisodeFontStyle { get; set; } = "Bold";
 
         /// <summary>
-        /// Gets or sets the font size for episode numbers/season info.
+        /// Gets or sets the episode numbers/season info font size as a percentage of the poster height (e.g., 7.0 for 7%).
         /// </summary>
-        public int EpisodeFontSize { get; set; } = 20;
+        public float EpisodeFontSize { get; set; } = 7.0F;
 
         /// <summary>
         /// Gets or sets the hex color code for episode number text.
@@ -66,9 +66,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public string TitleFontStyle { get; set; } = "Bold";
 
         /// <summary>
-        /// Gets or sets the font size for episode titles.
+        /// Gets or sets the episode titles font size as a percentage of the poster height (e.g., 7.0 for 7%).
         /// </summary>
-        public int TitleFontSize { get; set; } = 28;
+        public float TitleFontSize { get; set; } = 10.0F;
 
         /// <summary>
         /// Gets or sets the hex color code for episode title text.

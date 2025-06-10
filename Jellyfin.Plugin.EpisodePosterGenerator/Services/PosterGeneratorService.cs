@@ -8,8 +8,20 @@ using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services;
 
+/// <summary>
+/// Service responsible for generating episode posters with optional text overlays.
+/// </summary>
 public class PosterGeneratorService
 {
+    /// <summary>
+    /// Processes an input image by scaling and drawing text according to configuration,
+    /// then generates the final poster using the selected poster style.
+    /// </summary>
+    /// <param name="inputPath">Path to the input image file.</param>
+    /// <param name="outputPath">Path where the generated poster will be saved.</param>
+    /// <param name="episode">Episode metadata used for poster generation.</param>
+    /// <param name="config">Plugin configuration for poster styling and sizing.</param>
+    /// <returns>The output path on success; otherwise, null.</returns>
     public string? ProcessImageWithText(string inputPath, string outputPath, Episode episode, PluginConfiguration config)
     {
         try
@@ -43,6 +55,9 @@ public class PosterGeneratorService
         }
     }
 
+    /// <summary>
+    /// Generates the poster image using the configured poster style.
+    /// </summary>
     private string? GeneratePoster(string inputPath, string outputPath, Episode episode, PluginConfiguration config)
     {
         return config.PosterStyle switch
@@ -54,6 +69,9 @@ public class PosterGeneratorService
         };
     }
 
+    /// <summary>
+    /// Calculates the target size for the poster based on the original size and configuration.
+    /// </summary>
     private SKSizeI GetTargetSize(int originalWidth, int originalHeight, PluginConfiguration config)
     {
         if (config.PosterFill == PosterFill.Original)
@@ -93,6 +111,10 @@ public class PosterGeneratorService
     }
 
     // MARK: ParseAspectRatio
+    /// <summary>
+    /// Parses a string aspect ratio (e.g. "16:9") into a float ratio.
+    /// Defaults to 16:9 if parsing fails or input is empty.
+    /// </summary>
     private float ParseAspectRatio(string ratio)
     {
         if (string.IsNullOrEmpty(ratio))
@@ -110,6 +132,10 @@ public class PosterGeneratorService
         return 16f / 9f;
     }
 
+    /// <summary>
+    /// Draws the input image onto the canvas according to the fill mode and target size.
+    /// Crops or scales the image to fit or fill as required.
+    /// </summary>
     private void DrawPosterImage(SKCanvas canvas, SKBitmap original, SKSizeI targetSize, PosterFill fill, int originalWidth, int originalHeight)
     {
         var destRect = new SKRect(0, 0, targetSize.Width, targetSize.Height);

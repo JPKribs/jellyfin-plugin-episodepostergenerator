@@ -13,9 +13,19 @@
                         <h2 class="sectionTitle">Episode Poster Generator</h2>
                     </div>
 
+                    <br>
+
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h3 class="sectionTitle">Plugin</h3>
+                    </div>
+
+                    <hr>
+
+                    <br>
+
                     <label class="checkboxContainer">
                         <input is="emby-checkbox" type="checkbox" id="chkEnablePlugin" />
-                        <span>Enable Plugin</span>
+                        <span>Active</span>
                     </label>
 
                     <br>
@@ -25,6 +35,7 @@
                     </div>
 
                     <hr>
+
                     <br>
 
                     <div class="inputContainer">
@@ -68,6 +79,7 @@
                     </div>
 
                     <hr>
+
                     <br>
 
                     <div class="inputContainer" id="episodeFontFamilyContainer">
@@ -89,8 +101,8 @@
 
                     <div class="inputContainer" id="episodeFontSizeContainer">
                         <label for="txtEpisodeFontSize">Font Size:</label>
-                        <input is="emby-input" type="number" id="txtEpisodeFontSize" min="12" max="128" />
-                        <div class="fieldDescription">Font size for the episode number/season info (in px).</div>
+                        <input is="emby-input" type="number" id="txtEpisodeFontSize" min="1.0" max="100.0" />
+                        <div class="fieldDescription">Font size for the episode number/season info as a percentage of the poster height.</div>
                     </div>
 
                     <div class="inputContainer" id="episodeFontColorContainer">
@@ -106,6 +118,7 @@
                     </div>
 
                     <hr>
+
                     <br>
 
                     <div class="inputContainer" id="showTitleContainer">
@@ -134,8 +147,8 @@
 
                     <div class="inputContainer" id="titleFontSizeContainer">
                         <label for="txtTitleFontSize">Font Size:</label>
-                        <input is="emby-input" type="number" id="txtTitleFontSize" min="12" max="128" />
-                        <div class="fieldDescription">Font size for the episode title (in px).</div>
+                        <input is="emby-input" type="number" id="txtTitleFontSize" min="1.0" max="100.0" />
+                        <div class="fieldDescription">Font size for the episode title as a percentage of the poster height.</div>
                     </div>
 
                     <div class="inputContainer" id="titleFontColorContainer">
@@ -145,7 +158,9 @@
                     </div>
 
                     <br>
+
                     <hr>
+
                     <br>
 
                     <div class="inputContainer" id="backgroundColorContainer">
@@ -192,9 +207,8 @@
 
                 // Style-specific
                 document.getElementById('selectCutoutContainer').style.display = isCutout ? 'block' : 'none';
-                document.getElementById('backgroundColorContainer').style.display = (isNumeral || isCutout) ? 'block' : 'none';
-                document.getElementById('episodeFontSizeContainer').style.display = isStandard ? 'block' : 'none';
                 document.getElementById('episodeFontColorContainer').style.display = (isStandard || isNumeral) ? 'block' : 'none';
+                document.getElementById('backgroundColorContainer').style.display = (isNumeral || isCutout) ? 'block' : 'none';
                 document.getElementById('overlayTintContainer').style.display = isStandard ? 'block' : 'none';
             },
 
@@ -209,13 +223,13 @@
 
                     document.getElementById('txtEpisodeFontFamily').value = config.EpisodeFontFamily || 'Arial';
                     document.getElementById('selectEpisodeFontStyle').value = config.EpisodeFontStyle || 'Bold';
-                    document.getElementById('txtEpisodeFontSize').value = config.EpisodeFontSize || 20;
+                    document.getElementById('txtEpisodeFontSize').value = config.EpisodeFontSize || 10.0;
                     document.getElementById('txtEpisodeFontColor').value = config.EpisodeFontColor || '#FFFFFF';
 
                     document.getElementById('chkShowTitle').checked = config.ShowTitle !== false;
                     document.getElementById('txtTitleFontFamily').value = config.TitleFontFamily || 'Arial';
                     document.getElementById('selectTitleFontStyle').value = config.TitleFontStyle || 'Bold';
-                    document.getElementById('txtTitleFontSize').value = config.TitleFontSize || 28;
+                    document.getElementById('txtTitleFontSize').value = config.TitleFontSize || 7.0;
                     document.getElementById('txtTitleFontColor').value = config.TitleFontColor || '#FFFFFF';
 
                     document.getElementById('txtBackgroundColor').value = config.BackgroundColor || '#66000000';
@@ -242,13 +256,13 @@
 
                     EpisodeFontFamily: document.getElementById('txtEpisodeFontFamily').value,
                     EpisodeFontStyle: document.getElementById('selectEpisodeFontStyle').value,
-                    EpisodeFontSize: parseInt(document.getElementById('txtEpisodeFontSize').value, 10),
+                    EpisodeFontSize: parseFloat(document.getElementById('txtEpisodeFontSize').value),
                     EpisodeFontColor: document.getElementById('txtEpisodeFontColor').value,
 
                     ShowTitle: document.getElementById('chkShowTitle').checked,
                     TitleFontFamily: document.getElementById('txtTitleFontFamily').value,
                     TitleFontStyle: document.getElementById('selectTitleFontStyle').value,
-                    TitleFontSize: parseInt(document.getElementById('txtTitleFontSize').value, 10),
+                    TitleFontSize: parseFloat(document.getElementById('txtTitleFontSize').value),
                     TitleFontColor: document.getElementById('txtTitleFontColor').value,
 
                     BackgroundColor: document.getElementById('txtBackgroundColor').value,

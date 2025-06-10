@@ -10,16 +10,27 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services;
 
+/// <summary>
+/// Provides methods to interact with FFmpeg and FFprobe for video processing tasks.
+/// </summary>
 public class FFmpegService
 {
     private readonly ILogger<FFmpegService> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FFmpegService"/> class.
+    /// </summary>
+    /// <param name="logger">Logger instance for logging events.</param>
     public FFmpegService(ILogger<FFmpegService> logger)
     {
         _logger = logger;
     }
 
     // MARK: GetFFmpegPath
+    /// <summary>
+    /// Gets the path to the FFmpeg executable.
+    /// Returns default "ffmpeg" if plugin instance is unavailable.
+    /// </summary>
     private string GetFFmpegPath()
     {
         var plugin = Plugin.Instance;
@@ -35,6 +46,9 @@ public class FFmpegService
     }
 
     // MARK: GetFFprobePath
+    /// <summary>
+    /// Gets the path to the FFprobe executable based on FFmpeg's directory.
+    /// </summary>
     private string GetFFprobePath()
     {
         var ffmpegPath = GetFFmpegPath();
@@ -43,6 +57,12 @@ public class FFmpegService
     }
 
     // MARK: GetVideoDurationAsync
+    /// <summary>
+    /// Asynchronously retrieves the duration of a video file using FFprobe.
+    /// </summary>
+    /// <param name="videoPath">Path to the video file.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
+    /// <returns>The duration as a <see cref="TimeSpan"/> or null if failed.</returns>
     public async Task<TimeSpan?> GetVideoDurationAsync(string videoPath, CancellationToken cancellationToken = default)
     {
         var arguments = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{videoPath}\"";
@@ -65,6 +85,14 @@ public class FFmpegService
     }
 
     // MARK: DetectBlackScenesAsync
+    /// <summary>
+    /// Detects black scenes in a video asynchronously using FFmpeg's blackdetect filter.
+    /// </summary>
+    /// <param name="videoPath">Path to the video file.</param>
+    /// <param name="pixelThreshold">Pixel luminance threshold to detect black frames.</param>
+    /// <param name="durationThreshold">Minimum duration in seconds for black scenes.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
+    /// <returns>A list of black scene intervals detected in the video.</returns>
     public async Task<List<BlackInterval>> DetectBlackScenesAsync(string videoPath, double pixelThreshold = 0.1, double durationThreshold = 0.1, CancellationToken cancellationToken = default)
     {
         var blackIntervals = new List<BlackInterval>();
@@ -84,6 +112,14 @@ public class FFmpegService
     }
 
     // MARK: ExtractFrameAsync
+    /// <summary>
+    /// Extracts a single video frame at a specified timestamp asynchronously.
+    /// </summary>
+    /// <param name="videoPath">Path to the video file.</param>
+    /// <param name="timestamp">Timestamp to extract the frame from.</param>
+    /// <param name="outputPath">Path to save the extracted frame image.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
+    /// <returns>The output path if extraction succeeded; otherwise, null.</returns>
     public async Task<string?> ExtractFrameAsync(string videoPath, TimeSpan timestamp, string outputPath, CancellationToken cancellationToken = default)
     {
         var timestampStr = $"{timestamp.Hours:D2}:{timestamp.Minutes:D2}:{timestamp.Seconds:D2}.{timestamp.Milliseconds:D3}";
@@ -108,18 +144,33 @@ public class FFmpegService
     }
 
     // MARK: ExecuteFFmpegAsync
+    /// <summary>
+    /// Executes an FFmpeg command asynchronously.
+    /// </summary>
+    /// <param name="arguments">Command-line arguments for FFmpeg.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
+    /// <returns>Combined standard output and error from the process.</returns>
     private async Task<string> ExecuteFFmpegAsync(string arguments, CancellationToken cancellationToken = default)
     {
         return await ExecuteProcessAsync(GetFFmpegPath(), arguments, cancellationToken).ConfigureAwait(false);
     }
 
     // MARK: ExecuteFFprobeAsync
+    /// <summary>
+    /// Executes an FFprobe command asynchronously.
+    /// </summary>
+    /// <param name="arguments">Command-line arguments for FFprobe.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
+    /// <returns>Combined standard output and error from the process.</returns>
     private async Task<string> ExecuteFFprobeAsync(string arguments, CancellationToken cancellationToken = default)
     {
         return await ExecuteProcessAsync(GetFFprobePath(), arguments, cancellationToken).ConfigureAwait(false);
     }
 
     // MARK: ExecuteProcessAsync
+    /// <summary>
+    /// Runs a process and collects its output asynchronously.
+    /// </summary>
     private async Task<string> ExecuteProcessAsync(string fileName, string arguments, CancellationToken cancellationToken = default)
     {
         var output = string.Empty;
@@ -169,6 +220,9 @@ public class FFmpegService
     }
 
     // MARK: ParseBlackDetectOutput
+    /// <summary>
+    /// Parses blackdetect filter output into black interval objects.
+    /// </summary>
     private List<BlackInterval> ParseBlackDetectOutput(string output)
     {
         var intervals = new List<BlackInterval>();
