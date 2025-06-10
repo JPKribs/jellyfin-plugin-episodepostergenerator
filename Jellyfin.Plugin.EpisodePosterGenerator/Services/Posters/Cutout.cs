@@ -1,7 +1,6 @@
 using System;
 using System.Globalization;
 using System.IO;
-using J2N.Numerics;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
@@ -42,80 +41,13 @@ public class CutoutPosterGenerator
             };
             canvas.DrawRect(SKRect.Create(width, height), overlayPaint);
 
-            // Calculate fixed reserved space for title at bottom (using actual config font size)
-            float titleReservedHeight = config.TitleFontSize + 60f; // Fixed padding around title
-            float availableHeightForCutout = height - titleReservedHeight;
+            DrawCutoutTextOptimized(canvas, episodeWords, width, height);
 
-            // EPISODE NUMBER: Maximize width usage with dynamic sizing
-            // (Episode title below will use fixed config.TitleFontSize)
-
-            // Maximize episode number width with minimal horizontal padding
-            float horizontalPadding = width * 0.05f; // Reduced padding for maximum width
-            float maxAllowedWidth = width - 2 * horizontalPadding;
-            
-            // Start with large font size and work down to fit both width and available height
-            float fontSize = width * 0.4f; // Start much larger to maximize width usage
-            const float minFontSize = 20f; // Higher minimum for better visibility
-
-            using var measurePaint = new SKPaint
-            {
-                IsAntialias = true,
-                Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Bold),
-            };
-
-            // Find largest font size that fits all words within width and height constraints
-            while (fontSize > minFontSize)
-            {
-                measurePaint.TextSize = fontSize;
-                float maxWordWidth = 0;
-                
-                // Check if ALL words fit at this size
-                foreach (var word in episodeWords)
-                {
-                    var wordWidth = measurePaint.MeasureText(word);
-                    if (wordWidth > maxWordWidth)
-                        maxWordWidth = wordWidth;
-                }
-
-                float totalTextHeight = episodeWords.Length * fontSize * 1.2f;
-                
-                // Both width AND height must fit, prioritizing width usage
-                if (maxWordWidth <= maxAllowedWidth && totalTextHeight <= availableHeightForCutout * 0.85f)
-                    break;
-
-                fontSize -= 2f; // Larger decrements for faster sizing
-            }
-
-            // Create transparent cutout text that shows the original image through
-            using var cutoutPaint = new SKPaint
-            {
-                Color = SKColors.Transparent,
-                BlendMode = SKBlendMode.Clear, // This creates transparent holes
-                IsAntialias = true,
-                TextSize = fontSize, // Same size for all words
-                Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Bold),
-                TextAlign = SKTextAlign.Center
-            };
-
-            float finalTextHeight = episodeWords.Length * fontSize * 1.2f;
-            float startY = (availableHeightForCutout - finalTextHeight) / 2f + fontSize;
-            float centerX = width / 2f;
-
-            foreach (var word in episodeWords)
-            {
-                canvas.DrawText(word, centerX, startY, cutoutPaint);
-                startY += fontSize * 1.2f;
-            }
-
-            // Draw original image behind the overlay (shows through transparent text holes)
             using var originalPaint = new SKPaint
             {
                 BlendMode = SKBlendMode.DstOver
             };
             canvas.DrawBitmap(original, 0, 0, originalPaint);
-
-            // Draw episode title in the reserved space at bottom (fixed size)
-            DrawEpisodeTitle(canvas, episodeTitle, width, height, config);
 
             using var finalImage = surface.Snapshot();
             using var data = finalImage.Encode(SKEncodedImageFormat.Jpeg, 95);
@@ -136,27 +68,99 @@ public class CutoutPosterGenerator
     {
         return cutoutType switch
         {
-            CutoutType.Text => NumberUtils.NumberToWords(episodeNumber),
-            CutoutType.Code => $"S{seasonNumber:D2}E{episodeNumber:D2}",
-            _ => NumberUtils.NumberToWords(episodeNumber)
+            CutoutType.Text => episodeNumber >= 100 ? episodeNumber.ToString(CultureInfo.InvariantCulture) : NumberUtils.NumberToWords(episodeNumber),
+            CutoutType.Code => episodeNumber >= 100 ? $"S{seasonNumber:D2}E{episodeNumber}" : $"S{seasonNumber:D2}E{episodeNumber:D2}",
+            _ => episodeNumber >= 100 ? episodeNumber.ToString(CultureInfo.InvariantCulture) : NumberUtils.NumberToWords(episodeNumber)
         };
     }
 
-    // MARK: DrawEpisodeTitle
-    private void DrawEpisodeTitle(SKCanvas canvas, string episodeTitle, int width, int height, PluginConfiguration config)
+    // MARK: DrawCutoutTextOptimized
+    private void DrawCutoutTextOptimized(SKCanvas canvas, string[] episodeWords, float canvasWidth, float canvasHeight)
     {
-        float horizontalPadding = width * 0.05f;
-        float titleY = height - config.TitleFontSize - 30f; // Fixed position based on actual font size
+        if (episodeWords.Length == 0)
+            return;
 
-        using var titlePaint = new SKPaint
+        float horizontalPadding = canvasWidth * 0.05f;
+        float maxWidth = canvasWidth - 2 * horizontalPadding;
+        float maxHeight = canvasHeight * 0.9f;
+
+        using var typeface = FontUtils.GetCondensedTypeface();
+        using var cutoutPaint = new SKPaint
         {
-            Color = ColorUtils.ParseHexColor(config.TextColor),
-            TextSize = config.TitleFontSize, // Always use exact config size
+            Color = SKColors.Transparent,
+            BlendMode = SKBlendMode.Clear,
             IsAntialias = true,
-            Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Normal),
+            Typeface = typeface,
             TextAlign = SKTextAlign.Center
         };
 
-        canvas.DrawText(episodeTitle, width / 2f, titleY, titlePaint);
+        if (episodeWords.Length == 1)
+        {
+            DrawSingleWordOptimized(canvas, episodeWords[0], cutoutPaint, canvasWidth, canvasHeight, maxWidth, maxHeight);
+        }
+        else
+        {
+            DrawMultipleWordsOptimized(canvas, episodeWords, cutoutPaint, canvasWidth, canvasHeight, maxWidth, maxHeight);
+        }
+    }
+
+    // MARK: DrawSingleWordOptimized
+    private void DrawSingleWordOptimized(SKCanvas canvas, string word, SKPaint cutoutPaint, float canvasWidth, float canvasHeight, float maxWidth, float maxHeight)
+    {
+        float fontSize = FontUtils.CalculateOptimalFontSize(word, cutoutPaint.Typeface!, maxWidth, maxHeight, 50f);
+        
+        float aspectRatio = maxWidth / maxHeight;
+        if (aspectRatio < 1.5f)
+        {
+            fontSize = Math.Min(fontSize, maxHeight * 0.7f);
+        }
+
+        cutoutPaint.TextSize = fontSize;
+        
+        var bounds = FontUtils.MeasureTextDimensions(word, cutoutPaint.Typeface!, fontSize);
+        float centerX = canvasWidth / 2f;
+        float centerY = (canvasHeight / 2f) + (bounds.Height / 2f);
+
+        canvas.DrawText(word, centerX, centerY, cutoutPaint);
+    }
+
+    // MARK: DrawMultipleWordsOptimized
+    private void DrawMultipleWordsOptimized(SKCanvas canvas, string[] words, SKPaint cutoutPaint, float canvasWidth, float canvasHeight, float maxWidth, float maxHeight)
+    {
+        float lineSpacing = 1.1f;
+        float targetHeight = maxHeight / words.Length;
+        
+        float fontSize = Math.Min(targetHeight / lineSpacing, maxWidth * 0.2f);
+        const float minFontSize = 30f;
+
+        while (fontSize > minFontSize)
+        {
+            float maxWordWidth = 0;
+            foreach (var word in words)
+            {
+                var bounds = FontUtils.MeasureTextDimensions(word, cutoutPaint.Typeface!, fontSize);
+                if (bounds.Width > maxWordWidth)
+                    maxWordWidth = bounds.Width;
+            }
+
+            float totalHeight = words.Length * fontSize * lineSpacing;
+            
+            if (maxWordWidth <= maxWidth && totalHeight <= maxHeight)
+                break;
+
+            fontSize -= 3f;
+        }
+
+        cutoutPaint.TextSize = fontSize;
+        float lineHeight = fontSize * lineSpacing;
+        float totalTextHeight = words.Length * lineHeight;
+        float startY = (canvasHeight - totalTextHeight) / 2f + fontSize;
+        float centerX = canvasWidth / 2f;
+
+        foreach (var word in words)
+        {
+            canvas.DrawText(word, centerX, startY, cutoutPaint);
+            startY += lineHeight;
+        }
     }
 }

@@ -32,6 +32,7 @@
                         <select is="emby-select" id="selectPosterStyle">
                             <option value="Standard">Standard</option>
                             <option value="Cutout">Cutout</option>
+                            <option value="Numeral">Numeral</option>
                         </select>
                     </div>
 
@@ -52,14 +53,14 @@
                         <div class="fieldDescription">Font size for the episode number/season info (in px).</div>
                     </div>
 
-                    <!-- Both Styles -->
+                    <!-- All Styles -->
                     <div class="inputContainer" id="titleFontSizeContainer">
                         <label for="txtTitleFontSize">Title Font Size:</label>
                         <input is="emby-input" type="number" id="txtTitleFontSize" min="12" max="128" />
                         <div class="fieldDescription">Font size for the episode title at bottom (in px).</div>
                     </div>
 
-                    <!-- Both Styles -->
+                    <!-- All Styles -->
                     <div class="inputContainer" id="textColorContainer">
                         <label for="txtTextColor">Text Color:</label>
                         <input is="emby-input" type="text" id="txtTextColor" placeholder="#FFFFFF" />
@@ -77,7 +78,7 @@
                         </select>
                     </div>
 
-                    <!-- Cutout Style Only -->
+                    <!-- Cutout and Numeral Styles -->
                     <div class="inputContainer" id="overlayColorContainer">
                         <label for="txtOverlayColor">Background Overlay Color:</label>
                         <input is="emby-input" type="text" id="txtOverlayColor" placeholder="#66000000" />
@@ -102,20 +103,22 @@
                 var posterStyle = document.getElementById('selectPosterStyle').value;
                 var isStandard = posterStyle === 'Standard';
                 var isCutout = posterStyle === 'Cutout';
+                var isNumeral = posterStyle === 'Numeral';
                 
-                console.log('UpdateVisibility - PosterStyle:', posterStyle, 'isStandard:', isStandard, 'isCutout:', isCutout);
+                console.log('UpdateVisibility - PosterStyle:', posterStyle, 'isStandard:', isStandard, 'isCutout:', isCutout, 'isNumeral:', isNumeral);
 
                 // Show/hide based on poster style
                 document.getElementById('cutoutTypeContainer').style.display = isCutout ? 'block' : 'none';
                 document.getElementById('episodeFontSizeContainer').style.display = isStandard ? 'block' : 'none';
                 document.getElementById('textPositionContainer').style.display = isStandard ? 'block' : 'none';
-                document.getElementById('overlayColorContainer').style.display = isCutout ? 'block' : 'none';
+                document.getElementById('overlayColorContainer').style.display = (isCutout || isNumeral) ? 'block' : 'none';
                 
-                // These are shown for both styles
+                // These are shown for all styles
                 document.getElementById('titleFontSizeContainer').style.display = 'block';
                 document.getElementById('textColorContainer').style.display = 'block';
                 
                 console.log('CutoutType display:', document.getElementById('cutoutTypeContainer').style.display);
+                console.log('OverlayColor display:', document.getElementById('overlayColorContainer').style.display);
             },
 
             loadConfig: function () {

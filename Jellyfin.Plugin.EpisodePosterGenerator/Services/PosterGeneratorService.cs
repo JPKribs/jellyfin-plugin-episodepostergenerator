@@ -57,6 +57,12 @@ public class PosterGeneratorService
                 episode.IndexNumber ?? 0,
                 episode.Name ?? "-",
                 config),
+            PosterStyle.Numeral => new NumeralPosterGenerator().Generate(
+                inputPath,
+                outputPath,
+                episode.IndexNumber ?? 0,
+                episode.Name ?? "-",
+                config),
             _ => null
         };
     }

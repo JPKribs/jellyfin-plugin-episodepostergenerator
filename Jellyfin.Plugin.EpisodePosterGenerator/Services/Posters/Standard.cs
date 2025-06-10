@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
@@ -7,8 +8,9 @@ using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
 
-public class StandardPosterGenerator
+public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
 {
+    // MARK: Generate
     public string? Generate(string inputImagePath, string outputPath, Episode episode, PluginConfiguration config)
     {
         try
@@ -21,7 +23,9 @@ public class StandardPosterGenerator
             canvas.Clear();
             canvas.DrawBitmap(bitmap, 0, 0);
 
-            DrawTextOverlay(canvas, bitmap.Width, bitmap.Height, episode, config);
+            ApplySafeAreaConstraints(bitmap.Width, bitmap.Height, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
+
+            DrawTextOverlay(canvas, episode, config, safeLeft, safeTop, safeWidth, safeHeight);
 
             using var image = surface.Snapshot();
             using var data = image.Encode(SKEncodedImageFormat.Jpeg, 95);
@@ -36,7 +40,8 @@ public class StandardPosterGenerator
         }
     }
 
-    private void DrawTextOverlay(SKCanvas canvas, int width, int height, Episode episode, PluginConfiguration config)
+    // MARK: DrawTextOverlay
+    private void DrawTextOverlay(SKCanvas canvas, Episode episode, PluginConfiguration config, float safeLeft, float safeTop, float safeWidth, float safeHeight)
     {
         var episodeText = $"S{episode.ParentIndexNumber ?? 0:D2}E{episode.IndexNumber ?? 0:D2}";
         var titleText = episode.Name ?? "Unknown Episode";
@@ -55,28 +60,63 @@ public class StandardPosterGenerator
         titlePaint.MeasureText(titleText, ref titleBounds);
 
         var totalHeight = epBounds.Height + titleBounds.Height + 10;
-        var baseY = height - 40 - totalHeight;
+        
+        float baseY;
+        switch (config.TextPosition?.ToLower(CultureInfo.InvariantCulture))
+        {
+            case "top":
+                baseY = safeTop + totalHeight + 20;
+                break;
+            case "bottomleft":
+            case "bottomright":
+            case "bottom":
+            default:
+                baseY = safeTop + safeHeight - 40;
+                break;
+        }
 
-        var episodeY = baseY + epBounds.Height;
+        var episodeY = baseY - totalHeight + epBounds.Height;
         var titleY = episodeY + titleBounds.Height + 10;
 
-        var epX = (width - epBounds.Width) / 2;
-        var titleX = (width - titleBounds.Width) / 2;
+        float epX, titleX;
+        switch (config.TextPosition?.ToLower(CultureInfo.InvariantCulture))
+        {
+            case "bottomleft":
+                epX = safeLeft + 20;
+                titleX = safeLeft + 20;
+                episodePaint.TextAlign = SKTextAlign.Left;
+                titlePaint.TextAlign = SKTextAlign.Left;
+                episodeShadow.TextAlign = SKTextAlign.Left;
+                titleShadow.TextAlign = SKTextAlign.Left;
+                break;
+            case "bottomright":
+                epX = safeLeft + safeWidth - 20;
+                titleX = safeLeft + safeWidth - 20;
+                episodePaint.TextAlign = SKTextAlign.Right;
+                titlePaint.TextAlign = SKTextAlign.Right;
+                episodeShadow.TextAlign = SKTextAlign.Right;
+                titleShadow.TextAlign = SKTextAlign.Right;
+                break;
+            default:
+                epX = safeLeft + (safeWidth / 2);
+                titleX = safeLeft + (safeWidth / 2);
+                break;
+        }
 
-        // Shadow
         canvas.DrawText(episodeText, epX + 2, episodeY + 2, episodeShadow);
         canvas.DrawText(titleText, titleX + 2, titleY + 2, titleShadow);
 
-        // Main text
         canvas.DrawText(episodeText, epX, episodeY, episodePaint);
         canvas.DrawText(titleText, titleX, titleY, titlePaint);
     }
 
+    // MARK: CreateTextPaint
     private SKPaint CreateTextPaint(SKColor color, int size) => new()
     {
         Color = color,
         TextSize = size,
         IsAntialias = true,
-        Typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold)
+        Typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold),
+        TextAlign = SKTextAlign.Center
     };
 }
