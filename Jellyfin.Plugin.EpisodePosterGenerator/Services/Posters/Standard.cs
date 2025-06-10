@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
@@ -23,6 +24,17 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
             canvas.Clear();
             canvas.DrawBitmap(bitmap, 0, 0);
 
+            if (!string.IsNullOrEmpty(config.OverlayTint) && config.OverlayTint != "#00000000")
+            {
+                var overlayColor = ColorUtils.ParseHexColor(config.OverlayTint);
+                using var overlayPaint = new SKPaint
+                {
+                    Color = overlayColor,
+                    Style = SKPaintStyle.Fill
+                };
+                canvas.DrawRect(SKRect.Create(bitmap.Width, bitmap.Height), overlayPaint);
+            }
+
             ApplySafeAreaConstraints(bitmap.Width, bitmap.Height, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
 
             DrawTextOverlay(canvas, episode, config, safeLeft, safeTop, safeWidth, safeHeight);
@@ -46,68 +58,141 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
         var episodeText = $"S{episode.ParentIndexNumber ?? 0:D2}E{episode.IndexNumber ?? 0:D2}";
         var titleText = episode.Name ?? "Unknown Episode";
 
-        var textColor = ColorUtils.ParseHexColor(config.TextColor ?? "#FFFFFF");
+        var episodeColor = ColorUtils.ParseHexColor(config.EpisodeFontColor ?? "#FFFFFF");
+        var titleColor = ColorUtils.ParseHexColor(config.TitleFontColor ?? "#FFFFFF");
         var shadowColor = SKColors.Black.WithAlpha(180);
 
-        using var episodePaint = CreateTextPaint(textColor, config.EpisodeFontSize);
-        using var titlePaint = CreateTextPaint(textColor, config.TitleFontSize);
+        using var episodePaint = CreateTextPaint(episodeColor, config.EpisodeFontSize);
+        using var titlePaint = CreateTextPaint(titleColor, config.TitleFontSize);
         using var episodeShadow = CreateTextPaint(shadowColor, config.EpisodeFontSize);
         using var titleShadow = CreateTextPaint(shadowColor, config.TitleFontSize);
 
-        var epBounds = new SKRect();
-        var titleBounds = new SKRect();
-        episodePaint.MeasureText(episodeText, ref epBounds);
-        titlePaint.MeasureText(titleText, ref titleBounds);
-
-        var totalHeight = epBounds.Height + titleBounds.Height + 10;
+        // Position at bottom of safe area
+        float maxTitleWidth = safeWidth * 0.9f;
+        var titleLines = WrapTitleText(titleText, titlePaint, maxTitleWidth);
         
-        float baseY;
-        switch (config.TextPosition?.ToLower(CultureInfo.InvariantCulture))
+        float lineHeight = config.TitleFontSize * 1.2f;
+        float totalTitleHeight = titleLines.Count * lineHeight;
+        float episodeHeight = config.EpisodeFontSize;
+        float spacing = 10f;
+        float totalHeight = episodeHeight + spacing + totalTitleHeight;
+        
+        float startY = safeTop + safeHeight - totalHeight - 20;
+        
+        // Draw episode code
+        float episodeY = startY + episodeHeight;
+        float centerX = safeLeft + (safeWidth / 2);
+        
+        canvas.DrawText(episodeText, centerX + 2, episodeY + 2, episodeShadow);
+        canvas.DrawText(episodeText, centerX, episodeY, episodePaint);
+        
+        // Draw title lines
+        float titleStartY = episodeY + spacing + lineHeight;
+        for (int i = 0; i < titleLines.Count; i++)
         {
-            case "top":
-                baseY = safeTop + totalHeight + 20;
-                break;
-            case "bottomleft":
-            case "bottomright":
-            case "bottom":
-            default:
-                baseY = safeTop + safeHeight - 40;
-                break;
+            float y = titleStartY + (i * lineHeight);
+            canvas.DrawText(titleLines[i], centerX + 2, y + 2, titleShadow);
+            canvas.DrawText(titleLines[i], centerX, y, titlePaint);
+        }
+    }
+
+    // MARK: WrapTitleText
+    private List<string> WrapTitleText(string text, SKPaint paint, float maxWidth)
+    {
+        var lines = new List<string>();
+        
+        // Try single line first
+        if (paint.MeasureText(text) <= maxWidth)
+        {
+            lines.Add(text);
+            return lines;
+        }
+        
+        // Split into words for wrapping
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 1)
+        {
+            // Single word too long, truncate with ellipsis
+            lines.Add(TruncateWithEllipsis(text, paint, maxWidth));
+            return lines;
+        }
+        
+        // Try to fit in two lines
+        string line1 = "";
+        string line2 = "";
+        
+        // Start with roughly half the words in each line
+        int splitPoint = words.Length / 2;
+        
+        for (int i = 0; i < words.Length; i++)
+        {
+            if (i < splitPoint)
+            {
+                line1 += (i > 0 ? " " : "") + words[i];
+            }
+            else
+            {
+                line2 += (i > splitPoint ? " " : "") + words[i];
+            }
+        }
+        
+        // Adjust if lines are too long
+        while (paint.MeasureText(line1) > maxWidth && line1.Contains(' ', StringComparison.Ordinal))
+        {
+            var lastSpace = line1.LastIndexOf(' ');
+            var movedWord = line1.Substring(lastSpace + 1);
+            line1 = line1.Substring(0, lastSpace);
+            line2 = movedWord + " " + line2;
+        }
+        
+        while (paint.MeasureText(line2) > maxWidth && line2.Contains(' ', StringComparison.Ordinal))
+        {
+            var firstSpace = line2.IndexOf(' ', StringComparison.Ordinal);
+            var movedWord = line2.Substring(0, firstSpace);
+            line2 = line2.Substring(firstSpace + 1);
+            line1 += " " + movedWord;
+        }
+        
+        // Final check and truncation if needed
+        if (paint.MeasureText(line1) > maxWidth)
+        {
+            line1 = TruncateWithEllipsis(line1, paint, maxWidth);
+        }
+        
+        if (paint.MeasureText(line2) > maxWidth)
+        {
+            line2 = TruncateWithEllipsis(line2, paint, maxWidth);
+        }
+        
+        lines.Add(line1);
+        if (!string.IsNullOrWhiteSpace(line2))
+        {
+            lines.Add(line2);
+        }
+        
+        return lines;
+    }
+
+    // MARK: TruncateWithEllipsis
+    private string TruncateWithEllipsis(string text, SKPaint paint, float maxWidth)
+    {
+        if (paint.MeasureText(text) <= maxWidth)
+            return text;
+
+        var ellipsis = "...";
+        var ellipsisWidth = paint.MeasureText(ellipsis);
+        var availableWidth = maxWidth - ellipsisWidth;
+
+        for (int i = text.Length - 1; i >= 0; i--)
+        {
+            var substring = text.Substring(0, i);
+            if (paint.MeasureText(substring) <= availableWidth)
+            {
+                return substring + ellipsis;
+            }
         }
 
-        var episodeY = baseY - totalHeight + epBounds.Height;
-        var titleY = episodeY + titleBounds.Height + 10;
-
-        float epX, titleX;
-        switch (config.TextPosition?.ToLower(CultureInfo.InvariantCulture))
-        {
-            case "bottomleft":
-                epX = safeLeft + 20;
-                titleX = safeLeft + 20;
-                episodePaint.TextAlign = SKTextAlign.Left;
-                titlePaint.TextAlign = SKTextAlign.Left;
-                episodeShadow.TextAlign = SKTextAlign.Left;
-                titleShadow.TextAlign = SKTextAlign.Left;
-                break;
-            case "bottomright":
-                epX = safeLeft + safeWidth - 20;
-                titleX = safeLeft + safeWidth - 20;
-                episodePaint.TextAlign = SKTextAlign.Right;
-                titlePaint.TextAlign = SKTextAlign.Right;
-                episodeShadow.TextAlign = SKTextAlign.Right;
-                titleShadow.TextAlign = SKTextAlign.Right;
-                break;
-            default:
-                epX = safeLeft + (safeWidth / 2);
-                titleX = safeLeft + (safeWidth / 2);
-                break;
-        }
-
-        canvas.DrawText(episodeText, epX + 2, episodeY + 2, episodeShadow);
-        canvas.DrawText(titleText, titleX + 2, titleY + 2, titleShadow);
-
-        canvas.DrawText(episodeText, epX, episodeY, episodePaint);
-        canvas.DrawText(titleText, titleX, titleY, titlePaint);
+        return ellipsis;
     }
 
     // MARK: CreateTextPaint

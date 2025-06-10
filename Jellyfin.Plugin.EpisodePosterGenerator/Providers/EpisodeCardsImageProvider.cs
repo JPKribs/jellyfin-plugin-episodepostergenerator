@@ -13,6 +13,7 @@ using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Drawing;
 using MediaBrowser.Model.Entities;
 using Microsoft.Extensions.Logging;
+using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers;
 
@@ -86,7 +87,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
             return new DynamicImageResponse { HasImage = false };
         }
 
-        if (string.IsNullOrEmpty(episode.Path) || !File.Exists(episode.Path))
+        if (config.PosterStyle != PosterStyle.Numeral && (string.IsNullOrEmpty(episode.Path) || !File.Exists(episode.Path)))
         {
             _logger.LogInformation("Episode \"{EpisodeName}\" has no valid video file, skipping", episode.Name);
             return new DynamicImageResponse { HasImage = false };
@@ -94,7 +95,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
 
         try
         {
-            _logger.LogInformation("Processing episode: \"{EpisodeName}\" at \"{Path}\"", episode.Name, episode.Path);
+            _logger.LogInformation("Processing episode: \"{EpisodeName}\" with style: {PosterStyle}", episode.Name, config.PosterStyle);
 
             var imageStream = await GenerateEpisodeImageAsync(episode, cancellationToken).ConfigureAwait(false);
             if (imageStream == null)
@@ -126,13 +127,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
         {
             _logger.LogInformation("Starting poster generation for episode: \"{EpisodeName}\"", episode.Name);
 
-            if (string.IsNullOrEmpty(episode.Path) || !File.Exists(episode.Path))
-            {
-                _logger.LogWarning("Episode video file not found: \"{Path}\"", episode.Path);
-                return null;
-            }
-
-            var ffmpegService = new FFmpegService(Microsoft.Extensions.Logging.Abstractions.NullLogger<FFmpegService>.Instance);
+            var config = Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
             var imageService = new PosterGeneratorService();
             
             var tempDir = Path.Combine(_appPaths.TempDirectory, "episodeposter");
@@ -143,31 +138,49 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
 
             try
             {
-                var duration = await ffmpegService.GetVideoDurationAsync(episode.Path, cancellationToken).ConfigureAwait(false);
-                if (!duration.HasValue)
+                string? extractedFramePath;
+
+                if (config.PosterStyle == PosterStyle.Numeral)
                 {
-                    _logger.LogWarning("Could not get video duration for: \"{Path}\"", episode.Path);
-                    return null;
+                    _logger.LogInformation("Creating transparent background for Numeral style");
+                    extractedFramePath = CreateTransparentImage(tempFramePath);
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(episode.Path) || !File.Exists(episode.Path))
+                    {
+                        _logger.LogWarning("Episode video file not found: \"{Path}\"", episode.Path);
+                        return null;
+                    }
+
+                    var ffmpegService = new FFmpegService(Microsoft.Extensions.Logging.Abstractions.NullLogger<FFmpegService>.Instance);
+
+                    var duration = await ffmpegService.GetVideoDurationAsync(episode.Path, cancellationToken).ConfigureAwait(false);
+                    if (!duration.HasValue)
+                    {
+                        _logger.LogWarning("Could not get video duration for: \"{Path}\"", episode.Path);
+                        return null;
+                    }
+
+                    _logger.LogInformation("Video duration: {Duration}", duration.Value);
+
+                    var blackIntervals = await ffmpegService.DetectBlackScenesAsync(episode.Path, 0.1, 0.1, cancellationToken).ConfigureAwait(false);
+                    _logger.LogInformation("Detected {Count} black intervals", blackIntervals.Count);
+
+                    var selectedTimestamp = SelectOptimalTimestamp(duration.Value, blackIntervals);
+                    _logger.LogInformation("Selected timestamp: {Timestamp}", selectedTimestamp);
+
+                    extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, cancellationToken).ConfigureAwait(false);
                 }
 
-                _logger.LogInformation("Video duration: {Duration}", duration.Value);
-
-                var blackIntervals = await ffmpegService.DetectBlackScenesAsync(episode.Path, 0.1, 0.1, cancellationToken).ConfigureAwait(false);
-                _logger.LogInformation("Detected {Count} black intervals", blackIntervals.Count);
-
-                var selectedTimestamp = SelectOptimalTimestamp(duration.Value, blackIntervals);
-                _logger.LogInformation("Selected timestamp: {Timestamp}", selectedTimestamp);
-
-                var extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, cancellationToken).ConfigureAwait(false);
                 if (extractedFramePath == null || !File.Exists(extractedFramePath))
                 {
-                    _logger.LogWarning("Failed to extract frame at timestamp: {Timestamp}", selectedTimestamp);
+                    _logger.LogWarning("Failed to create source image");
                     return null;
                 }
 
-                _logger.LogInformation("Successfully extracted frame to: \"{Path}\"", extractedFramePath);
+                _logger.LogInformation("Successfully created source image at: \"{Path}\"", extractedFramePath);
 
-                var config = Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
                 var processedPath = imageService.ProcessImageWithText(extractedFramePath, tempPosterPath, episode, config);
                 
                 if (processedPath == null || !File.Exists(processedPath))
@@ -213,6 +226,30 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating poster for episode: \"{EpisodeName}\"", episode.Name);
+            return null;
+        }
+    }
+
+    // MARK: CreateTransparentImage
+    private string? CreateTransparentImage(string outputPath)
+    {
+        try
+        {
+            using var bitmap = new SKBitmap(3000, 2000);
+            using var canvas = new SKCanvas(bitmap);
+            
+            canvas.Clear(SKColors.Transparent);
+
+            using var image = SKImage.FromBitmap(bitmap);
+            using var data = image.Encode(SKEncodedImageFormat.Jpeg, 95);
+            using var outputStream = File.OpenWrite(outputPath);
+            data.SaveTo(outputStream);
+
+            return outputPath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create transparent image at: \"{Path}\"", outputPath);
             return null;
         }
     }

@@ -19,7 +19,7 @@ public class PosterGeneratorService
             if (original == null)
                 return null;
 
-            var targetSize = GetTargetSize(original.Width, original.Height, config.PosterFill);
+            var targetSize = GetTargetSize(original.Width, original.Height, config);
             using var scaled = new SKBitmap(targetSize.Width, targetSize.Height);
             using (var canvas = new SKCanvas(scaled))
             {
@@ -27,7 +27,6 @@ public class PosterGeneratorService
                 DrawPosterImage(canvas, original, targetSize, config.PosterFill, original.Width, original.Height);
             }
 
-            // Save temporary base poster image
             var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.jpg");
             using (var image = SKImage.FromBitmap(scaled))
             using (var data = image.Encode(SKEncodedImageFormat.Jpeg, 90))
@@ -36,7 +35,6 @@ public class PosterGeneratorService
                 data.SaveTo(output);
             }
 
-            // Delegate to the poster style handler
             return GeneratePoster(tempPath, outputPath, episode, config);
         }
         catch
@@ -50,32 +48,21 @@ public class PosterGeneratorService
         return config.PosterStyle switch
         {
             PosterStyle.Standard => new StandardPosterGenerator().Generate(inputPath, outputPath, episode, config),
-            PosterStyle.Cutout => new CutoutPosterGenerator().Generate(
-                inputPath,
-                outputPath,
-                episode.ParentIndexNumber ?? 0,
-                episode.IndexNumber ?? 0,
-                episode.Name ?? "-",
-                config),
-            PosterStyle.Numeral => new NumeralPosterGenerator().Generate(
-                inputPath,
-                outputPath,
-                episode.IndexNumber ?? 0,
-                episode.Name ?? "-",
-                config),
+            PosterStyle.Cutout => new CutoutPosterGenerator().Generate(inputPath, outputPath, episode, config),
+            PosterStyle.Numeral => new NumeralPosterGenerator().Generate(inputPath, outputPath, episode, config),
             _ => null
         };
     }
 
-    private SKSizeI GetTargetSize(int originalWidth, int originalHeight, PosterFill fill)
+    private SKSizeI GetTargetSize(int originalWidth, int originalHeight, PluginConfiguration config)
     {
-        const float targetAspect = 16f / 9f;
-        float originalAspect = (float)originalWidth / originalHeight;
-
-        if (fill == PosterFill.Original)
+        if (config.PosterFill == PosterFill.Original)
             return new SKSizeI(originalWidth, originalHeight);
 
-        if (fill == PosterFill.Fill)
+        float targetAspect = ParseAspectRatio(config.PosterDimensionRatio);
+        float originalAspect = (float)originalWidth / originalHeight;
+
+        if (config.PosterFill == PosterFill.Fill)
         {
             if (originalAspect > targetAspect)
             {
@@ -91,7 +78,6 @@ public class PosterGeneratorService
             }
         }
 
-        // PosterFill.Fit
         if (originalAspect > targetAspect)
         {
             int width = originalWidth;
@@ -104,6 +90,24 @@ public class PosterGeneratorService
             int width = (int)(height * targetAspect);
             return new SKSizeI(width, height);
         }
+    }
+
+    // MARK: ParseAspectRatio
+    private float ParseAspectRatio(string ratio)
+    {
+        if (string.IsNullOrEmpty(ratio))
+            return 16f / 9f;
+
+        var parts = ratio.Split(':');
+        if (parts.Length == 2 && 
+            float.TryParse(parts[0], out var width) && 
+            float.TryParse(parts[1], out var height) && 
+            height > 0)
+        {
+            return width / height;
+        }
+
+        return 16f / 9f;
     }
 
     private void DrawPosterImage(SKCanvas canvas, SKBitmap original, SKSizeI targetSize, PosterFill fill, int originalWidth, int originalHeight)

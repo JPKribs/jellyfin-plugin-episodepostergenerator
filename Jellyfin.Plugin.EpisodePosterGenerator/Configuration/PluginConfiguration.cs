@@ -3,9 +3,6 @@ using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
 {
-    /// <summary>
-    /// Configuration for Episode Poster Generator plugin.
-    /// </summary>
     public class PluginConfiguration : BasePluginConfiguration
     {
         /// <summary>
@@ -14,43 +11,78 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public bool EnablePlugin { get; set; } = true;
 
         /// <summary>
-        /// Gets or sets how the screenshot is fit into the poster.
-        /// </summary>
-        public PosterFill PosterFill { get; set; } = PosterFill.Original;
-
-        /// <summary>
         /// Gets or sets the style of the generated poster.
         /// </summary>
         public PosterStyle PosterStyle { get; set; } = PosterStyle.Standard;
 
         /// <summary>
-        /// Gets or sets the type of cutout display for episode numbers.
+        /// Gets or sets the poster cutout type when the poster style is cutout.
         /// </summary>
-        public CutoutType CutoutType { get; set; } = CutoutType.Text;
+        public CutoutType CutoutType { get; set; } = CutoutType.Code;
 
         /// <summary>
-        /// Gets or sets the hex color of the text.
+        /// Gets or sets how the screenshot is fit into the poster.
         /// </summary>
-        public string TextColor { get; set; } = "#FFFFFF";
+        public PosterFill PosterFill { get; set; } = PosterFill.Original;
 
         /// <summary>
-        /// Gets or sets the font size of the episode text.
+        /// Gets or sets the poster aspect ratio (e.g., "16:9", "3:2", "4:3").
+        /// </summary>
+        public string PosterDimensionRatio { get; set; } = "16:9";
+
+        /// <summary>
+        /// Gets or sets the font family for episode numbers/season info.
+        /// </summary>
+        public string EpisodeFontFamily { get; set; } = "Arial";
+
+        /// <summary>
+        /// Gets or sets the font style for episode numbers/season info (Normal, Bold, Italic, BoldItalic).
+        /// </summary>
+        public string EpisodeFontStyle { get; set; } = "Bold";
+
+        /// <summary>
+        /// Gets or sets the font size for episode numbers/season info.
         /// </summary>
         public int EpisodeFontSize { get; set; } = 20;
 
         /// <summary>
-        /// Gets or sets the font size of the title text.
+        /// Gets or sets the hex color code for episode number text.
+        /// </summary>
+        public string EpisodeFontColor { get; set; } = "#FFFFFF";
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to show the episode title.
+        /// </summary>
+        public bool ShowTitle { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the font family for episode titles.
+        /// </summary>
+        public string TitleFontFamily { get; set; } = "Arial";
+    
+        /// <summary>
+        /// Gets or sets the font style for episode titles (Normal, Bold, Italic, BoldItalic).
+        /// </summary>
+        public string TitleFontStyle { get; set; } = "Bold";
+
+        /// <summary>
+        /// Gets or sets the font size for episode titles.
         /// </summary>
         public int TitleFontSize { get; set; } = 28;
 
         /// <summary>
-        /// Gets or sets the text position ("Top", "Bottom", etc.).
+        /// Gets or sets the hex color code for episode title text.
         /// </summary>
-        public string TextPosition { get; set; } = "Bottom";
+        public string TitleFontColor { get; set; } = "#FFFFFF";
 
         /// <summary>
-        /// Gets or sets the hex color to use as a background overlay (e.g. "#66000000").
+        /// Gets or sets the ARGB hex color for background overlay.
         /// </summary>
-        public string OverlayColor { get; set; } = "#66000000";
+        public string BackgroundColor { get; set; } = "#66000000";
+
+        /// <summary>
+        /// Gets or sets the ARGB hex color for image tint overlay.
+        /// </summary>
+        public string OverlayTint { get; set; } = "#00000000";
     }
 }

@@ -4,17 +4,20 @@ using System.Globalization;
 using System.IO;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
+using MediaBrowser.Controller.Entities.TV;
 using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
 
-public class NumeralPosterGenerator : BasePosterGenerator, INumeralPosterGenerator
+public class NumeralPosterGenerator : BasePosterGenerator, IPosterGenerator
 {
     // MARK: Generate
-    public string? Generate(string inputImagePath, string outputPath, int episodeNumber, string episodeTitle, PluginConfiguration config)
+    public string? Generate(string inputImagePath, string outputPath, Episode episode, PluginConfiguration config)
     {
         try
         {
+            var episodeNumber = episode.IndexNumber ?? 0;
+            var episodeTitle = episode.Name ?? "-";
             using var original = SKBitmap.Decode(inputImagePath);
             if (original == null)
                 return null;
@@ -30,7 +33,7 @@ public class NumeralPosterGenerator : BasePosterGenerator, INumeralPosterGenerat
             using var originalPaint = new SKPaint();
             canvas.DrawBitmap(original, 0, 0, originalPaint);
 
-            var overlayColor = ColorUtils.ParseHexColor(config.OverlayColor);
+            var overlayColor = ColorUtils.ParseHexColor(config.BackgroundColor);
             using var overlayPaint = new SKPaint
             {
                 Color = overlayColor,
@@ -41,11 +44,12 @@ public class NumeralPosterGenerator : BasePosterGenerator, INumeralPosterGenerat
             ApplySafeAreaConstraints(width, height, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
 
             var numeralText = ConvertToRomanNumeral(episodeNumber);
-            float fontSize = CalculateOptimalFontSize(numeralText, safeWidth * 0.9f, safeHeight * 0.8f);
+            float numeralArea = config.ShowTitle ? safeHeight * 0.7f : safeHeight * 0.9f;
+            float fontSize = CalculateOptimalFontSize(numeralText, safeWidth * 0.9f, numeralArea);
 
             using var numeralPaint = new SKPaint
             {
-                Color = SKColor.Parse("#CC4125"),
+                Color = ColorUtils.ParseHexColor(config.EpisodeFontColor),
                 IsAntialias = true,
                 TextSize = fontSize,
                 Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Bold),
@@ -53,10 +57,15 @@ public class NumeralPosterGenerator : BasePosterGenerator, INumeralPosterGenerat
             };
 
             float centerX = safeLeft + (safeWidth / 2f);
-            float centerY = safeTop + (safeHeight / 2f) + (fontSize * 0.35f);
+            float numeralCenterY = config.ShowTitle ? safeTop + (numeralArea / 2f) : safeTop + (safeHeight / 2f);
+            float numeralY = numeralCenterY + (fontSize * 0.35f);
 
-            canvas.DrawText(numeralText, centerX, centerY, numeralPaint);
-            DrawEpisodeTitle(canvas, episodeTitle, config, centerX, centerY, safeWidth);
+            canvas.DrawText(numeralText, centerX, numeralY, numeralPaint);
+
+            if (config.ShowTitle)
+            {
+                DrawEpisodeTitle(canvas, episodeTitle, config, centerX, safeTop + safeHeight, safeWidth);
+            }
 
             using var finalImage = surface.Snapshot();
             using var data = finalImage.Encode(SKEncodedImageFormat.Jpeg, 95);
@@ -117,11 +126,11 @@ public class NumeralPosterGenerator : BasePosterGenerator, INumeralPosterGenerat
     }
 
     // MARK: DrawEpisodeTitle
-    private void DrawEpisodeTitle(SKCanvas canvas, string episodeTitle, PluginConfiguration config, float centerX, float centerY, float safeWidth)
+    private void DrawEpisodeTitle(SKCanvas canvas, string episodeTitle, PluginConfiguration config, float centerX, float bottomY, float safeWidth)
     {
         using var titlePaint = new SKPaint
         {
-            Color = ColorUtils.ParseHexColor(config.TextColor),
+            Color = ColorUtils.ParseHexColor(config.TitleFontColor),
             TextSize = config.TitleFontSize,
             IsAntialias = true,
             Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Bold),
@@ -141,18 +150,19 @@ public class NumeralPosterGenerator : BasePosterGenerator, INumeralPosterGenerat
         var lines = WrapTextForOverlay(episodeTitle, titlePaint, maxWidth);
         
         float lineHeight = config.TitleFontSize * 1.2f;
-        float textOffset = config.TitleFontSize * 0.35f; // Offset to center text visually
+        float textOffset = config.TitleFontSize * 0.35f;
+        float titleY = bottomY - (config.TitleFontSize * 1.5f);
         
         if (lines.Count == 1)
         {
-            float y = centerY + textOffset;
+            float y = titleY + textOffset;
             canvas.DrawText(lines[0], centerX + 2, y + 2, shadowPaint);
             canvas.DrawText(lines[0], centerX, y, titlePaint);
         }
         else if (lines.Count == 2)
         {
-            float line1Y = centerY - (lineHeight / 2f) + textOffset;
-            float line2Y = centerY + (lineHeight / 2f) + textOffset;
+            float line1Y = titleY - (lineHeight / 2f) + textOffset;
+            float line2Y = titleY + (lineHeight / 2f) + textOffset;
             
             canvas.DrawText(lines[0], centerX + 2, line1Y + 2, shadowPaint);
             canvas.DrawText(lines[0], centerX, line1Y, titlePaint);

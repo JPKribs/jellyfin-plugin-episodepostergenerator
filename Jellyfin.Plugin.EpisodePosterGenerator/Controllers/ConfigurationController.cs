@@ -49,14 +49,25 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
 
                 var config = plugin.Configuration;
 
-                config.PosterFill = newConfig.PosterFill;
+                config.EnablePlugin = newConfig.EnablePlugin;
                 config.PosterStyle = newConfig.PosterStyle;
                 config.CutoutType = newConfig.CutoutType;
+                config.PosterFill = newConfig.PosterFill;
+                config.PosterDimensionRatio = newConfig.PosterDimensionRatio;
+
+                config.EpisodeFontFamily = newConfig.EpisodeFontFamily;
+                config.EpisodeFontStyle = newConfig.EpisodeFontStyle;
                 config.EpisodeFontSize = newConfig.EpisodeFontSize;
+                config.EpisodeFontColor = newConfig.EpisodeFontColor;
+
+                config.ShowTitle = newConfig.ShowTitle;
+                config.TitleFontFamily = newConfig.TitleFontFamily;
+                config.TitleFontStyle = newConfig.TitleFontStyle;
                 config.TitleFontSize = newConfig.TitleFontSize;
-                config.TextColor = newConfig.TextColor;
-                config.TextPosition = newConfig.TextPosition;
-                config.OverlayColor = newConfig.OverlayColor;
+                config.TitleFontColor = newConfig.TitleFontColor;
+
+                config.BackgroundColor = newConfig.BackgroundColor;
+                config.OverlayTint = newConfig.OverlayTint;
 
                 plugin.SaveConfiguration();
 

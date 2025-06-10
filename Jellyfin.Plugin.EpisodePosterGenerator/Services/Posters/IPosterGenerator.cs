@@ -8,16 +8,6 @@ public interface IPosterGenerator
     string? Generate(string inputImagePath, string outputPath, Episode episode, PluginConfiguration config);
 }
 
-public interface ICutoutPosterGenerator
-{
-    string? Generate(string inputImagePath, string outputPath, int seasonNumber, int episodeNumber, string episodeTitle, PluginConfiguration config);
-}
-
-public interface INumeralPosterGenerator
-{
-    string? Generate(string inputImagePath, string outputPath, int episodeNumber, string episodeTitle, PluginConfiguration config);
-}
-
 public abstract class BasePosterGenerator
 {
     protected const float SafeAreaMargin = 0.05f;
