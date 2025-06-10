@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using System.IO;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
@@ -30,7 +29,10 @@ public class NumeralPosterGenerator : BasePosterGenerator, IPosterGenerator
             var episodeTitle = episode.Name ?? "-";
             using var original = SKBitmap.Decode(inputImagePath);
             if (original == null)
+            {
+                Console.WriteLine("Failed to decode input image.");
                 return null;
+            }
 
             var width = original.Width;
             var height = original.Height;
@@ -40,9 +42,11 @@ public class NumeralPosterGenerator : BasePosterGenerator, IPosterGenerator
 
             canvas.Clear(SKColors.Transparent);
 
+            // Draw original image as the base
             using var originalPaint = new SKPaint();
             canvas.DrawBitmap(original, 0, 0, originalPaint);
 
+            // Draw color overlay
             var overlayColor = ColorUtils.ParseHexColor(config.BackgroundColor);
             using var overlayPaint = new SKPaint
             {
@@ -54,24 +58,31 @@ public class NumeralPosterGenerator : BasePosterGenerator, IPosterGenerator
             ApplySafeAreaConstraints(width, height, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
 
             var numeralText = NumberUtils.NumberToRomanNumeral(episodeNumber);
-            float centerX = width / 2f;
+            
+            var fontStyle = FontUtils.GetFontStyle(config.EpisodeFontStyle);
+            
+            using var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, fontStyle);
+            
+            float fontSize = FontUtils.CalculateOptimalFontSize(numeralText, typeface, safeWidth, safeHeight);
 
-            float fontSize = CalculateOptimalFontSize(numeralText, safeWidth, safeHeight);
 
             using var numeralPaint = new SKPaint
             {
                 Color = ColorUtils.ParseHexColor(config.EpisodeFontColor),
                 IsAntialias = true,
                 TextSize = fontSize,
-                Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Bold),
+                Typeface = typeface,
                 TextAlign = SKTextAlign.Center
             };
-
+            
+            float centerX = width / 2f;
+            // Vertically center the numeral text
             float numeralY = (height / 2f) + (fontSize * 0.35f);
             canvas.DrawText(numeralText, centerX, numeralY, numeralPaint);
 
             if (config.ShowTitle)
             {
+                // Assuming EpisodeTitleUtil is also updated or doesn't need this specific typeface
                 EpisodeTitleUtil.DrawTitle(canvas, episodeTitle, TitlePosition.Middle, config, width, height);
             }
 
@@ -84,38 +95,9 @@ public class NumeralPosterGenerator : BasePosterGenerator, IPosterGenerator
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Numeral poster generation failed: {ex}");
+            // It's better to log the full exception for debugging.
+            Console.WriteLine($"Numeral poster generation failed: {ex.Message}\n{ex.StackTrace}");
             return null;
         }
-    }
-
-    // MARK: CalculateOptimalFontSize
-    /// <summary>
-    /// Calculates the largest font size that fits the text within maxWidth and maxHeight.
-    /// </summary>
-    private float CalculateOptimalFontSize(string text, float maxWidth, float maxHeight)
-    {
-        float fontSize = Math.Min(maxWidth, maxHeight) * 0.8f;
-        const float minFontSize = 100f;
-
-        using var measurePaint = new SKPaint
-        {
-            IsAntialias = true,
-            Typeface = SKTypeface.FromFamilyName(null, SKFontStyle.Bold),
-        };
-
-        while (fontSize > minFontSize)
-        {
-            measurePaint.TextSize = fontSize;
-            var textWidth = measurePaint.MeasureText(text);
-            var textHeight = fontSize;
-
-            if (textWidth <= maxWidth && textHeight <= maxHeight)
-                break;
-
-            fontSize -= 10f;
-        }
-
-        return fontSize;
     }
 }

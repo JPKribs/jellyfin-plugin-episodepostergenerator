@@ -5,74 +5,46 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils;
 
 /// <summary>
 /// Utility class for handling font selection, measurement, and sizing logic.
+/// This version uses SKFontManager for robust, dynamic font matching and a more efficient
+/// binary search for calculating optimal font sizes.
 /// </summary>
 public static class FontUtils
 {
-    private static readonly string[] CondensedFonts = {
-        "Impact",
-        "Arial Black", 
-        "Bebas Neue",
-        "Oswald",
-        "Roboto Condensed",
-        "Arial Narrow",
-        "Franklin Gothic Heavy",
-        "Helvetica Neue Condensed Bold"
-    };
-
-    private static readonly string[] BoldFonts = {
-        "Arial Black",
-        "Helvetica Bold",
-        "Segoe UI Black",
-        "Calibri Bold",
-        "Verdana Bold"
-    };
-
     /// <summary>
-    /// Attempts to return a bold, condensed typeface that is suitable for display purposes.
+    /// Creates an SKTypeface by matching a font family name and a desired style.
+    /// This is more reliable than FromFamilyName as it uses the system's font manager
+    /// to find the best possible match if an exact one isn't available.
     /// </summary>
-    /// <returns>An <see cref="SKTypeface"/> for bold display; falls back to a generic bold typeface if no match is found.</returns>
-    public static SKTypeface GetBestDisplayTypeface()
+    /// <param name="fontFamilyName">The name of the font family (e.g., "Arial", "Roboto", "Impact").</param>
+    /// <param name="style">The desired font style (e.g., Bold, Italic, Condensed).</param>
+    /// <returns>A matching SKTypeface. If the requested family is not found, it returns a system default based on the style.</returns>
+    /// <example>
+    /// To get a bold, condensed font:
+    /// <code>
+    /// var style = new SKFontStyle(SKFontStyleWeight.Bold, SKFontStyleWidth.Condensed, SKFontStyleSlant.Upright);
+    /// var typeface = FontUtils.CreateTypeface("Impact", style);
+    /// </code>
+    /// </example>
+    public static SKTypeface CreateTypeface(string fontFamilyName, SKFontStyle style)
     {
-        foreach (var fontName in CondensedFonts)
-        {
-            var typeface = SKTypeface.FromFamilyName(fontName, SKFontStyle.Bold);
-            if (typeface != null && !typeface.FamilyName.Equals("serif", StringComparison.OrdinalIgnoreCase))
-            {
-                return typeface;
-            }
-            typeface?.Dispose();
-        }
+        // SKFontManager.Default provides access to the system's installed fonts.
+        var fontManager = SKFontManager.Default;
 
-        foreach (var fontName in BoldFonts)
-        {
-            var typeface = SKTypeface.FromFamilyName(fontName, SKFontStyle.Bold);
-            if (typeface != null && !typeface.FamilyName.Equals("serif", StringComparison.OrdinalIgnoreCase))
-            {
-                return typeface;
-            }
-            typeface?.Dispose();
-        }
-
-        return SKTypeface.FromFamilyName(null, SKFontStyle.Bold);
+        // MatchFamily will find the best match for the requested family and style.
+        // This is the modern, preferred way to select fonts.
+        return fontManager.MatchFamily(fontFamilyName, style);
     }
 
     /// <summary>
-    /// Attempts to return a condensed bold typeface from a predefined list.
+    /// Creates a default typeface for a given style, without specifying a family.
+    /// The system's font manager will select a suitable default font.
     /// </summary>
-    /// <returns>An <see cref="SKTypeface"/> that is condensed and bold; defaults to Arial Bold if none found.</returns>
-    public static SKTypeface GetCondensedTypeface()
+    /// <param name="style">The desired font style.</param>
+    /// <returns>A default system SKTypeface matching the style.</returns>
+    public static SKTypeface CreateTypeface(SKFontStyle style)
     {
-        foreach (var fontName in CondensedFonts)
-        {
-            var typeface = SKTypeface.FromFamilyName(fontName, SKFontStyle.Bold);
-            if (typeface != null && !typeface.FamilyName.Equals("serif", StringComparison.OrdinalIgnoreCase))
-            {
-                return typeface;
-            }
-            typeface?.Dispose();
-        }
-
-        return SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold);
+        // Passing null or empty for the family name asks the font manager for a default.
+        return SKFontManager.Default.MatchFamily(null, style);
     }
 
     /// <summary>
@@ -80,8 +52,8 @@ public static class FontUtils
     /// </summary>
     /// <param name="text">Text to measure.</param>
     /// <param name="typeface">Typeface used to render the text.</param>
-    /// <param name="fontSize">Font size in pixels.</param>
-    /// <returns>A <see cref="SKRect"/> representing the bounds of the rendered text.</returns>
+    /// <param name="fontSize">Font size in points.</param>
+    /// <returns>A SKRect representing the bounds of the rendered text.</returns>
     public static SKRect MeasureTextDimensions(string text, SKTypeface typeface, float fontSize)
     {
         using var paint = new SKPaint
@@ -97,29 +69,46 @@ public static class FontUtils
     }
 
     /// <summary>
-    /// Iteratively determines the largest possible font size that fits within the given width and height bounds.
+    /// Determines the largest font size that fits text within given dimensions using an efficient binary search.
     /// </summary>
-    /// <param name="text">Text to measure and fit.</param>
-    /// <param name="typeface">Typeface used for measurement.</param>
-    /// <param name="maxWidth">Maximum allowed width in pixels.</param>
-    /// <param name="maxHeight">Maximum allowed height in pixels.</param>
-    /// <param name="minFontSize">Minimum acceptable font size to avoid infinite loop (default: 20).</param>
-    /// <returns>The optimal font size in pixels that fits within the bounds.</returns>
-    public static float CalculateOptimalFontSize(string text, SKTypeface typeface, float maxWidth, float maxHeight, float minFontSize = 20f)
+    /// <param name="text">The text to measure.</param>
+    /// <param name="typeface">The typeface to use.</param>
+    /// <param name="maxWidth">The maximum allowed width.</param>
+    /// <param name="maxHeight">The maximum allowed height.</param>
+    /// <param name="minFontSize">The minimum allowed font size.</param>
+    /// <param name="tolerance">The precision for the binary search. A smaller value is more accurate but may take more iterations.</param>
+    /// <returns>The optimal font size that fits within the bounds.</returns>
+    public static float CalculateOptimalFontSize(string text, SKTypeface typeface, float maxWidth, float maxHeight, float minFontSize = 10f, float tolerance = 0.5f)
     {
-        float fontSize = Math.Min(maxWidth, maxHeight) * 0.8f;
-        
-        while (fontSize > minFontSize)
+        // The upper bound can be set to the max height as text rarely exceeds this.
+        float maxFontSize = maxHeight;
+        float optimalSize = minFontSize;
+
+        // Perform a binary search for the optimal font size.
+        float low = minFontSize;
+        float high = maxFontSize;
+
+        while (low <= high)
         {
-            var bounds = MeasureTextDimensions(text, typeface, fontSize);
-            
+            float mid = low + (high - low) / 2;
+            if (mid <= 0) break; // Safety check
+
+            var bounds = MeasureTextDimensions(text, typeface, mid);
+
             if (bounds.Width <= maxWidth && bounds.Height <= maxHeight)
-                return fontSize;
-                
-            fontSize -= 2f;
+            {
+                // This size fits. We can try for a larger size.
+                optimalSize = mid; // Store this as a potential answer
+                low = mid + tolerance;
+            }
+            else
+            {
+                // This size is too big. We must try a smaller size.
+                high = mid - tolerance;
+            }
         }
-        
-        return minFontSize;
+
+        return optimalSize;
     }
 
     /// <summary>
@@ -135,5 +124,21 @@ public static class FontUtils
             return 0;
 
         return (int)(posterHeight * (percentage / (100f - (posterMargin * 2))));
+    }
+
+    /// <summary>
+    /// Parses a font style string from the configuration into an SKFontStyle object.
+    /// </summary>
+    /// <param name="fontStyle">The font style string (e.g., "Bold", "Italic").</param>
+    /// <returns>An SKFontStyle object.</returns>
+    public static SKFontStyle GetFontStyle(string fontStyle)
+    {
+        return fontStyle.ToLowerInvariant() switch
+        {
+            "bold" => SKFontStyle.Bold,
+            "italic" => SKFontStyle.Italic,
+            "bold italic" => SKFontStyle.BoldItalic,
+            _ => SKFontStyle.Normal,
+        };
     }
 }

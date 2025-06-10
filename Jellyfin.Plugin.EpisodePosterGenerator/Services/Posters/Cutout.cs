@@ -62,7 +62,7 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
             };
             canvas.DrawRect(SKRect.Create(width, height), overlayPaint);
 
-            DrawCutoutText(canvas, episodeWords, width, height, config.ShowTitle);
+            DrawCutoutText(canvas, episodeWords, width, height, config.ShowTitle, config);
 
             using var originalPaint = new SKPaint
             {
@@ -109,14 +109,16 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
     /// <summary>
     /// Draws episode text (cutout style) on the canvas. Supports single or multi-line formatting.
     /// </summary>
-    private void DrawCutoutText(SKCanvas canvas, string[] episodeWords, float canvasWidth, float canvasHeight, bool hasTitle)
+    private void DrawCutoutText(SKCanvas canvas, string[] episodeWords, float canvasWidth, float canvasHeight, bool hasTitle, PluginConfiguration config)
     {
         if (episodeWords.Length == 0)
             return;
 
         ApplySafeAreaConstraints((int)canvasWidth, (int)canvasHeight, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
 
-        using var typeface = FontUtils.GetCondensedTypeface();
+        var fontStyle = FontUtils.GetFontStyle(config.EpisodeFontStyle);
+        using var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, fontStyle);
+
         using var cutoutPaint = new SKPaint
         {
             Color = SKColors.Transparent,

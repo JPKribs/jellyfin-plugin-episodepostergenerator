@@ -83,8 +83,38 @@
                     <br>
 
                     <div class="inputContainer" id="episodeFontFamilyContainer">
-                        <label for="txtEpisodeFontFamily">Font:</label>
-                        <input is="emby-input" type="text" id="txtEpisodeFontFamily" placeholder="Arial" />
+                        <label for="selectEpisodeFontFamily">Font:</label>
+                        <select is="emby-select" id="selectEpisodeFontFamily">
+                            <option value="Arial">Arial</option>
+                            <option value="Arial Black">Arial Black</option>
+                            <option value="Book Antiqua">Book Antiqua</option>
+                            <option value="Calibri">Calibri</option>
+                            <option value="Cambria">Cambria</option>
+                            <option value="Candara">Candara</option>
+                            <option value="Century Gothic">Century Gothic</option>
+                            <option value="Comic Sans MS">Comic Sans MS</option>
+                            <option value="Consolas">Consolas</option>
+                            <option value="Courier New">Courier New</option>
+                            <option value="Didot">Didot</option>
+                            <option value="Franklin Gothic Medium">Franklin Gothic Medium</option>
+                            <option value="Futura">Futura</option>
+                            <option value="Garamond">Garamond</option>
+                            <option value="Georgia">Georgia</option>
+                            <option value="Gill Sans">Gill Sans</option>
+                            <option value="Helvetica">Helvetica</option>
+                            <option value="Impact">Impact</option>
+                            <option value="Lucida Console">Lucida Console</option>
+                            <option value="Lucida Sans Unicode">Lucida Sans Unicode</option>
+                            <option value="Monaco">Monaco</option>
+                            <option value="Optima">Optima</option>
+                            <option value="Palatino Linotype">Palatino Linotype</option>
+                            <option value="Rockwell">Rockwell</option>
+                            <option value="Segoe UI">Segoe UI</option>
+                            <option value="Tahoma">Tahoma</option>
+                            <option value="Times New Roman">Times New Roman</option>
+                            <option value="Trebuchet MS">Trebuchet MS</option>
+                            <option value="Verdana">Verdana</option>
+                        </select>
                         <div class="fieldDescription">Font for the episode number/season info.</div>
                     </div>
 
@@ -94,7 +124,7 @@
                             <option value="Normal">Normal</option>
                             <option value="Bold">Bold</option>
                             <option value="Italic">Italic</option>
-                            <option value="BoldItalic">BoldItalic</option>
+                            <option value="Bold Italic">Bold Italic</option>
                         </select>
                         <div class="fieldDescription">Font style for the episode number/season info.</div>
                     </div>
@@ -129,8 +159,38 @@
                     </div>
 
                     <div class="inputContainer" id="titleFontFamilyContainer">
-                        <label for="txtTitleFontFamily">Font:</label>
-                        <input is="emby-input" type="text" id="txtTitleFontFamily" placeholder="Arial" />
+                        <label for="selectTitleFontFamily">Font:</label>
+                        <select is="emby-select" id="selectTitleFontFamily">
+                            <option value="Arial">Arial</option>
+                            <option value="Arial Black">Arial Black</option>
+                            <option value="Book Antiqua">Book Antiqua</option>
+                            <option value="Calibri">Calibri</option>
+                            <option value="Cambria">Cambria</option>
+                            <option value="Candara">Candara</option>
+                            <option value="Century Gothic">Century Gothic</option>
+                            <option value="Comic Sans MS">Comic Sans MS</option>
+                            <option value="Consolas">Consolas</option>
+                            <option value="Courier New">Courier New</option>
+                            <option value="Didot">Didot</option>
+                            <option value="Franklin Gothic Medium">Franklin Gothic Medium</option>
+                            <option value="Futura">Futura</option>
+                            <option value="Garamond">Garamond</option>
+                            <option value="Georgia">Georgia</option>
+                            <option value="Gill Sans">Gill Sans</option>
+                            <option value="Helvetica">Helvetica</option>
+                            <option value="Impact">Impact</option>
+                            <option value="Lucida Console">Lucida Console</option>
+                            <option value="Lucida Sans Unicode">Lucida Sans Unicode</option>
+                            <option value="Monaco">Monaco</option>
+                            <option value="Optima">Optima</option>
+                            <option value="Palatino Linotype">Palatino Linotype</option>
+                            <option value="Rockwell">Rockwell</option>
+                            <option value="Segoe UI">Segoe UI</option>
+                            <option value="Tahoma">Tahoma</option>
+                            <option value="Times New Roman">Times New Roman</option>
+                            <option value="Trebuchet MS">Trebuchet MS</option>
+                            <option value="Verdana">Verdana</option>
+                        </select>
                         <div class="fieldDescription">Font for the episode title.</div>
                     </div>
 
@@ -140,7 +200,7 @@
                             <option value="Normal">Normal</option>
                             <option value="Bold">Bold</option>
                             <option value="Italic">Italic</option>
-                            <option value="BoldItalic">BoldItalic</option>
+                            <option value="Bold Italic">Bold Italic</option>
                         </select>
                         <div class="fieldDescription">Font style for the episode title.</div>
                     </div>
@@ -221,13 +281,13 @@
                     document.getElementById('selectPosterFill').value = config.PosterFill || 'Original';
                     document.getElementById('txtPosterDimensionRatio').value = config.PosterDimensionRatio || '16:9';
 
-                    document.getElementById('txtEpisodeFontFamily').value = config.EpisodeFontFamily || 'Arial';
+                    document.getElementById('selectEpisodeFontFamily').value = config.EpisodeFontFamily || 'Arial';
                     document.getElementById('selectEpisodeFontStyle').value = config.EpisodeFontStyle || 'Bold';
                     document.getElementById('txtEpisodeFontSize').value = config.EpisodeFontSize || 10.0;
                     document.getElementById('txtEpisodeFontColor').value = config.EpisodeFontColor || '#FFFFFF';
 
                     document.getElementById('chkShowTitle').checked = config.ShowTitle !== false;
-                    document.getElementById('txtTitleFontFamily').value = config.TitleFontFamily || 'Arial';
+                    document.getElementById('selectTitleFontFamily').value = config.TitleFontFamily || 'Arial';
                     document.getElementById('selectTitleFontStyle').value = config.TitleFontStyle || 'Bold';
                     document.getElementById('txtTitleFontSize').value = config.TitleFontSize || 7.0;
                     document.getElementById('txtTitleFontColor').value = config.TitleFontColor || '#FFFFFF';
@@ -254,13 +314,13 @@
                     CutoutType: document.getElementById('selectCutoutType').value,
                     PosterDimensionRatio: document.getElementById('txtPosterDimensionRatio').value,
 
-                    EpisodeFontFamily: document.getElementById('txtEpisodeFontFamily').value,
+                    EpisodeFontFamily: document.getElementById('selectEpisodeFontFamily').value,
                     EpisodeFontStyle: document.getElementById('selectEpisodeFontStyle').value,
                     EpisodeFontSize: parseFloat(document.getElementById('txtEpisodeFontSize').value),
                     EpisodeFontColor: document.getElementById('txtEpisodeFontColor').value,
 
                     ShowTitle: document.getElementById('chkShowTitle').checked,
-                    TitleFontFamily: document.getElementById('txtTitleFontFamily').value,
+                    TitleFontFamily: document.getElementById('selectTitleFontFamily').value,
                     TitleFontStyle: document.getElementById('selectTitleFontStyle').value,
                     TitleFontSize: parseFloat(document.getElementById('txtTitleFontSize').value),
                     TitleFontColor: document.getElementById('txtTitleFontColor').value,
