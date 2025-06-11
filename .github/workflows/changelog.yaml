@@ -11,9 +11,13 @@ on:
     types:
       - update-prep-command
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/changelog.yaml@master    
+    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/changelog.yaml@master
     with:
       repository-name: JPKribs/jellyfin-plugin-episodepostergenerator
     secrets:
