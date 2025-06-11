@@ -1,21 +1,29 @@
 [
-    {
-        "guid": "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e",
-        "name": "Episode Poster Generator",
-        "description": "Episode Poster Generator is a Jellyfin plugin that automatically creates custom episode posters using smart frame analysis, black frame detection, and configurable text styling. Perfect for filling in missing or generic episode artwork with clean, consistent visuals.",
-        "overview": "Generate Custom Episode Posters",
-        "owner": "JPKribs",
-        "category": "Metadata",
-        "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Screenshots/Logo.jpg",
-        "versions": [
-            {
-                "version": "1.0.0.0",
-                "changelog": "Initial release with Standard, Cutout, and Numeral poster styles.",
-                "targetAbi": "10.10.7.0",
-                "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v1.0.0.0/jellyfin-plugin-episodepostergenerator-1.0.0.0.zip",
-                "checksum": "7405bdb075224080d49afac51db39ee0",
-                "timestamp": "2025-06-10T21:11:32Z"
-            }
-        ]
-    }
+  {
+    "guid": "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e",
+    "name": "Episode Poster Generator",
+    "description": "Episode Poster Generator is a Jellyfin plugin that automatically creates custom episode posters using smart frame analysis, black frame detection, and configurable text styling. Perfect for filling in missing or generic episode artwork with clean, consistent visuals.",
+    "overview": "Generate Custom Episode Posters",
+    "owner": "JPKribs",
+    "category": "Metadata",
+    "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Screenshots/Logo.jpg",
+    "versions": [
+      {
+        "version": "10.10.2",
+        "changelog": "## Changes\r\n\r\n* Automate Manifest updates (hopefully!)\r\n\r\n## Contributors\r\n\r\n@JPKribs\r\n",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.2/jellyfin-plugin-episodepostergenerator-10.10.2.zip",
+        "checksum": "",
+        "timestamp": "2025-06-11T18:24:27Z"
+      },
+      {
+        "version": "1.0.0.0",
+        "changelog": "Initial release with Standard, Cutout, and Numeral poster styles.",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v1.0.0.0/jellyfin-plugin-episodepostergenerator-1.0.0.0.zip",
+        "checksum": "7405bdb075224080d49afac51db39ee0",
+        "timestamp": "2025-06-10T21:11:32Z"
+      }
+    ]
+  }
 ]
