@@ -92,6 +92,14 @@ Roman numeral episode numbers with elegant typography.
 
 ## Installation
 
+### Method 1: Plugin Repository (Recommended)
+1. Go to **Jellyfin Dashboard** → **Plugins** → **Repositories**
+2. Click **Add Repository**
+3. Enter: `https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/manifest.json`
+4. Go to **Catalog** tab and install **Episode Poster Generator**
+5. Restart Jellyfin
+
+### Method 2: Manual Installation
 1. Download the plugin DLL from the releases page
 2. Place `Jellyfin.Plugin.EpisodePosterGenerator.dll` in your Jellyfin plugins directory
 3. Restart Jellyfin
@@ -160,14 +168,13 @@ Show Title: true
 - Check that video files are accessible
 - Ensure plugin is enabled in configuration
 
-**Poor frame selection:**
-- Adjust black detection thresholds if available
-- Verify video files have sufficient content
-
 **Text rendering issues:**
 - Confirm selected fonts are available on system
 - Adjust font sizes for better fit
-- Check color contrast settings
+
+## Acknowledgments
+
+This project was inspired by [TitleCardMaker](https://github.com/CollinHeist/TitleCardMaker) by CollinHeist, an excellent GPL-licensed standalone application for generating episode title cards. While TitleCardMaker provides comprehensive external tooling, this plugin was created to offer similar functionality as a native, built-in Jellyfin solution for seamless integration and automatic generation.
 
 ## License
 
