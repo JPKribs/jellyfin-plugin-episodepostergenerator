@@ -16,6 +16,7 @@ public interface IPosterGenerator
     /// <param name="episode">The episode for which the poster is being generated.</param>
     /// <param name="config">The plugin configuration used to guide the generation process.</param>
     /// <returns>The path to the generated image, or <c>null</c> if generation failed.</returns>
+    // MARK: Generate
     string? Generate(string inputImagePath, string outputPath, Episode episode, PluginConfiguration config);
 }
 
@@ -25,25 +26,34 @@ public interface IPosterGenerator
 public abstract class BasePosterGenerator
 {
     /// <summary>
-    /// Defines the margin used to calculate the safe area as a percentage of the image dimensions.
+    /// Calculates the safe area margin from configuration as a percentage of image dimensions.
     /// </summary>
-    protected const float SafeAreaMargin = 0.05f;
+    /// <param name="config">Plugin configuration containing the PosterSafeArea setting.</param>
+    /// <returns>Safe area margin as a decimal percentage (e.g., 5.0 becomes 0.05).</returns>
+    // MARK: GetSafeAreaMargin
+    protected static float GetSafeAreaMargin(PluginConfiguration config)
+    {
+        return config.PosterSafeArea / 100f;
+    }
 
     /// <summary>
-    /// Calculates the dimensions and position of the safe area within an image.
+    /// Calculates the dimensions and position of the safe area within an image using configuration.
     /// </summary>
     /// <param name="width">The width of the image.</param>
     /// <param name="height">The height of the image.</param>
+    /// <param name="config">Plugin configuration containing safe area settings.</param>
     /// <param name="safeWidth">The resulting width of the safe area.</param>
     /// <param name="safeHeight">The resulting height of the safe area.</param>
     /// <param name="safeLeft">The left offset of the safe area.</param>
     /// <param name="safeTop">The top offset of the safe area.</param>
-    protected static void ApplySafeAreaConstraints(int width, int height, out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop)
+    // MARK: ApplySafeAreaConstraints
+    protected static void ApplySafeAreaConstraints(int width, int height, PluginConfiguration config, out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop)
     {
-        safeLeft = width * SafeAreaMargin;
-        safeTop = height * SafeAreaMargin;
-        safeWidth = width * (1 - 2 * SafeAreaMargin);
-        safeHeight = height * (1 - 2 * SafeAreaMargin);
+        var safeAreaMargin = GetSafeAreaMargin(config);
+        safeLeft = width * safeAreaMargin;
+        safeTop = height * safeAreaMargin;
+        safeWidth = width * (1 - 2 * safeAreaMargin);
+        safeHeight = height * (1 - 2 * safeAreaMargin);
     }
 
     /// <summary>
@@ -53,10 +63,12 @@ public abstract class BasePosterGenerator
     /// <param name="y">The y-coordinate to test.</param>
     /// <param name="width">The width of the image.</param>
     /// <param name="height">The height of the image.</param>
+    /// <param name="config">Plugin configuration containing safe area settings.</param>
     /// <returns><c>true</c> if the point lies within the safe area; otherwise, <c>false</c>.</returns>
-    protected static bool IsWithinSafeArea(float x, float y, int width, int height)
+    // MARK: IsWithinSafeArea
+    protected static bool IsWithinSafeArea(float x, float y, int width, int height, PluginConfiguration config)
     {
-        ApplySafeAreaConstraints(width, height, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
+        ApplySafeAreaConstraints(width, height, config, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
         return x >= safeLeft && x <= safeLeft + safeWidth && y >= safeTop && y <= safeTop + safeHeight;
     }
 }

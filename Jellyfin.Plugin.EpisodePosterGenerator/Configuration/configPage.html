@@ -43,6 +43,7 @@
                         <select is="emby-select" id="selectPosterStyle">
                             <option value="Standard">Standard</option>
                             <option value="Cutout">Cutout</option>
+                            <option value="Logo">Logo</option>
                             <option value="Numeral">Numeral</option>
                         </select>
                     </div>
@@ -70,6 +71,12 @@
                         <label for="txtPosterDimensionRatio">Aspect Ratio:</label>
                         <input is="emby-input" type="text" id="txtPosterDimensionRatio" placeholder="16:9" />
                         <div class="fieldDescription">Aspect ratio for the poster (e.g., 16:9, 3:2, 4:3).</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label for="txtPosterSafeArea">Safe Area:</label>
+                        <input is="emby-input" type="number" id="txtPosterSafeArea" min="1.0" max="100.0" />
+                        <div class="fieldDescription">Percentage of veritcal and horizontal space that should be preserved around the edges as a safe area.</div>
                     </div>
 
                     <br>
@@ -256,6 +263,7 @@
                 var isStandard = posterStyle === 'Standard';
                 var isNumeral = posterStyle === 'Numeral';
                 var isCutout = posterStyle === 'Cutout';
+                var isLogo = posterStyle === 'Logo'
                 var showTitle = document.getElementById('chkShowTitle').checked;
 
                 // Title-related visibility
@@ -267,8 +275,9 @@
 
                 // Style-specific
                 document.getElementById('selectCutoutContainer').style.display = isCutout ? 'block' : 'none';
-                document.getElementById('episodeFontColorContainer').style.display = (isStandard || isNumeral) ? 'block' : 'none';
-                document.getElementById('backgroundColorContainer').style.display = (isNumeral || isCutout) ? 'block' : 'none';
+                document.getElementById('episodeFontSizeContainer').style.display = (isStandard || isNumeral || isLogo) ? 'block' : 'none';
+                document.getElementById('episodeFontColorContainer').style.display = (isStandard || isNumeral || isLogo) ? 'block' : 'none';
+                document.getElementById('backgroundColorContainer').style.display = (isNumeral || isCutout || isLogo) ? 'block' : 'none';
                 document.getElementById('overlayTintContainer').style.display = isStandard ? 'block' : 'none';
             },
 
@@ -280,6 +289,7 @@
                     document.getElementById('selectCutoutType').value = config.CutoutType || 'Text';
                     document.getElementById('selectPosterFill').value = config.PosterFill || 'Original';
                     document.getElementById('txtPosterDimensionRatio').value = config.PosterDimensionRatio || '16:9';
+                    document.getElementById('txtPosterSafeArea').value = config.PosterSafeArea || 5.0;
 
                     document.getElementById('selectEpisodeFontFamily').value = config.EpisodeFontFamily || 'Arial';
                     document.getElementById('selectEpisodeFontStyle').value = config.EpisodeFontStyle || 'Bold';
@@ -313,6 +323,7 @@
                     PosterStyle: document.getElementById('selectPosterStyle').value,
                     CutoutType: document.getElementById('selectCutoutType').value,
                     PosterDimensionRatio: document.getElementById('txtPosterDimensionRatio').value,
+                    PosterSafeArea: parseFloat(document.getElementById('txtPosterSafeArea').value),
 
                     EpisodeFontFamily: document.getElementById('selectEpisodeFontFamily').value,
                     EpisodeFontStyle: document.getElementById('selectEpisodeFontStyle').value,

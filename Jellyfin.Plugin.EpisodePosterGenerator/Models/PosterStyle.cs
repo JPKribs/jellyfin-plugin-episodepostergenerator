@@ -14,6 +14,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         /// <summary>
         /// Large episode number displayed as transparent cutout revealing the screenshot beneath.
         /// </summary>
-        Numeral
+        Numeral,
+        /// <summary>
+        /// Series logo with episode code and optional title on solid background.
+        /// </summary>
+        Logo
     }
 }

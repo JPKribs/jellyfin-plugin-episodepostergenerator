@@ -65,6 +65,7 @@ public class PosterGeneratorService
             PosterStyle.Standard => new StandardPosterGenerator().Generate(inputPath, outputPath, episode, config),
             PosterStyle.Cutout => new CutoutPosterGenerator().Generate(inputPath, outputPath, episode, config),
             PosterStyle.Numeral => new NumeralPosterGenerator().Generate(inputPath, outputPath, episode, config),
+            PosterStyle.Logo => new LogoPosterGenerator().Generate(inputPath, outputPath, episode, config),
             _ => null
         };
     }

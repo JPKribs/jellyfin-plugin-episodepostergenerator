@@ -31,6 +31,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public string PosterDimensionRatio { get; set; } = "16:9";
 
         /// <summary>
+        /// Gets or sets the percentage of height and width perserved as a safe area (e.g., 7.0 for 7%).
+        /// </summary>
+        public float PosterSafeArea { get; set; } = 5.0f;
+
+        /// <summary>
         /// Gets or sets the font family for episode numbers/season info.
         /// </summary>
         public string EpisodeFontFamily { get; set; } = "Arial";

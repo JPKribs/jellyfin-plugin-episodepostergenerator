@@ -6,7 +6,7 @@ A Jellyfin plugin that automatically generates custom episode posters using smar
 
 - **Automatic Frame Extraction**: Smart selection of representative frames from video files
 - **Black Frame Detection**: Avoids extracting frames from black/transition scenes
-- **Multiple Poster Styles**: Choose from Standard, Cutout, and Numeral designs
+- **Multiple Poster Styles**: Choose from Standard, Cutout, Numeral, and Logo designs
 - **Customizable Typography**: Full control over fonts, sizes, colors, and positioning
 - **Flexible Layouts**: Support for various aspect ratios and fill strategies
 - **Episode Information Display**: Show episode codes, titles, and season information
@@ -60,11 +60,34 @@ Roman numeral episode numbers with elegant typography.
 - Background color overlay
 - Optional episode title
 
+### Logo Style
+Series logo-focused posters with episode information and clean typography.
+
+| Example |
+|---------|
+| ![Logo 1](Screenshots/Logo%201.jpg) |
+| ![Logo 2](Screenshots/Logo%202.jpg) |
+
+**Features:**
+- Series logo image as primary visual element
+- Solid background color for clean appearance
+- Automatic logo scaling to fill 75% of available space
+- Episode code display in S##E## format with proper zero-padding
+- Text fallback when series logo image unavailable
+- Optional episode title display
+- Bottom-aligned text elements with consistent spacing
+- Logo image respects safe area margins for optimal positioning
+
+**Logo Sources:**
+- **Primary**: Series logo image (when available)
+- **Fallback**: Series primary image
+- **Text Fallback**: Series name with optimized font scaling
+
 ## Configuration Options
 
 ### Plugin Settings
 - **Active**: Enable/disable the plugin
-- **Style**: Choose between Standard, Cutout, or Numeral poster styles
+- **Style**: Choose between Standard, Cutout, Numeral, or Logo poster styles
 
 ### Poster Settings
 - **Fill Strategy**: 
@@ -87,7 +110,7 @@ Roman numeral episode numbers with elegant typography.
 - **Font Color**: Hex color code
 
 ### Visual Effects
-- **Background Color**: ARGB overlay color for Cutout/Numeral styles (e.g., #66000000)
+- **Background Color**: ARGB overlay color for Cutout/Numeral/Logo styles (e.g., #66000000)
 - **Overlay Tint**: ARGB tint for Standard style images (e.g., #33000000)
 
 ## Installation
@@ -158,6 +181,16 @@ Style: Numeral
 Font: Garamond Bold
 Episode Font Size: 12%
 Background Color: #4D000000
+Show Title: true
+```
+
+### Clean Logo Setup
+```
+Style: Logo
+Font: Arial Bold
+Episode Font Size: 8%
+Title Font Size: 6%
+Background Color: #E6000000
 Show Title: true
 ```
 

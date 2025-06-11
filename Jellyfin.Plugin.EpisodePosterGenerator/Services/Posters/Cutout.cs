@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using System.IO;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
@@ -11,25 +10,31 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
 
 /// <summary>
 /// Generates a poster with a "cutout" style overlay for a given TV episode.
-/// Draws episode information (e.g., title or code) as transparent text cut out from a background overlay.
+/// Creates dramatic effect by drawing episode information as transparent text cut out from a background overlay,
+/// revealing the underlying image through the text shapes. Supports both text and code cutout types
+/// with automatic multi-line formatting for longer episode descriptions.
+/// Uses inherited safe area calculations for consistent margins across all poster generators.
 /// </summary>
 public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
 {
     /// <summary>
-    /// Word separators used to split episode text into multiple lines.
+    /// Word separators used to split episode text into multiple lines for better formatting.
+    /// Includes space and hyphen characters for natural text breaking points.
     /// </summary>
     private static readonly char[] WordSeparators = { ' ', '-' };
 
-    // MARK: Generate
-
     /// <summary>
     /// Generates a poster image using a cutout text overlay and saves it to the specified output path.
+    /// Creates a layered composition with background overlay, transparent cutout text, and optional title.
+    /// The cutout effect allows the underlying image to show through the text shapes.
+    /// Uses BasePosterGenerator safe area constraints for consistent positioning with other poster styles.
     /// </summary>
-    /// <param name="inputImagePath">Path to the base input image.</param>
-    /// <param name="outputPath">Path to save the generated poster.</param>
-    /// <param name="episode">The episode metadata object.</param>
-    /// <param name="config">Plugin configuration used to control visual settings.</param>
+    /// <param name="inputImagePath">Path to the base input image to use as background.</param>
+    /// <param name="outputPath">Path where the generated poster will be saved.</param>
+    /// <param name="episode">Episode metadata object containing season, episode, and title information.</param>
+    /// <param name="config">Plugin configuration used to control visual settings and cutout type.</param>
     /// <returns>Path to the saved poster image, or null if generation fails.</returns>
+    // MARK: Generate
     public string? Generate(string inputImagePath, string outputPath, Episode episode, PluginConfiguration config)
     {
         try
@@ -38,9 +43,11 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
             var episodeNumber = episode.IndexNumber ?? 0;
             var episodeTitle = episode.Name ?? "-";
 
-            var episodeText = GetCutoutText(config.CutoutType, seasonNumber, episodeNumber);
+            // Generate cutout text using centralized utility for consistent formatting
+            var episodeText = EpisodeCodeUtil.FormatEpisodeText(config.CutoutType, seasonNumber, episodeNumber);
             var episodeWords = episodeText.Split(WordSeparators, StringSplitOptions.RemoveEmptyEntries);
 
+            // Decode the input image
             using var original = SKBitmap.Decode(inputImagePath);
             if (original == null)
                 return null;
@@ -51,8 +58,10 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
             using var surface = SKSurface.Create(info);
             var canvas = surface.Canvas;
 
+            // Start with transparent canvas
             canvas.Clear(SKColors.Transparent);
 
+            // Draw background color overlay first
             var overlayColor = ColorUtils.ParseHexColor(config.BackgroundColor);
             using var overlayPaint = new SKPaint
             {
@@ -62,19 +71,24 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
             };
             canvas.DrawRect(SKRect.Create(width, height), overlayPaint);
 
+            // Draw cutout text using clear blend mode to create transparency
             DrawCutoutText(canvas, episodeWords, width, height, config.ShowTitle, config);
 
+            // Draw original image behind the overlay using destination-over blending
+            // This makes the image visible through the transparent cutout areas
             using var originalPaint = new SKPaint
             {
                 BlendMode = SKBlendMode.DstOver
             };
             canvas.DrawBitmap(original, 0, 0, originalPaint);
 
+            // Add episode title if enabled using TextUtils for consistency
             if (config.ShowTitle)
             {
-                EpisodeTitleUtil.DrawTitle(canvas, episodeTitle, TitlePosition.Bottom, config, width, height);
+                TextUtils.DrawTitle(canvas, episodeTitle, TextPosition.Bottom, TextAlignment.Center, config, width, height);
             }
 
+            // Encode and save the final composite image
             using var finalImage = surface.Snapshot();
             using var data = finalImage.Encode(SKEncodedImageFormat.Jpeg, 95);
             using var outputStream = File.OpenWrite(outputPath);
@@ -89,32 +103,27 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
         }
     }
 
-    // MARK: GetCutoutText
-
     /// <summary>
-    /// Returns the episode text to be used in the cutout, formatted according to the selected CutoutType.
+    /// Draws episode text (cutout style) on the canvas using transparent blend mode for cutout effect.
+    /// Calculates optimal positioning and font sizing based on title presence and available space.
+    /// Uses title-aware layout to prevent overlapping and maximize font size within constraints.
     /// </summary>
-    private string GetCutoutText(CutoutType cutoutType, int seasonNumber, int episodeNumber)
-    {
-        return cutoutType switch
-        {
-            CutoutType.Text => episodeNumber >= 100 ? episodeNumber.ToString(CultureInfo.InvariantCulture) : NumberUtils.NumberToWords(episodeNumber),
-            CutoutType.Code => episodeNumber >= 100 ? $"S{seasonNumber:D2}E{episodeNumber}" : $"S{seasonNumber:D2}E{episodeNumber:D2}",
-            _ => episodeNumber >= 100 ? episodeNumber.ToString(CultureInfo.InvariantCulture) : NumberUtils.NumberToWords(episodeNumber)
-        };
-    }
-
+    /// <param name="canvas">Canvas to draw the cutout text on.</param>
+    /// <param name="episodeWords">Array of words to render as cutout text.</param>
+    /// <param name="canvasWidth">Total canvas width for positioning calculations.</param>
+    /// <param name="canvasHeight">Total canvas height for positioning calculations.</param>
+    /// <param name="hasTitle">Whether episode title will be displayed, affecting text positioning.</param>
+    /// <param name="config">Plugin configuration with font and styling settings.</param>
     // MARK: DrawCutoutText
-
-    /// <summary>
-    /// Draws episode text (cutout style) on the canvas. Supports single or multi-line formatting.
-    /// </summary>
     private void DrawCutoutText(SKCanvas canvas, string[] episodeWords, float canvasWidth, float canvasHeight, bool hasTitle, PluginConfiguration config)
     {
         if (episodeWords.Length == 0)
             return;
 
-        ApplySafeAreaConstraints((int)canvasWidth, (int)canvasHeight, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
+        // Use same safe area calculation as other poster generators
+        ApplySafeAreaConstraints((int)canvasWidth, (int)canvasHeight, config, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
+
+        var cutoutArea = CalculateCutoutArea(canvasWidth, canvasHeight, hasTitle, config, safeLeft, safeTop, safeWidth, safeHeight);
 
         var fontStyle = FontUtils.GetFontStyle(config.EpisodeFontStyle);
         using var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, fontStyle);
@@ -128,89 +137,162 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
             TextAlign = SKTextAlign.Center
         };
 
-        float maxTextHeight = safeHeight * 0.7f;
+        float optimalFontSize = CalculateOptimalCutoutFontSize(episodeWords, typeface, cutoutArea);
+        cutoutPaint.TextSize = optimalFontSize;
+
+        DrawCutoutTextCentered(canvas, episodeWords, cutoutPaint, cutoutArea);
+    }
+
+    /// <summary>
+    /// Calculates the available rectangular area for cutout text based on title presence and safe areas.
+    /// When title is present, reserves space at bottom plus safe area buffer to prevent overlapping.
+    /// </summary>
+    /// <param name="canvasWidth">Total canvas width.</param>
+    /// <param name="canvasHeight">Total canvas height.</param>
+    /// <param name="hasTitle">Whether title will be displayed at bottom.</param>
+    /// <param name="config">Plugin configuration for safe area and font calculations.</param>
+    /// <param name="safeLeft">Left boundary of safe area.</param>
+    /// <param name="safeTop">Top boundary of safe area.</param>
+    /// <param name="safeWidth">Width of safe area.</param>
+    /// <param name="safeHeight">Height of safe area.</param>
+    /// <returns>Rectangle defining available area for cutout text.</returns>
+    // MARK: CalculateCutoutArea
+    private SKRect CalculateCutoutArea(float canvasWidth, float canvasHeight, bool hasTitle, PluginConfiguration config, float safeLeft, float safeTop, float safeWidth, float safeHeight)
+    {
+        if (!hasTitle)
+        {
+            return new SKRect(safeLeft, safeTop, safeLeft + safeWidth, safeTop + safeHeight);
+        }
+
+        // Calculate title space requirements
+        var titleFontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight, (100f * GetSafeAreaMargin(config)));
+        var titleLineHeight = titleFontSize * 1.2f;
+        var titleTotalHeight = titleLineHeight * 2; // Max 2 lines
+
+        // Reserve space for title at bottom
+        var titleSpaceFromBottom = (canvasHeight * GetSafeAreaMargin(config)) + titleTotalHeight;
+        var cutoutTitleBuffer = canvasHeight * 0.05f; // 5% buffer
+
+        var availableHeight = canvasHeight - safeTop - titleSpaceFromBottom - cutoutTitleBuffer;
+        availableHeight = Math.Max(availableHeight, canvasHeight * 0.3f);
+
+        var cutoutBottom = safeTop + availableHeight;
+
+        return new SKRect(safeLeft, safeTop, safeLeft + safeWidth, cutoutBottom);
+    }
+
+    /// <summary>
+    /// Calculates the optimal font size for cutout text to fit within the available area.
+    /// Ensures all words use the same font size and fit together within the specified bounds.
+    /// </summary>
+    /// <param name="episodeWords">Array of words to size.</param>
+    /// <param name="typeface">Typeface to use for measurements.</param>
+    /// <param name="availableArea">Rectangle defining available space for text.</param>
+    /// <returns>Optimal font size that fits all words within the area.</returns>
+    // MARK: CalculateOptimalCutoutFontSize
+    private float CalculateOptimalCutoutFontSize(string[] episodeWords, SKTypeface typeface, SKRect availableArea)
+    {
+        var maxWidth = availableArea.Width;
+        var maxHeight = availableArea.Height;
 
         if (episodeWords.Length == 1)
         {
-            DrawSingleWord(canvas, episodeWords[0], cutoutPaint, canvasWidth, canvasHeight, safeWidth, maxTextHeight, safeLeft, hasTitle);
+            // Single word: use maximum font size that fits
+            return FontUtils.CalculateOptimalFontSize(episodeWords[0], typeface, maxWidth, maxHeight, 50f);
         }
         else
         {
-            DrawMultipleWords(canvas, episodeWords, cutoutPaint, canvasWidth, canvasHeight, safeWidth, maxTextHeight, safeLeft, hasTitle);
-        }
-    }
+            // Multiple words: find largest font where all words fit with stacking
+            float lineSpacing = 1.1f;
+            float maxFontSize = maxHeight / (episodeWords.Length * lineSpacing);
+            const float minFontSize = 30f;
 
-    // MARK: DrawSingleWord
+            // Binary search for optimal font size
+            float low = minFontSize;
+            float high = maxFontSize;
+            float optimalSize = minFontSize;
 
-    /// <summary>
-    /// Renders a single word centered on the canvas using a clear blend mode (cutout effect).
-    /// </summary>
-    private void DrawSingleWord(SKCanvas canvas, string word, SKPaint cutoutPaint, float canvasWidth, float canvasHeight, float maxWidth, float maxHeight, float safeLeft, bool hasTitle)
-    {
-        float fontSize = FontUtils.CalculateOptimalFontSize(word, cutoutPaint.Typeface!, maxWidth, maxHeight, 50f);
-
-        float aspectRatio = maxWidth / maxHeight;
-        if (aspectRatio < 1.5f)
-        {
-            fontSize = Math.Min(fontSize, maxHeight * 0.7f);
-        }
-
-        cutoutPaint.TextSize = fontSize;
-
-        var bounds = FontUtils.MeasureTextDimensions(word, cutoutPaint.Typeface!, fontSize);
-        float centerX = canvasWidth / 2f;
-        float centerY = hasTitle
-            ? (canvasHeight * 0.4f) + (bounds.Height / 2f)
-            : (canvasHeight / 2f) + (bounds.Height / 2f);
-
-        canvas.DrawText(word, centerX, centerY, cutoutPaint);
-    }
-
-    // MARK: DrawMultipleWords
-
-    /// <summary>
-    /// Renders multiple words centered and stacked vertically with spacing on the canvas.
-    /// </summary>
-    private void DrawMultipleWords(SKCanvas canvas, string[] words, SKPaint cutoutPaint, float canvasWidth, float canvasHeight, float maxWidth, float maxHeight, float safeLeft, bool hasTitle)
-    {
-        float lineSpacing = 1.1f;
-
-        float usableHeight = hasTitle ? maxHeight : maxHeight * 0.95f;
-        float targetHeight = usableHeight / (words.Length * lineSpacing);
-
-        float fontSize = Math.Min(targetHeight, maxWidth * 0.25f);
-        const float minFontSize = 30f;
-
-        while (fontSize > minFontSize)
-        {
-            float maxWordWidth = 0;
-            foreach (var word in words)
+            while (high - low > 1f)
             {
-                var bounds = FontUtils.MeasureTextDimensions(word, cutoutPaint.Typeface!, fontSize);
-                if (bounds.Width > maxWordWidth)
-                    maxWordWidth = bounds.Width;
+                float testSize = (low + high) / 2f;
+
+                if (DoAllWordsFit(episodeWords, typeface, testSize, maxWidth, maxHeight, lineSpacing))
+                {
+                    optimalSize = testSize;
+                    low = testSize;
+                }
+                else
+                {
+                    high = testSize;
+                }
             }
 
-            float totalHeight = words.Length * fontSize * lineSpacing;
-
-            if (maxWordWidth <= maxWidth && totalHeight <= usableHeight)
-                break;
-
-            fontSize -= 3f;
+            return optimalSize;
         }
+    }
 
-        cutoutPaint.TextSize = fontSize;
-        float lineHeight = fontSize * lineSpacing;
-        float totalTextHeight = words.Length * lineHeight - (lineHeight - fontSize);
-
-        float blockCenterY = hasTitle ? canvasHeight * 0.4f : canvasHeight / 2f;
-        float startY = blockCenterY - (totalTextHeight / 2f) + fontSize;
-        float centerX = canvasWidth / 2f;
-
+    /// <summary>
+    /// Tests whether all words fit within the specified dimensions at a given font size.
+    /// </summary>
+    /// <param name="words">Words to test.</param>
+    /// <param name="typeface">Typeface for measurements.</param>
+    /// <param name="fontSize">Font size to test.</param>
+    /// <param name="maxWidth">Maximum allowed width.</param>
+    /// <param name="maxHeight">Maximum allowed height.</param>
+    /// <param name="lineSpacing">Line spacing multiplier.</param>
+    /// <returns>True if all words fit within the dimensions.</returns>
+    // MARK: DoAllWordsFit
+    private bool DoAllWordsFit(string[] words, SKTypeface typeface, float fontSize, float maxWidth, float maxHeight, float lineSpacing)
+    {
+        float maxWordWidth = 0;
+        
         foreach (var word in words)
         {
-            canvas.DrawText(word, centerX, startY, cutoutPaint);
-            startY += lineHeight;
+            var bounds = FontUtils.MeasureTextDimensions(word, typeface, fontSize);
+            if (bounds.Width > maxWordWidth)
+                maxWordWidth = bounds.Width;
+        }
+
+        float totalHeight = words.Length * fontSize * lineSpacing;
+        
+        return maxWordWidth <= maxWidth && totalHeight <= maxHeight;
+    }
+
+    /// <summary>
+    /// Draws cutout text centered within the specified area.
+    /// Handles both single and multiple words with appropriate vertical centering.
+    /// </summary>
+    /// <param name="canvas">Canvas to draw on.</param>
+    /// <param name="episodeWords">Words to render.</param>
+    /// <param name="cutoutPaint">Paint configured for cutout rendering.</param>
+    /// <param name="availableArea">Area to center text within.</param>
+    // MARK: DrawCutoutTextCentered
+    private void DrawCutoutTextCentered(SKCanvas canvas, string[] episodeWords, SKPaint cutoutPaint, SKRect availableArea)
+    {
+        var centerX = availableArea.MidX;
+        var centerY = availableArea.MidY;
+
+        if (episodeWords.Length == 1)
+        {
+            // Single word: center directly
+            var bounds = FontUtils.MeasureTextDimensions(episodeWords[0], cutoutPaint.Typeface!, cutoutPaint.TextSize);
+            var textY = centerY + (bounds.Height / 2f);
+            canvas.DrawText(episodeWords[0], centerX, textY, cutoutPaint);
+        }
+        else
+        {
+            // Multiple words: stack vertically and center the block
+            float lineSpacing = 1.1f;
+            float lineHeight = cutoutPaint.TextSize * lineSpacing;
+            float totalTextHeight = episodeWords.Length * lineHeight - (lineHeight - cutoutPaint.TextSize);
+            
+            float startY = centerY - (totalTextHeight / 2f) + cutoutPaint.TextSize;
+            
+            foreach (var word in episodeWords)
+            {
+                canvas.DrawText(word, centerX, startY, cutoutPaint);
+                startY += lineHeight;
+            }
         }
     }
 }
