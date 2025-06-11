@@ -63,4 +63,4 @@ jobs:
           git config --local user.name "GitHub Action"
           git add manifest.json
           git commit -m "Update manifest for release ${{ github.event.release.tag_name }}" || exit 0
-          git push
+          git push origin HEAD:master
