@@ -8,6 +8,6 @@ on:
 
 jobs:
   call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/command-dispatch.yaml@master
+    uses: JPKribs/jellyfin-plugin-episodepostergenerator/.github/workflows/command-dispatch.yaml@master
     secrets:
       token: .

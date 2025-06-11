@@ -7,6 +7,6 @@ on:
 
 jobs:
   call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/sync-labels.yaml@master
+    uses: JPKribs/jellyfin-plugin-episodepostergenerator/.github/workflows/sync-labels.yaml@master
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}

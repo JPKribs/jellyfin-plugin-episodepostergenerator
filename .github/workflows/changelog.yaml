@@ -13,8 +13,8 @@ on:
 
 jobs:
   call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/changelog.yaml@master
+    uses: JPKribs/jellyfin-plugin-episodepostergenerator/.github/workflows/changelog.yaml@master
     with:
-      repository-name: jellyfin/jellyfin-plugin-template
+      repository-name: JPKribs/jellyfin-plugin-episodepostergenerator
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
