@@ -6,14 +6,14 @@
         "overview": "Generate Custom Episode Posters",
         "owner": "JPKribs",
         "category": "General",
-        "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/main/Screenshots/Standard%201.jpg",
+        "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/main/Screenshots/Logo.jpg",
         "versions": [
             {
                 "version": "1.0.0.0",
                 "changelog": "Initial release with Standard, Cutout, and Numeral poster styles",
                 "targetAbi": "10.10.7.0",
                 "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v1.0.0.0/jellyfin-plugin-episodepostergenerator-1.0.0.0.zip",
-                "checksum": "PLACEHOLDER_CHECKSUM",
+                "checksum": "7405bdb075224080d49afac51db39ee0",
                 "timestamp": "2025-01-01T00:00:00Z"
             }
         ]
