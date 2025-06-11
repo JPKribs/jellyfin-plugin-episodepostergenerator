@@ -11,7 +11,14 @@ category: "Metadata"
 owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
-changelog: >
-  Fixes:
-  • Changes the build using GitHub workflows
-  • Fixes to get the checksum included in the manifest
+changelog:
+  features:
+  - -
+  fixes: 
+  - -
+  technical:
+  - -
+  other:
+  - -
+  documentation:
+  - New changelog formatting
