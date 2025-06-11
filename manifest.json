@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Screenshots/Logo.jpg",
     "versions": [
       {
+        "version": "10.10.4",
+        "changelog": "* Add a safe area configuration for parameter padding\r\n* Improve font handling to prevent overlapping\r\n* Improve Standard poster text placement\r\n* Improve Cutout poster text placement\r\n* Better code documentation on posters\r\n* Better padding / safe area inheritance\r\n* Migrate all Text functionality into its own utility\r\n* Updated screenshots to show multiple variations of each poster type\r\n* New changelog formatting\r\n* Summarize all poster code for better readibility",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.4/jellyfin-plugin-episodepostergenerator-10.10.4.zip",
+        "checksum": "281d9096e845ecc860fb301efbb22878",
+        "timestamp": "2025-06-11T23:58:34Z"
+      },
+      {
         "version": "10.10.3",
         "changelog": "Fixes:\r\n• Changes the build using GitHub workflows\r\n• Fixes to get the checksum included in the manifest",
         "targetAbi": "10.10.7.0",
