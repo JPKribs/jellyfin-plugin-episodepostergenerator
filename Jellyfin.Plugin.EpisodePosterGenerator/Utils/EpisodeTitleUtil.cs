@@ -58,7 +58,7 @@ public static class EpisodeTitleUtil
         var textBounds = CalculateTextBounds(lines, titlePaint, fontSize);
         
         var centerX = canvasWidth / 2f;
-        var baseY = CalculateBaseY(position, safeArea, textBounds.Height, fontSize);
+        var baseY = CalculateBaseY(position, safeArea, textBounds.Height, fontSize, titlePaint);
         
         DrawTextLines(canvas, lines, centerX, baseY, fontSize, titlePaint, shadowPaint);
     }
@@ -255,17 +255,17 @@ public static class EpisodeTitleUtil
 
     // MARK: CalculateBaseY
     // Calculates the vertical start position for the text block based on position enum.
-    private static float CalculateBaseY(TitlePosition position, SKRect safeArea, float textHeight, int fontSize)
+    private static float CalculateBaseY(TitlePosition position, SKRect safeArea, float textHeight, int fontSize, SKPaint paint)
     {
-        float textOffset = fontSize * 0.35f;
+        var fontMetrics = paint.FontMetrics;
         float bottomPadding = fontSize * 0.5f;
         
         return position switch
         {
-            TitlePosition.Top => safeArea.Top + fontSize + textOffset,
-            TitlePosition.Middle => safeArea.MidY - (textHeight / 2f) + fontSize + textOffset,
-            TitlePosition.Bottom => safeArea.Bottom - textHeight - bottomPadding + textOffset,
-            _ => safeArea.Bottom - textHeight - bottomPadding + textOffset
+            TitlePosition.Top => safeArea.Top - fontMetrics.Ascent,
+            TitlePosition.Middle => safeArea.MidY - (textHeight / 2f) - fontMetrics.Ascent,
+            TitlePosition.Bottom => safeArea.Bottom - textHeight - bottomPadding - fontMetrics.Ascent,
+            _ => safeArea.Bottom - textHeight - bottomPadding - fontMetrics.Ascent
         };
     }
 

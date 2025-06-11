@@ -26,7 +26,15 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
 
             if (!string.IsNullOrEmpty(config.OverlayTint) && config.OverlayTint != "#00000000")
             {
-                var overlayColor = ColorUtils.ParseHexColor(config.OverlayTint);
+                var tintValue = config.OverlayTint;
+                
+                // MARK: HandleOverlayTint
+                if (tintValue.StartsWith('#') && tintValue.Length == 7)
+                {
+                    tintValue = string.Concat("#80", tintValue.AsSpan(1));
+                }
+                
+                var overlayColor = ColorUtils.ParseHexColor(tintValue);
                 using var overlayPaint = new SKPaint
                 {
                     Color = overlayColor,
@@ -55,156 +63,104 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
     // MARK: DrawTextOverlay
     private void DrawTextOverlay(SKCanvas canvas, Episode episode, PluginConfiguration config, float safeLeft, float safeTop, float safeWidth, float safeHeight)
     {
-        var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, safeHeight);
-        var titleFontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, safeHeight);
-
-        var episodeText = $"S{episode.ParentIndexNumber ?? 0:D2}E{episode.IndexNumber ?? 0:D2}";
-        var titleText = episode.Name ?? "Unknown Episode";
-
+        var canvasWidth = canvas.DeviceClipBounds.Width;
+        var canvasHeight = canvas.DeviceClipBounds.Height;
+        
+        DrawEpisodeInfo(canvas, episode, config, canvasWidth, canvasHeight);
+        
+        if (config.ShowTitle)
+        {
+            var titleText = episode.Name ?? "Unknown Episode";
+            EpisodeTitleUtil.DrawTitle(canvas, titleText, TitlePosition.Bottom, config, canvasWidth, canvasHeight);
+        }
+    }
+    
+    // MARK: DrawEpisodeInfo
+    private void DrawEpisodeInfo(SKCanvas canvas, Episode episode, PluginConfiguration config, float canvasWidth, float canvasHeight)
+    {
+        var seasonNumber = episode.ParentIndexNumber ?? 0;
+        var episodeNumber = episode.IndexNumber ?? 0;
+        
+        var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, canvasHeight);
         var episodeColor = ColorUtils.ParseHexColor(config.EpisodeFontColor ?? "#FFFFFF");
-        var titleColor = ColorUtils.ParseHexColor(config.TitleFontColor ?? "#FFFFFF");
         var shadowColor = SKColors.Black.WithAlpha(180);
-
-        using var episodePaint = CreateTextPaint(episodeColor, episodeFontSize);
-        using var titlePaint = CreateTextPaint(titleColor, titleFontSize);
-        using var episodeShadow = CreateTextPaint(shadowColor, episodeFontSize);
-        using var titleShadow = CreateTextPaint(shadowColor, titleFontSize);
-
-        // Position at bottom of safe area
-        float maxTitleWidth = safeWidth * 0.9f;
-        var titleLines = WrapTitleText(titleText, titlePaint, maxTitleWidth);
         
-        float lineHeight = config.TitleFontSize * 1.2f;
-        float totalTitleHeight = titleLines.Count * lineHeight;
-        float episodeHeight = config.EpisodeFontSize;
-        float spacing = 10f;
-        float totalHeight = episodeHeight + spacing + totalTitleHeight;
+        using var episodePaint = CreateTextPaint(episodeColor, episodeFontSize, config.EpisodeFontFamily, config.EpisodeFontStyle);
+        using var shadowPaint = CreateTextPaint(shadowColor, episodeFontSize, config.EpisodeFontFamily, config.EpisodeFontStyle);
         
-        float startY = safeTop + safeHeight - totalHeight - 20;
+        episodePaint.TextAlign = SKTextAlign.Center;
+        shadowPaint.TextAlign = SKTextAlign.Center;
         
-        // Draw episode code
-        float episodeY = startY + episodeHeight;
-        float centerX = safeLeft + (safeWidth / 2);
+        var seasonText = seasonNumber.ToString(CultureInfo.InvariantCulture);
+        var episodeText = episodeNumber.ToString(CultureInfo.InvariantCulture);
+        var bulletText = " • ";
         
-        canvas.DrawText(episodeText, centerX + 2, episodeY + 2, episodeShadow);
-        canvas.DrawText(episodeText, centerX, episodeY, episodePaint);
+        var seasonWidth = episodePaint.MeasureText(seasonText);
+        var episodeWidth = episodePaint.MeasureText(episodeText);
+        var bulletWidth = episodePaint.MeasureText(bulletText);
         
-        // Draw title lines
-        float titleStartY = episodeY + spacing + lineHeight;
-        for (int i = 0; i < titleLines.Count; i++)
+        var totalWidth = seasonWidth + bulletWidth + episodeWidth;
+        var centerX = canvasWidth / 2f;
+        
+        var bulletX = centerX;
+        var seasonX = bulletX - (bulletWidth / 2f) - (seasonWidth / 2f);
+        var episodeX = bulletX + (bulletWidth / 2f) + (episodeWidth / 2f);
+        
+        var bottomOffset = config.ShowTitle ? canvasHeight * 0.25f : canvasHeight * 0.1f;
+        var episodeY = canvasHeight - bottomOffset;
+        
+        canvas.DrawText(seasonText, seasonX + 2, episodeY + 2, shadowPaint);
+        canvas.DrawText(seasonText, seasonX, episodeY, episodePaint);
+        
+        canvas.DrawText(bulletText, bulletX + 2, episodeY + 2, shadowPaint);
+        canvas.DrawText(bulletText, bulletX, episodeY, episodePaint);
+        
+        canvas.DrawText(episodeText, episodeX + 2, episodeY + 2, shadowPaint);
+        canvas.DrawText(episodeText, episodeX, episodeY, episodePaint);
+        
+        if (config.ShowTitle)
         {
-            float y = titleStartY + (i * lineHeight);
-            canvas.DrawText(titleLines[i], centerX + 2, y + 2, titleShadow);
-            canvas.DrawText(titleLines[i], centerX, y, titlePaint);
+            DrawSeparatorLine(canvas, episodeY + episodeFontSize * 0.3f, canvasWidth);
         }
     }
-
-    // MARK: WrapTitleText
-    private List<string> WrapTitleText(string text, SKPaint paint, float maxWidth)
+    
+    // MARK: DrawSeparatorLine
+    private void DrawSeparatorLine(SKCanvas canvas, float y, float canvasWidth)
     {
-        var lines = new List<string>();
+        var margin = canvasWidth * 0.05f; // 5% margin on each side
+        var startX = margin;
+        var endX = canvasWidth - margin;
         
-        // Try single line first
-        if (paint.MeasureText(text) <= maxWidth)
+        // Draw shadow first
+        using var shadowPaint = new SKPaint
         {
-            lines.Add(text);
-            return lines;
-        }
+            Color = SKColors.Black.WithAlpha(180),
+            StrokeWidth = 2f,
+            Style = SKPaintStyle.Stroke,
+            IsAntialias = true
+        };
         
-        // Split into words for wrapping
-        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length == 1)
+        canvas.DrawLine(startX + 2, y + 2, endX + 2, y + 2, shadowPaint);
+        
+        // Draw white line
+        using var linePaint = new SKPaint
         {
-            // Single word too long, truncate with ellipsis
-            lines.Add(TruncateWithEllipsis(text, paint, maxWidth));
-            return lines;
-        }
+            Color = SKColors.White,
+            StrokeWidth = 2f,
+            Style = SKPaintStyle.Stroke,
+            IsAntialias = true
+        };
         
-        // Try to fit in two lines
-        string line1 = "";
-        string line2 = "";
-        
-        // Start with roughly half the words in each line
-        int splitPoint = words.Length / 2;
-        
-        for (int i = 0; i < words.Length; i++)
-        {
-            if (i < splitPoint)
-            {
-                line1 += (i > 0 ? " " : "") + words[i];
-            }
-            else
-            {
-                line2 += (i > splitPoint ? " " : "") + words[i];
-            }
-        }
-        
-        // Adjust if lines are too long
-        while (paint.MeasureText(line1) > maxWidth && line1.Contains(' ', StringComparison.Ordinal))
-        {
-            var lastSpace = line1.LastIndexOf(' ');
-            var movedWord = line1.Substring(lastSpace + 1);
-            line1 = line1.Substring(0, lastSpace);
-            line2 = movedWord + " " + line2;
-        }
-        
-        while (paint.MeasureText(line2) > maxWidth && line2.Contains(' ', StringComparison.Ordinal))
-        {
-            var firstSpace = line2.IndexOf(' ', StringComparison.Ordinal);
-            var movedWord = line2.Substring(0, firstSpace);
-            line2 = line2.Substring(firstSpace + 1);
-            line1 += " " + movedWord;
-        }
-        
-        // Final check and truncation if needed
-        if (paint.MeasureText(line1) > maxWidth)
-        {
-            line1 = TruncateWithEllipsis(line1, paint, maxWidth);
-        }
-        
-        if (paint.MeasureText(line2) > maxWidth)
-        {
-            line2 = TruncateWithEllipsis(line2, paint, maxWidth);
-        }
-        
-        lines.Add(line1);
-        if (!string.IsNullOrWhiteSpace(line2))
-        {
-            lines.Add(line2);
-        }
-        
-        return lines;
-    }
-
-    // MARK: TruncateWithEllipsis
-    private string TruncateWithEllipsis(string text, SKPaint paint, float maxWidth)
-    {
-        if (paint.MeasureText(text) <= maxWidth)
-            return text;
-
-        var ellipsis = "...";
-        var ellipsisWidth = paint.MeasureText(ellipsis);
-        var availableWidth = maxWidth - ellipsisWidth;
-
-        for (int i = text.Length - 1; i >= 0; i--)
-        {
-            var substring = text.Substring(0, i);
-            if (paint.MeasureText(substring) <= availableWidth)
-            {
-                return substring + ellipsis;
-            }
-        }
-
-        return ellipsis;
+        canvas.DrawLine(startX, y, endX, y, linePaint);
     }
 
     // MARK: CreateTextPaint
-    private SKPaint CreateTextPaint(SKColor color, int size) => new()
+    private SKPaint CreateTextPaint(SKColor color, int size, string fontFamily, string fontStyle) => new()
     {
         Color = color,
         TextSize = size,
         IsAntialias = true,
-        Typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold),
+        Typeface = FontUtils.CreateTypeface(fontFamily, FontUtils.GetFontStyle(fontStyle)),
         TextAlign = SKTextAlign.Center
     };
 }
