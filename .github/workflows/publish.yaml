@@ -36,18 +36,22 @@ jobs:
 
       - name: Update Manifest
         run: |
-          # Create new version object using build.yaml values
-          NEW_VERSION=$(cat << EOF
-          {
-            "version": "${{ steps.release_info.outputs.build_version }}",
-            "changelog": "${{ github.event.release.body }}",
-            "targetAbi": "${{ steps.release_info.outputs.target_abi }}",
-            "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/${{ github.event.release.tag_name }}/jellyfin-plugin-episodepostergenerator-${{ steps.release_info.outputs.build_version }}.zip",
-            "checksum": "${{ steps.release_info.outputs.checksum }}",
-            "timestamp": "${{ steps.release_info.outputs.timestamp }}"
-          }
-          EOF
-          )
+          # Use jq to safely construct the JSON object
+          NEW_VERSION=$(jq -n \
+            --arg version "${{ steps.release_info.outputs.build_version }}" \
+            --arg changelog "${{ github.event.release.body }}" \
+            --arg targetAbi "${{ steps.release_info.outputs.target_abi }}" \
+            --arg sourceUrl "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/${{ github.event.release.tag_name }}/jellyfin-plugin-episodepostergenerator-${{ steps.release_info.outputs.build_version }}.zip" \
+            --arg checksum "${{ steps.release_info.outputs.checksum }}" \
+            --arg timestamp "${{ steps.release_info.outputs.timestamp }}" \
+            '{
+              version: $version,
+              changelog: $changelog,
+              targetAbi: $targetAbi,
+              sourceUrl: $sourceUrl,
+              checksum: $checksum,
+              timestamp: $timestamp
+            }')
           
           # Add new version to the beginning of versions array
           jq --argjson newVersion "$NEW_VERSION" '.[0].versions = [$newVersion] + .[0].versions' manifest.json > manifest_temp.json
