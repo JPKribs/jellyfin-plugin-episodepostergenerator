@@ -1,18 +1,48 @@
-name: '📤 Publish Plugin'
+name: '🚀 Publish Plugin'
 
 on:
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - '**/*.md'
-  pull_request:
-    branches:
-      - master
-    paths-ignore:
-      - '**/*.md'
+  release:
+    types:
+      - released
   workflow_dispatch:
 
 jobs:
-  call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/publish.yaml@master
+  build-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build Plugin
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Get Release Info
+        id: release_info
+        run: |
+          BUILD_VERSION=$(grep '^version:' build.yaml | sed 's/version: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
+          TARGET_ABI=$(grep '^targetAbi:' build.yaml | sed 's/targetAbi: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
+          
+          CHECKSUM=$(cat ./dist/jellyfin-plugin-episodepostergenerator-${BUILD_VERSION}.zip.md5)
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          echo "build_version=${BUILD_VERSION}" >> $GITHUB_OUTPUT
+          echo "target_abi=${TARGET_ABI}" >> $GITHUB_OUTPUT
+          echo "checksum=${CHECKSUM}" >> $GITHUB_OUTPUT
+          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.release_info.outputs.build_version }}.zip
+          asset_name: jellyfin-plugin-episodepostergenerator-${{ steps.release_info.outputs.build_version }}.zip
+          asset_content_type: application/zip
