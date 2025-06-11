@@ -49,15 +49,15 @@ jobs:
       - name: Get Latest Draft Release
         id: release
         run: |
-          RELEASE_ID=$(gh release list --limit 1 --json id,isDraft --jq '.[] | select(.isDraft == true) | .id')
-          echo "release_id=${RELEASE_ID}" >> $GITHUB_OUTPUT
+          RELEASE_TAG=$(gh release list --limit 1 --json tagName,isDraft --jq '.[] | select(.isDraft == true) | .tagName')
+          echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Assets to Draft Release
-        if: steps.release.outputs.release_id != ''
+        if: steps.release.outputs.release_tag != ''
         run: |
-          gh release upload ${{ steps.release.outputs.release_id }} \
+          gh release upload ${{ steps.release.outputs.release_tag }} \
             ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.build_info.outputs.build_version }}.zip \
             ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.build_info.outputs.build_version }}.zip.md5
         env:
