@@ -22,3 +22,43 @@ jobs:
       repository-name: JPKribs/jellyfin-plugin-episodepostergenerator
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-attach:
+    needs: call
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build Plugin
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Get Build Info
+        id: build_info
+        run: |
+          BUILD_VERSION=$(grep '^version:' build.yaml | sed 's/version: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
+          echo "build_version=${BUILD_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Get Latest Draft Release
+        id: release
+        run: |
+          RELEASE_ID=$(gh release list --limit 1 --json id,isDraft --jq '.[] | select(.isDraft == true) | .id')
+          echo "release_id=${RELEASE_ID}" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Assets to Draft Release
+        if: steps.release.outputs.release_id != ''
+        run: |
+          gh release upload ${{ steps.release.outputs.release_id }} \
+            ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.build_info.outputs.build_version }}.zip \
+            ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.build_info.outputs.build_version }}.zip.md5
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
