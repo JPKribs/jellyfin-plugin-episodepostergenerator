@@ -1,86 +1,18 @@
-name: '🚀 Publish Plugin'
+name: '🏗️ Build Plugin'
 
 on:
-  release:
-    types:
-      - released
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - '**/*.md'
   workflow_dispatch:
 
 jobs:
-  build-and-upload:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-
-      - name: Build Plugin
-        run: |
-          chmod +x build.sh
-          ./build.sh
-
-      - name: Get Release Info
-        id: release_info
-        run: |
-          # Extract version and targetAbi from build.yaml
-          BUILD_VERSION=$(grep '^version:' build.yaml | sed 's/version: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
-          TARGET_ABI=$(grep '^targetAbi:' build.yaml | sed 's/targetAbi: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
-          
-          CHECKSUM=$(cat ./dist/jellyfin-plugin-episodepostergenerator-${BUILD_VERSION}.zip.md5)
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          
-          echo "build_version=${BUILD_VERSION}" >> $GITHUB_OUTPUT
-          echo "target_abi=${TARGET_ABI}" >> $GITHUB_OUTPUT
-          echo "checksum=${CHECKSUM}" >> $GITHUB_OUTPUT
-          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
-
-      - name: Update Manifest
-        run: |
-          # Create new version object using build.yaml values
-          NEW_VERSION=$(cat << EOF
-          {
-            "version": "${{ steps.release_info.outputs.build_version }}",
-            "changelog": "${{ github.event.release.body }}",
-            "targetAbi": "${{ steps.release_info.outputs.target_abi }}",
-            "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/${{ github.event.release.tag_name }}/jellyfin-plugin-episodepostergenerator-${{ steps.release_info.outputs.build_version }}.zip",
-            "checksum": "${{ steps.release_info.outputs.checksum }}",
-            "timestamp": "${{ steps.release_info.outputs.timestamp }}"
-          }
-          EOF
-          )
-          
-          # Add new version to the beginning of versions array
-          jq --argjson newVersion "$NEW_VERSION" '.[0].versions = [$newVersion] + .[0].versions' manifest.json > manifest_temp.json
-          mv manifest_temp.json manifest.json
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.release_info.outputs.build_version }}.zip
-          asset_name: jellyfin-plugin-episodepostergenerator-${{ steps.release_info.outputs.build_version }}.zip
-          asset_content_type: application/zip
-
-      - name: Upload Checksum
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.release_info.outputs.build_version }}.zip.md5
-          asset_name: jellyfin-plugin-episodepostergenerator-${{ steps.release_info.outputs.build_version }}.zip.md5
-          asset_content_type: text/plain
-
-      - name: Commit Updated Manifest
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add manifest.json
-          git commit -m "Update manifest for release ${{ github.event.release.tag_name }}" || exit 0
-          git push
+  call:
+    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/publish.yaml@master

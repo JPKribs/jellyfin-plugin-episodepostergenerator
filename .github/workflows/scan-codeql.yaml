@@ -15,6 +15,6 @@ on:
 
 jobs:
   call:
-    uses: JPKribs/jellyfin-plugin-episodepostergenerator/.github/workflows/scan-codeql.yaml@master
+    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/scan-codeql.yaml@master
     with:
       repository-name: JPKribs/jellyfin-plugin-episodepostergenerator
