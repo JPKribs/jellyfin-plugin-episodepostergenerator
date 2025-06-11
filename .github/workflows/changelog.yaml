@@ -54,10 +54,29 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Update Release Tag and Name
+        if: steps.release.outputs.release_tag != ''
+        run: |
+          CORRECT_TAG="v${{ steps.build_info.outputs.build_version }}"
+          
+          # Update the release tag and name to match build.yaml
+          gh api --method PATCH /repos/JPKribs/jellyfin-plugin-episodepostergenerator/releases/tags/${{ steps.release.outputs.release_tag }} \
+            -f tag_name="${CORRECT_TAG}" \
+            -f name="${CORRECT_TAG}"
+          
+          echo "Updated release tag to: ${CORRECT_TAG}"
+          echo "updated_tag=${CORRECT_TAG}" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: update_tag
+
       - name: Upload Assets to Draft Release
         if: steps.release.outputs.release_tag != ''
         run: |
-          gh release upload ${{ steps.release.outputs.release_tag }} \
+          # Use the updated tag name
+          UPLOAD_TAG="${{ steps.update_tag.outputs.updated_tag || steps.release.outputs.release_tag }}"
+          
+          gh release upload "${UPLOAD_TAG}" \
             ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.build_info.outputs.build_version }}.zip \
             ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.build_info.outputs.build_version }}.zip.md5
         env:

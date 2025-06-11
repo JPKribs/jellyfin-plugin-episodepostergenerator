@@ -23,11 +23,26 @@ jobs:
           BUILD_VERSION=$(grep '^version:' build.yaml | sed 's/version: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
           TARGET_ABI=$(grep '^targetAbi:' build.yaml | sed 's/targetAbi: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
           
-          # Download the checksum file from the release assets
+          # Try to download the checksum file from the release assets
           ASSET_URL="https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/${{ github.event.release.tag_name }}/jellyfin-plugin-episodepostergenerator-${BUILD_VERSION}.zip.md5"
+          echo "Trying to download checksum from: ${ASSET_URL}"
+          
           CHECKSUM=$(curl -s "${ASSET_URL}")
           
+          # If curl failed or returned empty, calculate checksum ourselves
+          if [ -z "$CHECKSUM" ]; then
+            echo "Checksum download failed, calculating from ZIP file..."
+            ZIP_URL="https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/${{ github.event.release.tag_name }}/jellyfin-plugin-episodepostergenerator-${BUILD_VERSION}.zip"
+            curl -L -o temp_plugin.zip "${ZIP_URL}"
+            CHECKSUM=$(md5sum temp_plugin.zip | cut -d' ' -f1)
+            rm temp_plugin.zip
+          fi
+          
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          echo "Build Version: ${BUILD_VERSION}"
+          echo "Target ABI: ${TARGET_ABI}"
+          echo "Checksum: ${CHECKSUM}"
           
           echo "build_version=${BUILD_VERSION}" >> $GITHUB_OUTPUT
           echo "target_abi=${TARGET_ABI}" >> $GITHUB_OUTPUT
