@@ -16,10 +16,10 @@ A Jellyfin plugin that automatically generates custom episode posters using smar
 ### Standard Style
 Classic episode posters with overlay text and episode information.
 
-| Example | Description |
-|---------|-------------|
-| ![Standard 1](Screenshots/Standard%201.jpg) | Episode screenshot with title and season/episode info overlaid at the bottom |
-| ![Standard 2](Screenshots/Standard%202.jpg) | Clean layout with episode title prominently displayed and season/episode info in corners |
+| Example |
+|---------|
+| ![Standard 1](Screenshots/Standard%201.jpg) |
+| ![Standard 2](Screenshots/Standard%202.jpg) |
 
 **Features:**
 - Episode screenshot as background
@@ -31,10 +31,10 @@ Classic episode posters with overlay text and episode information.
 ### Cutout Style  
 Large episode numbers displayed as transparent cutouts revealing the screenshot beneath.
 
-| Example | Description |
-|---------|-------------|
-| ![Cutout - Opacity 1](Screenshots/Cutout%20-%20Opacity%201.jpg) | Large "03" cutout number with episode title below |
-| ![Cutout - Opacity 2](Screenshots/Cutout%20-%20Opacity%202.jpg) | Bold episode number cutout with dramatic visual impact |
+| Example |
+|---------|
+| ![Cutout - Opacity 1](Screenshots/Cutout%20-%20Opacity%201.jpg) |
+| ![Cutout - Opacity 2](Screenshots/Cutout%20-%20Opacity%202.jpg) |
 
 **Cutout Types:**
 - **Code**: Displays episode in format "S01E03" 
@@ -49,10 +49,10 @@ Large episode numbers displayed as transparent cutouts revealing the screenshot 
 ### Numeral Style
 Roman numeral episode numbers with elegant typography.
 
-| Example | Description |
-|---------|-------------|
-| ![Numeral 1](Screenshots/Numeral%201.jpg) | Large "VI" Roman numeral with episode title |
-| ![Numeral 2](Screenshots/Numeral%202.jpg) | Clean Roman numeral display with background overlay |
+| Example |
+|---------|
+| ![Numeral 1](Screenshots/Numeral%201.jpg) |
+| ![Numeral 2](Screenshots/Numeral%202.jpg) |
 
 **Features:**
 - Roman numeral conversion (1-3999)
