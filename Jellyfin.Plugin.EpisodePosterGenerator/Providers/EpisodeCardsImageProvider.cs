@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
@@ -9,6 +8,7 @@ using Jellyfin.Plugin.EpisodePosterGenerator.Services;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
+using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Drawing;
 using MediaBrowser.Model.Entities;
@@ -24,16 +24,22 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
 {
     private readonly ILogger<EpisodePosterImageProvider> _logger;
     private readonly IApplicationPaths _appPaths;
+    private readonly IMediaEncoder _mediaEncoder;
+    private readonly ILoggerFactory _loggerFactory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EpisodePosterImageProvider"/> class.
     /// </summary>
     /// <param name="logger">Logger instance.</param>
     /// <param name="appPaths">Application path info.</param>
-    public EpisodePosterImageProvider(ILogger<EpisodePosterImageProvider> logger, IApplicationPaths appPaths)
+    /// <param name="mediaEncoder">Jellyfin's media encoder service.</param>
+    /// <param name="loggerFactory">Logger factory for creating service loggers.</param>
+    public EpisodePosterImageProvider(ILogger<EpisodePosterImageProvider> logger, IApplicationPaths appPaths, IMediaEncoder mediaEncoder, ILoggerFactory loggerFactory)
     {
         _logger = logger;
         _appPaths = appPaths;
+        _mediaEncoder = mediaEncoder;
+        _loggerFactory = loggerFactory;
         _logger.LogInformation("Episode Poster Generator image provider initialized");
     }
 
@@ -133,15 +139,17 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
     }
 
     // MARK: GenerateEpisodeImageAsync
-
     /// <summary>
-    /// Generates an image for the given episode.
+    /// Generates an image for the given episode using optimized processing and random frame selection.
     /// </summary>
+    /// <param name="episode">The episode to generate an image for.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
+    /// <returns>A stream containing the generated image data, or null if generation failed.</returns>
     private async Task<Stream?> GenerateEpisodeImageAsync(Episode episode, CancellationToken cancellationToken)
     {
         try
         {
-            _logger.LogInformation("Starting poster generation for episode: \"{EpisodeName}\"", episode.Name);
+            _logger.LogInformation("Starting optimized poster generation for episode: \"{EpisodeName}\"", episode.Name);
 
             var config = Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
             var imageService = new PosterGeneratorService();
@@ -158,7 +166,7 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
 
                 if (config.PosterStyle == PosterStyle.Numeral)
                 {
-                    _logger.LogInformation("Creating transparent background for Numeral style");
+                    _logger.LogDebug("Creating transparent background for Numeral style");
                     extractedFramePath = CreateTransparentImage(tempFramePath);
                 }
                 else
@@ -169,17 +177,27 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
                         return null;
                     }
 
-                    var ffmpegService = new FFmpegService(Microsoft.Extensions.Logging.Abstractions.NullLogger<FFmpegService>.Instance);
+                    var ffmpegService = new FFmpegService(_loggerFactory.CreateLogger<FFmpegService>(), _mediaEncoder);
 
-                    var duration = await ffmpegService.GetVideoDurationAsync(episode.Path, cancellationToken).ConfigureAwait(false);
+                    var duration = GetDurationFromEpisode(episode);
+                    if (!duration.HasValue)
+                    {
+                        _logger.LogInformation("Episode duration not available from metadata, falling back to FFprobe");
+                        duration = await ffmpegService.GetVideoDurationAsync(episode.Path, cancellationToken).ConfigureAwait(false);
+                    }
+
                     if (!duration.HasValue)
                     {
                         _logger.LogWarning("Could not get video duration for: \"{Path}\"", episode.Path);
                         return null;
                     }
 
-                    var blackIntervals = await ffmpegService.DetectBlackScenesAsync(episode.Path, 0.1, 0.1, cancellationToken).ConfigureAwait(false);
-                    var selectedTimestamp = SelectOptimalTimestamp(duration.Value, blackIntervals);
+                    _logger.LogDebug("Video duration: {Duration} for episode: \"{EpisodeName}\"", duration.Value, episode.Name);
+
+                    var blackIntervals = await ffmpegService.DetectBlackScenesAsync(episode.Path, duration.Value, 0.1, 0.1, cancellationToken).ConfigureAwait(false);
+                    var selectedTimestamp = ffmpegService.SelectRandomTimestamp(duration.Value, blackIntervals);
+
+                    _logger.LogDebug("Random timestamp selected: {Timestamp} for episode: \"{EpisodeName}\"", selectedTimestamp, episode.Name);
 
                     extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, cancellationToken).ConfigureAwait(false);
                 }
@@ -202,7 +220,6 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
             }
             finally
             {
-                // Clean up temporary files
                 if (File.Exists(tempFramePath))
                 {
                     try { File.Delete(tempFramePath); } catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete temp frame: \"{Path}\"", tempFramePath); }
@@ -221,11 +238,28 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
         }
     }
 
-    // MARK: CreateTransparentImage
+    // MARK: GetDurationFromEpisode
+    /// <summary>
+    /// Extracts the video duration from episode metadata.
+    /// </summary>
+    /// <param name="episode">The episode to get duration from.</param>
+    /// <returns>The duration as a <see cref="TimeSpan"/> or null if not available.</returns>
+    private TimeSpan? GetDurationFromEpisode(Episode episode)
+    {
+        if (episode.RunTimeTicks.HasValue)
+        {
+            return TimeSpan.FromTicks(episode.RunTimeTicks.Value);
+        }
+        
+        return null;
+    }
 
+    // MARK: CreateTransparentImage
     /// <summary>
     /// Creates a transparent JPEG placeholder image.
     /// </summary>
+    /// <param name="outputPath">Path where the transparent image will be saved.</param>
+    /// <returns>The output path if successful; otherwise, null.</returns>
     private string? CreateTransparentImage(string outputPath)
     {
         try
@@ -249,34 +283,5 @@ public class EpisodePosterImageProvider : IDynamicImageProvider
         }
     }
 
-    // MARK: SelectOptimalTimestamp
 
-    /// <summary>
-    /// Chooses the best timestamp to extract a video frame, avoiding black intervals.
-    /// </summary>
-    private TimeSpan SelectOptimalTimestamp(TimeSpan duration, List<BlackInterval> blackIntervals)
-    {
-        var candidates = new[]
-        {
-            TimeSpan.FromSeconds(duration.TotalSeconds * 0.25),
-            TimeSpan.FromSeconds(duration.TotalSeconds * 0.5),
-            TimeSpan.FromSeconds(duration.TotalSeconds * 0.75),
-            TimeSpan.FromSeconds(duration.TotalSeconds * 0.1),
-            TimeSpan.FromSeconds(duration.TotalSeconds * 0.9)
-        };
-
-        foreach (var candidate in candidates)
-        {
-            var isInBlackInterval = blackIntervals.Any(interval =>
-                candidate >= interval.Start && candidate <= interval.End);
-
-            if (!isInBlackInterval)
-            {
-                return candidate;
-            }
-        }
-
-        // Fallback to middle timestamp
-        return TimeSpan.FromSeconds(duration.TotalSeconds * 0.5);
-    }
 }

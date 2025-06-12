@@ -72,7 +72,7 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
             canvas.DrawRect(SKRect.Create(width, height), overlayPaint);
 
             // Draw cutout text using clear blend mode to create transparency
-            DrawCutoutText(canvas, episodeWords, width, height, config.ShowTitle, config);
+            DrawCutoutText(canvas, episodeWords, width, height, config.ShowTitle, config, overlayColor);
 
             // Draw original image behind the overlay using destination-over blending
             // This makes the image visible through the transparent cutout areas
@@ -105,6 +105,7 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
 
     /// <summary>
     /// Draws episode text (cutout style) on the canvas using transparent blend mode for cutout effect.
+    /// Adds a subtle contrasting border around the cutout text for better visibility against any background.
     /// Calculates optimal positioning and font sizing based on title presence and available space.
     /// Uses title-aware layout to prevent overlapping and maximize font size within constraints.
     /// </summary>
@@ -114,8 +115,9 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
     /// <param name="canvasHeight">Total canvas height for positioning calculations.</param>
     /// <param name="hasTitle">Whether episode title will be displayed, affecting text positioning.</param>
     /// <param name="config">Plugin configuration with font and styling settings.</param>
+    /// <param name="overlayColor">The overlay background color used to determine contrasting border color.</param>
     // MARK: DrawCutoutText
-    private void DrawCutoutText(SKCanvas canvas, string[] episodeWords, float canvasWidth, float canvasHeight, bool hasTitle, PluginConfiguration config)
+    private void DrawCutoutText(SKCanvas canvas, string[] episodeWords, float canvasWidth, float canvasHeight, bool hasTitle, PluginConfiguration config, SKColor overlayColor)
     {
         if (episodeWords.Length == 0)
             return;
@@ -128,19 +130,74 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
         var fontStyle = FontUtils.GetFontStyle(config.EpisodeFontStyle);
         using var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, fontStyle);
 
+        float optimalFontSize = CalculateOptimalCutoutFontSize(episodeWords, typeface, cutoutArea);
+
+        // Calculate contrasting border color based on overlay color
+        var borderColor = GetContrastingBorderColor(overlayColor);
+
+        // First, draw the border (stroke) around the text
+        using var borderPaint = new SKPaint
+        {
+            Color = borderColor,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = Math.Max(1f, optimalFontSize * 0.015f), // Very thin adaptive stroke, minimum 1px
+            IsAntialias = true,
+            Typeface = typeface,
+            TextAlign = SKTextAlign.Center,
+            TextSize = optimalFontSize
+        };
+
+        DrawCutoutTextCentered(canvas, episodeWords, borderPaint, cutoutArea);
+
+        // Then draw the cutout text using clear blend mode to create transparency
         using var cutoutPaint = new SKPaint
         {
             Color = SKColors.Transparent,
             BlendMode = SKBlendMode.Clear,
             IsAntialias = true,
             Typeface = typeface,
-            TextAlign = SKTextAlign.Center
+            TextAlign = SKTextAlign.Center,
+            TextSize = optimalFontSize
         };
 
-        float optimalFontSize = CalculateOptimalCutoutFontSize(episodeWords, typeface, cutoutArea);
-        cutoutPaint.TextSize = optimalFontSize;
-
         DrawCutoutTextCentered(canvas, episodeWords, cutoutPaint, cutoutArea);
+    }
+
+    /// <summary>
+    /// Determines the contrasting border color based on the overlay color luminance.
+    /// Uses black for light overlays and white for dark overlays to ensure maximum visibility.
+    /// </summary>
+    /// <param name="overlayColor">The overlay background color.</param>
+    /// <returns>Contrasting border color (black, white, or gray).</returns>
+    // MARK: GetContrastingBorderColor
+    private SKColor GetContrastingBorderColor(SKColor overlayColor)
+    {
+        // Calculate relative luminance using standard formula
+        float r = overlayColor.Red / 255f;
+        float g = overlayColor.Green / 255f;
+        float b = overlayColor.Blue / 255f;
+
+        // Apply gamma correction
+        r = r <= 0.03928f ? r / 12.92f : (float)Math.Pow((r + 0.055f) / 1.055f, 2.4f);
+        g = g <= 0.03928f ? g / 12.92f : (float)Math.Pow((g + 0.055f) / 1.055f, 2.4f);
+        b = b <= 0.03928f ? b / 12.92f : (float)Math.Pow((b + 0.055f) / 1.055f, 2.4f);
+
+        float luminance = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+
+        // Use black border for light backgrounds, white for dark backgrounds
+        if (luminance > 0.5f)
+        {
+            return SKColors.Black;
+        }
+        else if (luminance < 0.2f)
+        {
+            return SKColors.White;
+        }
+        else
+        {
+            // For medium luminance, use dark gray for better subtlety
+            return new SKColor(64, 64, 64); // Dark gray
+        }
     }
 
     /// <summary>
@@ -264,10 +321,10 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
     /// </summary>
     /// <param name="canvas">Canvas to draw on.</param>
     /// <param name="episodeWords">Words to render.</param>
-    /// <param name="cutoutPaint">Paint configured for cutout rendering.</param>
+    /// <param name="paint">Paint configured for rendering (either border or cutout).</param>
     /// <param name="availableArea">Area to center text within.</param>
     // MARK: DrawCutoutTextCentered
-    private void DrawCutoutTextCentered(SKCanvas canvas, string[] episodeWords, SKPaint cutoutPaint, SKRect availableArea)
+    private void DrawCutoutTextCentered(SKCanvas canvas, string[] episodeWords, SKPaint paint, SKRect availableArea)
     {
         var centerX = availableArea.MidX;
         var centerY = availableArea.MidY;
@@ -275,22 +332,22 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
         if (episodeWords.Length == 1)
         {
             // Single word: center directly
-            var bounds = FontUtils.MeasureTextDimensions(episodeWords[0], cutoutPaint.Typeface!, cutoutPaint.TextSize);
+            var bounds = FontUtils.MeasureTextDimensions(episodeWords[0], paint.Typeface!, paint.TextSize);
             var textY = centerY + (bounds.Height / 2f);
-            canvas.DrawText(episodeWords[0], centerX, textY, cutoutPaint);
+            canvas.DrawText(episodeWords[0], centerX, textY, paint);
         }
         else
         {
             // Multiple words: stack vertically and center the block
             float lineSpacing = 1.1f;
-            float lineHeight = cutoutPaint.TextSize * lineSpacing;
-            float totalTextHeight = episodeWords.Length * lineHeight - (lineHeight - cutoutPaint.TextSize);
+            float lineHeight = paint.TextSize * lineSpacing;
+            float totalTextHeight = episodeWords.Length * lineHeight - (lineHeight - paint.TextSize);
             
-            float startY = centerY - (totalTextHeight / 2f) + cutoutPaint.TextSize;
+            float startY = centerY - (totalTextHeight / 2f) + paint.TextSize;
             
             foreach (var word in episodeWords)
             {
-                canvas.DrawText(word, centerX, startY, cutoutPaint);
+                canvas.DrawText(word, centerX, startY, paint);
                 startY += lineHeight;
             }
         }

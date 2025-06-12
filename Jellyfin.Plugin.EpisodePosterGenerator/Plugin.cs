@@ -80,25 +80,4 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             EmbeddedResourcePath = typeof(Plugin).Namespace + ".Configuration.configPage.html"
         };
     }
-
-    // MARK: GetFFmpegPath
-
-    /// <summary>
-    /// Gets the configured FFmpeg executable path from the media encoder.
-    /// Throws if not available.
-    /// </summary>
-    /// <returns>FFmpeg executable path.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when FFmpeg path is not set.</exception>
-    public string GetFFmpegPath()
-    {
-        var path = _mediaEncoder.EncoderPath;
-        if (string.IsNullOrEmpty(path))
-        {
-            _logger.LogError("FFmpeg path not available from MediaEncoder. Jellyfin is not properly configured with FFmpeg.");
-            throw new InvalidOperationException("FFmpeg is not available. Please ensure Jellyfin is properly configured with FFmpeg.");
-        }
-        
-        _logger.LogDebug("Using FFmpeg path: {Path}", path);
-        return path;
-    }
 }
