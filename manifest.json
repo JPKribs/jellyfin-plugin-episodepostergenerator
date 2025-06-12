@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Screenshots/Logo.png",
     "versions": [
       {
+        "version": "10.10.5",
+        "changelog": "* Utilize HWA if available.\r\n* Add a border on Cutout poster to make them more visible & pop\r\n* More efficient frame extraction (~70% quicker!).\r\n* HWA frame extraction (~95% quicker!!!).\r\n* Cleanup and move some more items out of \r\n* Updated screenshots with new Cutout appearance.",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.5/jellyfin-plugin-episodepostergenerator-10.10.5.zip",
+        "checksum": "be3aac3262fdcefed35f1eb222ee151b",
+        "timestamp": "2025-06-12T23:17:20Z"
+      },
+      {
         "version": "10.10.4",
         "changelog": "* Add a safe area configuration for parameter padding\r\n* Improve font handling to prevent overlapping\r\n* Improve Standard poster text placement\r\n* Improve Cutout poster text placement\r\n* Better code documentation on posters\r\n* Better padding / safe area inheritance\r\n* Migrate all Text functionality into its own utility\r\n* Updated screenshots to show multiple variations of each poster type\r\n* New changelog formatting\r\n* Summarize all poster code for better readibility",
         "targetAbi": "10.10.7.0",
