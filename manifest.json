@@ -6,7 +6,7 @@
     "overview": "Generate Custom Episode Posters",
     "owner": "JPKribs",
     "category": "Metadata",
-    "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Screenshots/Logo.jpg",
+    "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Screenshots/Logo.png",
     "versions": [
       {
         "version": "10.10.4",
