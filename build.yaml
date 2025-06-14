@@ -1,7 +1,7 @@
 ---
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
-version: "10.10.5"
+version: "10.10.6"
 targetAbi: "10.10.7.0"
 framework: "net8.0"
 overview: "Generate Custom Episode Posters"
@@ -13,15 +13,13 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   features:
-  - True random frame extraction - re-running will result in a different frame.
-  - Utilize HWA if available.
-  - Add a border on Cutout poster to make them more visible & "pop"
+  - Run as Scheduled Task
+  - Track processed Episodes for Scheduled Tasks
   fixes: 
   - -
   technical:
-  - More efficient frame extraction (~70% quicker!).
-  - HWA frame extraction (~95% quicker!!!).
+  - Proper dependency injection
   other:
-  - Cleanup and move some more items out of `Plugin.cs`
+  - -
   documentation:
-  - Updated screenshots with new Cutout appearance.
+  - -
