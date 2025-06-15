@@ -15,11 +15,17 @@ changelog:
   features:
   - Run as Scheduled Task
   - Track processed Episodes for Scheduled Tasks
+  - Choose to not extract an image if you want to just use colors
+  - Allow Logo positioning
+  - Allow episode images on all poster types if wanted
+  - Allow skipping frame extraction for all poster types
   fixes: 
-  - -
+  - Prevent re-processing previously processed posters
+  - Updating the poster design will make re-enable processing for posters that used the previous design
   technical:
   - Proper dependency injection
+  - SQL DB for tracking episode changes - Should track manual poster updates as well.
   other:
   - -
   documentation:
-  - -
+  - Better, inline documentation and summaries

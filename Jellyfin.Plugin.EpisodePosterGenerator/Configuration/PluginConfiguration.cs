@@ -6,9 +6,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
     public class PluginConfiguration : BasePluginConfiguration
     {
         /// <summary>
-        /// Gets or sets a value indicating whether the plugin is enabled.
+        /// Gets or sets a value indicating whether the plugin is enabled as a Provider.
         /// </summary>
-        public bool EnablePlugin { get; set; } = true;
+        public bool EnableProvider { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the plugin is enabled as a Provider.
+        /// </summary>
+        public bool EnableTask { get; set; } = true;
 
         /// <summary>
         /// Gets or sets the style of the generated poster.
@@ -19,6 +24,31 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         /// Gets or sets the poster cutout type when the poster style is cutout.
         /// </summary>
         public CutoutType CutoutType { get; set; } = CutoutType.Code;
+
+        /// <summary>
+        /// Gets or sets a the cutout type border.
+        /// </summary>
+        public bool CutoutBorder { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the poster logo position when the poster style is logo.
+        /// </summary>
+        public Position LogoPosition { get; set; } = Position.Center;
+
+        /// <summary>
+        /// Gets or sets the poster logo position when the poster style is logo.
+        /// </summary>
+        public Alignment LogoAlignment { get; set; } = Alignment.Center;
+
+        /// <summary>
+        /// Gets or sets the percentage of height used for the Logo (e.g., 7.0 for 7%).
+        /// </summary>
+        public float LogoHeight { get; set; } = 30.0f;
+
+        /// <summary>
+        /// Extracts the poster from the Episode.
+        /// </summary>
+        public bool ExtractPoster { get; set; } = true;
 
         /// <summary>
         /// Gets or sets how the screenshot is fit into the poster.
@@ -34,6 +64,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         /// Gets or sets the percentage of height and width perserved as a safe area (e.g., 7.0 for 7%).
         /// </summary>
         public float PosterSafeArea { get; set; } = 5.0f;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to show the episode title.
+        /// </summary>
+        public bool ShowEpisode { get; set; } = true;
 
         /// <summary>
         /// Gets or sets the font family for episode numbers/season info.
@@ -81,13 +116,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public string TitleFontColor { get; set; } = "#FFFFFF";
 
         /// <summary>
-        /// Gets or sets the ARGB hex color for background overlay.
+        /// Gets or sets the ARGB hex color for background overlay / tinting.
         /// </summary>
-        public string BackgroundColor { get; set; } = "#66000000";
-
-        /// <summary>
-        /// Gets or sets the ARGB hex color for image tint overlay.
-        /// </summary>
-        public string OverlayTint { get; set; } = "#00000000";
+        public string OverlayColor { get; set; } = "#66000000";
     }
 }

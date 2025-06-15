@@ -67,12 +67,24 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
                 // Copy values from the new config to the current config
                 var config = plugin.Configuration;
 
-                config.EnablePlugin = newConfig.EnablePlugin;
+                config.EnableProvider = newConfig.EnableProvider;
+                config.EnableTask = newConfig.EnableTask;
+
                 config.PosterStyle = newConfig.PosterStyle;
+
                 config.CutoutType = newConfig.CutoutType;
+                config.CutoutBorder = newConfig.CutoutBorder;
+
+                config.LogoAlignment = newConfig.LogoAlignment;
+                config.LogoPosition = newConfig.LogoPosition;
+                config.LogoHeight = newConfig.LogoHeight;
+
+                config.ExtractPoster = newConfig.ExtractPoster;
+
                 config.PosterFill = newConfig.PosterFill;
                 config.PosterDimensionRatio = newConfig.PosterDimensionRatio;
 
+                config.ShowEpisode = newConfig.ShowEpisode;
                 config.EpisodeFontFamily = newConfig.EpisodeFontFamily;
                 config.EpisodeFontStyle = newConfig.EpisodeFontStyle;
                 config.EpisodeFontSize = newConfig.EpisodeFontSize;
@@ -84,8 +96,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
                 config.TitleFontSize = newConfig.TitleFontSize;
                 config.TitleFontColor = newConfig.TitleFontColor;
 
-                config.BackgroundColor = newConfig.BackgroundColor;
-                config.OverlayTint = newConfig.OverlayTint;
+                config.OverlayColor = newConfig.OverlayColor;
 
                 plugin.SaveConfiguration();
 

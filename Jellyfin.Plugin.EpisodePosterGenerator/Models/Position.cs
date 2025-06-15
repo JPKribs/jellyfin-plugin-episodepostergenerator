@@ -1,19 +1,19 @@
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 {
-    public enum TextPosition
+    public enum Position
     {
         /// <summary>
-        /// Position the title at the top.
+        /// Position at the top.
         /// </summary>
         Top,
 
         /// <summary>
-        /// Position the title in the center.
+        /// Position in the center.
         /// </summary>
         Center,
 
         /// <summary>
-        /// Position the title at the bottom.
+        /// Position at the bottom.
         /// </summary>
         Bottom
     }

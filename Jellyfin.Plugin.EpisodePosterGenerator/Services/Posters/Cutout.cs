@@ -62,7 +62,7 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
             canvas.Clear(SKColors.Transparent);
 
             // Draw background color overlay first
-            var overlayColor = ColorUtils.ParseHexColor(config.BackgroundColor);
+            var overlayColor = ColorUtils.ParseHexColor(config.OverlayColor);
             using var overlayPaint = new SKPaint
             {
                 Color = overlayColor,
@@ -85,7 +85,7 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
             // Add episode title if enabled using TextUtils for consistency
             if (config.ShowTitle)
             {
-                TextUtils.DrawTitle(canvas, episodeTitle, TextPosition.Bottom, TextAlignment.Center, config, width, height);
+                TextUtils.DrawTitle(canvas, episodeTitle, Position.Bottom, Alignment.Center, config, width, height);
             }
 
             // Encode and save the final composite image
@@ -132,22 +132,28 @@ public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
 
         float optimalFontSize = CalculateOptimalCutoutFontSize(episodeWords, typeface, cutoutArea);
 
-        // Calculate contrasting border color based on overlay color
-        var borderColor = GetContrastingBorderColor(overlayColor);
-
-        // First, draw the border (stroke) around the text
-        using var borderPaint = new SKPaint
+        if (config.CutoutBorder)
         {
-            Color = borderColor,
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = Math.Max(1f, optimalFontSize * 0.015f), // Very thin adaptive stroke, minimum 1px
-            IsAntialias = true,
-            Typeface = typeface,
-            TextAlign = SKTextAlign.Center,
-            TextSize = optimalFontSize
-        };
+            // Calculate contrasting border color based on overlay color
+            var borderColor = GetContrastingBorderColor(overlayColor);
 
-        DrawCutoutTextCentered(canvas, episodeWords, borderPaint, cutoutArea);
+            // Calculate contrasting border width
+            var borderWidth = Math.Max(1f, optimalFontSize * 0.015f);
+
+            // First, draw the border (stroke) around the text
+            using var borderPaint = new SKPaint
+            {
+                Color = borderColor,
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = borderWidth,
+                IsAntialias = true,
+                Typeface = typeface,
+                TextAlign = SKTextAlign.Center,
+                TextSize = optimalFontSize
+            };
+
+            DrawCutoutTextCentered(canvas, episodeWords, borderPaint, cutoutArea);
+        }
 
         // Then draw the cutout text using clear blend mode to create transparency
         using var cutoutPaint = new SKPaint

@@ -1,19 +1,19 @@
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 {
-    public enum TextAlignment
+    public enum Alignment
     {
         /// <summary>
-        /// Align text to the left.
+        /// Align to the left.
         /// </summary>
         Left,
 
         /// <summary>
-        /// Center the text.
+        /// Align in the center.
         /// </summary>
         Center,
 
         /// <summary>
-        /// Align text to the right.
+        /// Align to the right.
         /// </summary>
         Right
     }

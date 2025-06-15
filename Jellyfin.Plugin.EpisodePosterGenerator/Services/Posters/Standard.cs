@@ -77,18 +77,11 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
     private void DrawOverlayLayer(SKCanvas canvas, int width, int height, PluginConfiguration config)
     {
         // Skip overlay if no tint is configured or it's transparent
-        if (string.IsNullOrEmpty(config.OverlayTint) || config.OverlayTint == "#00000000")
+        if (string.IsNullOrEmpty(config.OverlayColor))
             return;
 
-        var tintValue = config.OverlayTint;
+        var overlayColor = ColorUtils.ParseHexColor(config.OverlayColor);
 
-        // Add default alpha if only RGB is specified (7 characters = #RRGGBB)
-        if (tintValue.StartsWith('#') && tintValue.Length == 7)
-        {
-            tintValue = string.Concat("#80", tintValue.AsSpan(1));
-        }
-
-        var overlayColor = ColorUtils.ParseHexColor(tintValue);
         using var overlayPaint = new SKPaint
         {
             Color = overlayColor,
@@ -99,9 +92,11 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
 
     /// <summary>
     /// Draws the text layer with bottom-aligned, stacked text elements.
-    /// When title is enabled: episode info, separator line, episode title (bottom to top).
-    /// When title is disabled: episode info positioned directly above the bottom safe area margin.
-    /// Text is positioned so its bottom edge stays ABOVE the safe area boundary.
+    /// Handles various combinations of title and episode visibility:
+    /// - Both enabled: episode info, separator line, episode title (bottom to top)
+    /// - Title only: episode title positioned directly above safe area
+    /// - Episode only: episode info positioned directly above safe area
+    /// - Neither enabled: no text drawn
     /// </summary>
     /// <param name="canvas">Canvas to draw on.</param>
     /// <param name="episode">Episode metadata for text content.</param>
@@ -119,9 +114,9 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
         var safeAreaMargin = GetSafeAreaMargin(config);
         var bottomSafeAreaBoundary = canvasHeight - (canvasHeight * safeAreaMargin);
 
-        if (config.ShowTitle)
+        if (config.ShowTitle && config.ShowEpisode)
         {
-            // Title enabled: use stacked layout with spacing between elements
+            // Both title and episode enabled: use stacked layout with spacing between elements
             var spacingHeight = canvasHeight * 0.02f;
             var currentBottomY = bottomSafeAreaBoundary; // Start at safe area boundary
 
@@ -136,11 +131,17 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
             // Draw episode info (top element)
             DrawEpisodeInfo(canvas, seasonNumber, episodeNumber, config, canvasWidth, canvasHeight, currentBottomY);
         }
-        else
+        else if (config.ShowTitle)
         {
-            // No title: position episode info directly above the bottom safe area boundary
+            // Title only: position title directly above the bottom safe area boundary
+            DrawEpisodeTitle(canvas, episodeTitle, config, canvasWidth, canvasHeight, bottomSafeAreaBoundary);
+        }
+        else if (config.ShowEpisode)
+        {
+            // Episode only: position episode info directly above the bottom safe area boundary
             DrawEpisodeInfo(canvas, seasonNumber, episodeNumber, config, canvasWidth, canvasHeight, bottomSafeAreaBoundary);
         }
+        // If neither title nor episode are enabled, draw nothing
     }
 
     /// <summary>

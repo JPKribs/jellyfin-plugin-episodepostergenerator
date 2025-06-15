@@ -11,21 +11,23 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
 
 /// <summary>
 /// Generates logo-style episode posters with series logo, episode code, and optional title.
-/// Creates posters with solid background color and bottom-aligned text elements stacked vertically.
-/// Text elements are stacked from bottom to top: series logo, episode code (S##E##), and episode title.
+/// Creates posters with layered rendering: input image background, optional overlay, positioned logo, and bottom-aligned text.
+/// Logo positioning is configurable using Position and Alignment enums with canvas-relative safe area calculations.
+/// Text elements are stacked from bottom to top: series logo text fallback, episode code (S##E##), and episode title.
 /// Uses inherited safe area calculations for consistent margins across all poster generators.
 /// </summary>
 public class LogoPosterGenerator : BasePosterGenerator, IPosterGenerator
 {
     /// <summary>
-    /// Generates a logo-style poster with series logo, episode code, and optional title.
-    /// Creates a solid color background with bottom-aligned text elements similar to standard style.
-    /// Uses S##E## formatting for episode codes with appropriate zero-padding.
+    /// Generates a logo-style poster with layered composition and configurable logo positioning.
+    /// Layer order: input image background, overlay, positioned logo, text elements.
+    /// Logo is positioned using full canvas dimensions with safe area constraints and scaled by LogoHeight percentage.
+    /// Text elements maintain bottom-aligned stacking for consistent layout with other poster styles.
     /// </summary>
-    /// <param name="inputImagePath">Path to the source image (ignored - uses solid color background).</param>
+    /// <param name="inputImagePath">Path to the source image file to use as background layer.</param>
     /// <param name="outputPath">Path where the generated poster will be saved.</param>
     /// <param name="episode">Episode metadata containing season/episode numbers, title, and series information.</param>
-    /// <param name="config">Plugin configuration with styling, font, and color settings.</param>
+    /// <param name="config">Plugin configuration with styling, positioning, and font settings.</param>
     /// <returns>Path to the generated poster file, or null if generation fails.</returns>
     // MARK: Generate
     public string? Generate(string inputImagePath, string outputPath, Episode episode, PluginConfiguration config)
@@ -37,26 +39,29 @@ public class LogoPosterGenerator : BasePosterGenerator, IPosterGenerator
             var episodeTitle = episode.Name ?? "Unknown Episode";
             var seriesName = episode.Series?.Name ?? "Unknown Series";
 
-            // Create a standard canvas size (can be configured later if needed)
-            const int width = 1920;
-            const int height = 1080;
+            // Load and decode the input image for background layer
+            using var inputStream = File.OpenRead(inputImagePath);
+            using var inputBitmap = SKBitmap.Decode(inputStream);
+            if (inputBitmap == null)
+                return null;
+
+            var width = inputBitmap.Width;
+            var height = inputBitmap.Height;
             var info = new SKImageInfo(width, height, SKImageInfo.PlatformColorType, SKAlphaType.Premul);
             using var surface = SKSurface.Create(info);
             var canvas = surface.Canvas;
 
-            // Clear canvas and draw solid background color
+            // Layer 1: Draw input image as background
             canvas.Clear(SKColors.Transparent);
+            canvas.DrawBitmap(inputBitmap, 0, 0);
 
-            // Draw solid background color from config (like numeral style)
-            var backgroundColor = ColorUtils.ParseHexColor(config.BackgroundColor);
-            using var backgroundPaint = new SKPaint
-            {
-                Color = backgroundColor,
-                Style = SKPaintStyle.Fill
-            };
-            canvas.DrawRect(SKRect.Create(width, height), backgroundPaint);
+            // Layer 2: Draw overlay if configured
+            DrawOverlayLayer(canvas, width, height, config);
 
-            // Draw text layers from bottom to top
+            // Layer 3: Draw series logo with configurable positioning
+            DrawSeriesLogoLayer(canvas, episode, seriesName, config, width, height);
+
+            // Layer 4: Draw text layers from bottom to top
             DrawTextLayers(canvas, episode, seriesName, seasonNumber, episodeNumber, episodeTitle, config, width, height);
 
             // Encode and save the final image
@@ -75,14 +80,72 @@ public class LogoPosterGenerator : BasePosterGenerator, IPosterGenerator
     }
 
     /// <summary>
+    /// Draws the overlay layer on top of the background image for enhanced text visibility.
+    /// Applies background color overlay only if configured and not transparent.
+    /// Uses the same overlay logic as other poster generators for consistent behavior.
+    /// </summary>
+    /// <param name="canvas">Canvas to draw the overlay on.</param>
+    /// <param name="width">Canvas width in pixels.</param>
+    /// <param name="height">Canvas height in pixels.</param>
+    /// <param name="config">Plugin configuration containing background color settings.</param>
+    // MARK: DrawOverlayLayer
+    private void DrawOverlayLayer(SKCanvas canvas, int width, int height, PluginConfiguration config)
+    {
+        // Apply background color overlay for consistent text visibility
+        var backgroundColor = ColorUtils.ParseHexColor(config.OverlayColor);
+        
+        // Only draw overlay if it has opacity (not fully transparent)
+        if (backgroundColor.Alpha > 0)
+        {
+            using var backgroundPaint = new SKPaint
+            {
+                Color = backgroundColor,
+                Style = SKPaintStyle.Fill
+            };
+            canvas.DrawRect(SKRect.Create(width, height), backgroundPaint);
+        }
+    }
+
+    /// <summary>
+    /// Draws the series logo layer with configurable positioning and scaling.
+    /// Logo is positioned using full canvas dimensions with safe area constraints.
+    /// Scaling is controlled by LogoHeight percentage while maintaining aspect ratio.
+    /// Falls back to text rendering if no logo image is available.
+    /// </summary>
+    /// <param name="canvas">Canvas to draw the logo on.</param>
+    /// <param name="episode">Episode metadata for accessing parent series information.</param>
+    /// <param name="seriesName">Name of the series for text fallback display.</param>
+    /// <param name="config">Plugin configuration with logo positioning and sizing settings.</param>
+    /// <param name="canvasWidth">Canvas width for positioning calculations.</param>
+    /// <param name="canvasHeight">Canvas height for positioning and scaling calculations.</param>
+    // MARK: DrawSeriesLogoLayer
+    private void DrawSeriesLogoLayer(SKCanvas canvas, Episode episode, string seriesName, PluginConfiguration config, int canvasWidth, int canvasHeight)
+    {
+        // Attempt to get series logo image first
+        var logoPath = GetSeriesLogoPath(episode);
+
+        if (!string.IsNullOrEmpty(logoPath))
+        {
+            // Draw logo image with configurable positioning
+            DrawSeriesLogoImage(canvas, logoPath, config.LogoPosition, config.LogoAlignment, config, canvasWidth, canvasHeight);
+        }
+        else
+        {
+            // Fallback to text rendering with same positioning
+            DrawSeriesLogoText(canvas, seriesName, config.LogoPosition, config.LogoAlignment, config, canvasWidth, canvasHeight);
+        }
+    }
+
+    /// <summary>
     /// Draws all text layers with bottom-aligned, stacked text elements.
-    /// Elements are rendered from bottom to top: series logo, episode code, episode title.
+    /// Elements are rendered from bottom to top: episode code (if enabled), episode title (if enabled).
     /// Maintains 2% canvas height spacing between elements to prevent overlapping.
     /// Uses inherited safe area calculations for consistent margins.
+    /// Both episode code and title display are controlled by their respective configuration flags.
     /// </summary>
     /// <param name="canvas">Canvas to draw on.</param>
     /// <param name="episode">Episode metadata for accessing series information.</param>
-    /// <param name="seriesName">Name of the series for logo text.</param>
+    /// <param name="seriesName">Name of the series for reference.</param>
     /// <param name="seasonNumber">Season number for episode code formatting.</param>
     /// <param name="episodeNumber">Episode number for episode code formatting.</param>
     /// <param name="episodeTitle">Episode title for optional display.</param>
@@ -108,12 +171,11 @@ public class LogoPosterGenerator : BasePosterGenerator, IPosterGenerator
             currentY -= titleHeight + spacingHeight;
         }
 
-        // Draw episode code (middle element)
-        var episodeCodeHeight = DrawEpisodeCode(canvas, seasonNumber, episodeNumber, config, canvasWidth, canvasHeight, currentY);
-        currentY -= episodeCodeHeight + spacingHeight;
-
-        // Draw series logo/name (top element)
-        DrawSeriesLogo(canvas, episode, seriesName, config, canvasWidth, canvasHeight, currentY);
+        // Draw episode code (top element of text layer) if enabled
+        if (config.ShowEpisode)
+        {
+            DrawEpisodeCode(canvas, seasonNumber, episodeNumber, config, canvasWidth, canvasHeight, currentY);
+        }
     }
 
     /// <summary>
@@ -226,39 +288,6 @@ public class LogoPosterGenerator : BasePosterGenerator, IPosterGenerator
     }
 
     /// <summary>
-    /// Draws the series logo image or name text at the top of the text stack.
-    /// First attempts to load and draw the actual series logo image at appropriate size.
-    /// Falls back to rendering series name as text with same styling as episode text if no logo found.
-    /// Logo images are scaled proportionally to fit within safe area constraints.
-    /// Text fallback uses TextUtils for consistent wrapping and truncation behavior.
-    /// </summary>
-    /// <param name="canvas">Canvas to draw on.</param>
-    /// <param name="episode">Episode metadata for accessing parent series information.</param>
-    /// <param name="seriesName">Name of the series for text fallback display.</param>
-    /// <param name="config">Plugin configuration with font settings for text fallback.</param>
-    /// <param name="canvasWidth">Canvas width for centering and scaling calculations.</param>
-    /// <param name="canvasHeight">Canvas height for scaling and font size calculations.</param>
-    /// <param name="bottomY">Y coordinate for the bottom of the logo or text.</param>
-    /// <returns>Total height of the rendered logo image or text block.</returns>
-    // MARK: DrawSeriesLogo
-    private float DrawSeriesLogo(SKCanvas canvas, Episode episode, string seriesName, PluginConfiguration config, int canvasWidth, int canvasHeight, float bottomY)
-    {
-        // Attempt to get series logo image first
-        var logoPath = GetSeriesLogoPath(episode);
-
-        if (!string.IsNullOrEmpty(logoPath))
-        {
-            // Draw logo image if found
-            return DrawSeriesLogoImage(canvas, logoPath, config, canvasWidth, canvasHeight, bottomY);
-        }
-        else
-        {
-            // Fallback to text rendering using TextUtils
-            return DrawSeriesLogoText(canvas, seriesName, config, canvasWidth, canvasHeight, bottomY);
-        }
-    }
-
-    /// <summary>
     /// Retrieves the file path to the series logo image from the parent series.
     /// First attempts to find a dedicated logo image, then falls back to the primary series image.
     /// Returns null if no suitable image is found or if the series information is unavailable.
@@ -301,19 +330,21 @@ public class LogoPosterGenerator : BasePosterGenerator, IPosterGenerator
     }
 
     /// <summary>
-    /// Draws the series logo image scaled to use 75% of remaining space after episode elements.
-    /// Calculates space used by episode code and title, then scales logo to fill 75% of leftover space.
-    /// Logo is centered horizontally and positioned to maximize visual impact while respecting safe areas.
+    /// Draws the series logo image with configurable positioning and scaling within safe area constraints.
+    /// Logo is positioned using canvas-relative coordinates with Position and Alignment enums.
+    /// Scaling is controlled by LogoHeight percentage while maintaining original aspect ratio.
+    /// Safe area margins are applied to prevent logo from being positioned too close to canvas edges.
     /// </summary>
     /// <param name="canvas">Canvas to draw on.</param>
     /// <param name="logoPath">File path to the series logo image.</param>
-    /// <param name="config">Plugin configuration for safe area margin calculations.</param>
-    /// <param name="canvasWidth">Canvas width for centering calculations.</param>
-    /// <param name="canvasHeight">Canvas height for scaling calculations.</param>
-    /// <param name="bottomY">Y coordinate for the bottom of the logo image.</param>
-    /// <returns>Total height of the rendered logo image.</returns>
+    /// <param name="position">Vertical position (Top, Center, Bottom) for logo placement.</param>
+    /// <param name="alignment">Horizontal alignment (Left, Center, Right) for logo placement.</param>
+    /// <param name="config">Plugin configuration for safe area margin and LogoHeight percentage calculations.</param>
+    /// <param name="canvasWidth">Canvas width for positioning calculations.</param>
+    /// <param name="canvasHeight">Canvas height for positioning and scaling calculations.</param>
+    /// <returns>Total height of the rendered logo image, or 0 if rendering failed.</returns>
     // MARK: DrawSeriesLogoImage
-    private float DrawSeriesLogoImage(SKCanvas canvas, string logoPath, PluginConfiguration config, int canvasWidth, int canvasHeight, float bottomY)
+    private float DrawSeriesLogoImage(SKCanvas canvas, string logoPath, Position position, Alignment alignment, PluginConfiguration config, int canvasWidth, int canvasHeight)
     {
         try
         {
@@ -323,61 +354,26 @@ public class LogoPosterGenerator : BasePosterGenerator, IPosterGenerator
             if (logoBitmap == null)
                 return 0f;
 
-            // Calculate safe area constraints
-            var safeAreaMargin = GetSafeAreaMargin(config);
-            var safeWidth = canvasWidth * (1 - 2 * safeAreaMargin);
-            var topSafeAreaBoundary = canvasHeight * safeAreaMargin;
-            var bottomSafeAreaBoundary = canvasHeight * safeAreaMargin;
+            // Calculate safe area constraints using inherited method
+            ApplySafeAreaConstraints(canvasWidth, canvasHeight, config, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
 
-            // Calculate space used by episode elements
-            var episodeCodeHeight = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, canvasHeight);
-            var spacingHeight = canvasHeight * 0.02f; // 2% spacing
-            
-            var usedSpaceByEpisodeElements = episodeCodeHeight + spacingHeight;
-            
-            // Add title space if enabled
-            if (config.ShowTitle)
-            {
-                var titleFontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight, (100f * safeAreaMargin));
-                var titleLineHeight = titleFontSize * 1.2f;
-                var titleHeight = titleLineHeight * 2; // Max 2 lines
-                usedSpaceByEpisodeElements += titleHeight + spacingHeight;
-            }
-
-            // Calculate total remaining space
-            var totalUsableSpace = canvasHeight - topSafeAreaBoundary - bottomSafeAreaBoundary;
-            var remainingSpace = totalUsableSpace - usedSpaceByEpisodeElements;
-            
-            // Use 75% of remaining space for logo
-            var logoAllowedHeight = remainingSpace * 0.75f;
-            var maxLogoWidth = safeWidth * 0.9f; // 90% of safe width
-
-            // Calculate scaled dimensions maintaining aspect ratio
+            // Calculate logo dimensions based on LogoHeight percentage
+            var logoHeight = canvasHeight * (config.LogoHeight / 100f);
             var logoAspect = (float)logoBitmap.Width / logoBitmap.Height;
-            
-            // Try scaling by allowed height first
-            var scaledHeight = logoAllowedHeight;
-            var scaledWidth = scaledHeight * logoAspect;
-            
-            // If too wide, scale by available width instead
-            if (scaledWidth > maxLogoWidth)
+            var logoWidth = logoHeight * logoAspect;
+
+            // Ensure logo doesn't exceed safe area width
+            if (logoWidth > safeWidth)
             {
-                scaledWidth = maxLogoWidth;
-                scaledHeight = scaledWidth / logoAspect;
-            }
-            
-            // Ensure we don't exceed the allowed height
-            if (scaledHeight > logoAllowedHeight)
-            {
-                scaledHeight = logoAllowedHeight;
-                scaledWidth = scaledHeight * logoAspect;
+                logoWidth = safeWidth;
+                logoHeight = logoWidth / logoAspect;
             }
 
-            // Center horizontally and position at bottomY
-            var logoX = (canvasWidth - scaledWidth) / 2f;
-            var logoY = bottomY - scaledHeight;
+            // Calculate positioning within safe area
+            var logoX = CalculateLogoX(alignment, safeLeft, safeWidth, logoWidth);
+            var logoY = CalculateLogoY(position, safeTop, safeHeight, logoHeight);
 
-            var destRect = new SKRect(logoX, logoY, logoX + scaledWidth, logoY + scaledHeight);
+            var destRect = new SKRect(logoX, logoY, logoX + logoWidth, logoY + logoHeight);
 
             using var paint = new SKPaint
             {
@@ -387,7 +383,7 @@ public class LogoPosterGenerator : BasePosterGenerator, IPosterGenerator
 
             canvas.DrawBitmap(logoBitmap, destRect, paint);
 
-            return scaledHeight;
+            return logoHeight;
         }
         catch (Exception ex)
         {
@@ -398,19 +394,20 @@ public class LogoPosterGenerator : BasePosterGenerator, IPosterGenerator
 
     /// <summary>
     /// Draws the series name as text when no logo image is available.
-    /// Uses TextUtils for consistent text wrapping and truncation behavior.
-    /// Text is rendered slightly larger than episode text and includes shadow effects.
-    /// Supports up to two lines with ellipsis truncation if series name is too long.
+    /// Uses configurable positioning with Position and Alignment enums within safe area constraints.
+    /// Text is rendered with same positioning logic as logo images for consistent behavior.
+    /// Supports text wrapping and uses episode font settings with slight size increase for prominence.
     /// </summary>
     /// <param name="canvas">Canvas to draw on.</param>
     /// <param name="seriesName">Name of the series to display as text.</param>
-    /// <param name="config">Plugin configuration with font settings.</param>
-    /// <param name="canvasWidth">Canvas width for centering calculations.</param>
-    /// <param name="canvasHeight">Canvas height for font size calculations.</param>
-    /// <param name="bottomY">Y coordinate for the bottom of the text block.</param>
+    /// <param name="position">Vertical position (Top, Center, Bottom) for text placement.</param>
+    /// <param name="alignment">Horizontal alignment (Left, Center, Right) for text placement.</param>
+    /// <param name="config">Plugin configuration with font settings and safe area calculations.</param>
+    /// <param name="canvasWidth">Canvas width for positioning calculations.</param>
+    /// <param name="canvasHeight">Canvas height for font size and positioning calculations.</param>
     /// <returns>Total height of the rendered text block.</returns>
     // MARK: DrawSeriesLogoText
-    private float DrawSeriesLogoText(SKCanvas canvas, string seriesName, PluginConfiguration config, int canvasWidth, int canvasHeight, float bottomY)
+    private float DrawSeriesLogoText(SKCanvas canvas, string seriesName, Position position, Alignment alignment, PluginConfiguration config, int canvasWidth, int canvasHeight)
     {
         // Use episode font settings for series logo text (20% larger than episode font)
         var logoFontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize * 1.2f, canvasHeight);
@@ -423,7 +420,7 @@ public class LogoPosterGenerator : BasePosterGenerator, IPosterGenerator
             TextSize = logoFontSize,
             IsAntialias = true,
             Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
-            TextAlign = SKTextAlign.Center
+            TextAlign = GetSKTextAlign(alignment)
         };
 
         using var shadowPaint = new SKPaint
@@ -432,27 +429,88 @@ public class LogoPosterGenerator : BasePosterGenerator, IPosterGenerator
             TextSize = logoFontSize,
             IsAntialias = true,
             Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
-            TextAlign = SKTextAlign.Center
+            TextAlign = GetSKTextAlign(alignment)
         };
 
-        // Calculate available width within inherited safe area margins
-        var safeWidth = canvasWidth * (1 - 2 * GetSafeAreaMargin(config)) * 0.9f;
-        var lines = TextUtils.FitTextToWidth(seriesName, logoPaint, safeWidth);
+        // Calculate safe area and available width
+        ApplySafeAreaConstraints(canvasWidth, canvasHeight, config, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
+        var availableWidth = safeWidth * 0.9f;
+        var lines = TextUtils.FitTextToWidth(seriesName, logoPaint, availableWidth);
 
         var lineHeight = logoFontSize * 1.2f;
         var totalHeight = (lines.Count - 1) * lineHeight + logoFontSize;
 
-        var centerX = canvasWidth / 2f;
-        var startY = bottomY - totalHeight + logoFontSize;
+        // Calculate positioning
+        var textX = CalculateLogoX(alignment, safeLeft, safeWidth, 0);
+        var textY = CalculateLogoY(position, safeTop, safeHeight, totalHeight);
 
         // Draw each line with shadow offset
         for (int i = 0; i < lines.Count; i++)
         {
-            var lineY = startY + (i * lineHeight);
-            canvas.DrawText(lines[i], centerX + 2, lineY + 2, shadowPaint);
-            canvas.DrawText(lines[i], centerX, lineY, logoPaint);
+            var lineY = textY + logoFontSize + (i * lineHeight);
+            canvas.DrawText(lines[i], textX + 2, lineY + 2, shadowPaint);
+            canvas.DrawText(lines[i], textX, lineY, logoPaint);
         }
 
         return totalHeight;
+    }
+
+    /// <summary>
+    /// Calculates the horizontal X coordinate for logo positioning based on alignment within safe area.
+    /// Supports left, center, and right alignment within the safe drawing area.
+    /// </summary>
+    /// <param name="alignment">Horizontal alignment (Left, Center, Right).</param>
+    /// <param name="safeLeft">Left boundary of safe area.</param>
+    /// <param name="safeWidth">Width of safe area.</param>
+    /// <param name="logoWidth">Width of logo (0 for text alignment calculations).</param>
+    /// <returns>X coordinate for logo positioning.</returns>
+    // MARK: CalculateLogoX
+    private float CalculateLogoX(Alignment alignment, float safeLeft, float safeWidth, float logoWidth)
+    {
+        return alignment switch
+        {
+            Alignment.Left => safeLeft,
+            Alignment.Center => safeLeft + (safeWidth - logoWidth) / 2f,
+            Alignment.Right => safeLeft + safeWidth - logoWidth,
+            _ => safeLeft + (safeWidth - logoWidth) / 2f
+        };
+    }
+
+    /// <summary>
+    /// Calculates the vertical Y coordinate for logo positioning based on position within safe area.
+    /// Supports top, center, and bottom positioning within the safe drawing area.
+    /// </summary>
+    /// <param name="position">Vertical position (Top, Center, Bottom).</param>
+    /// <param name="safeTop">Top boundary of safe area.</param>
+    /// <param name="safeHeight">Height of safe area.</param>
+    /// <param name="logoHeight">Height of logo.</param>
+    /// <returns>Y coordinate for logo positioning.</returns>
+    // MARK: CalculateLogoY
+    private float CalculateLogoY(Position position, float safeTop, float safeHeight, float logoHeight)
+    {
+        return position switch
+        {
+            Position.Top => safeTop,
+            Position.Center => safeTop + (safeHeight - logoHeight) / 2f,
+            Position.Bottom => safeTop + safeHeight - logoHeight,
+            _ => safeTop + (safeHeight - logoHeight) / 2f
+        };
+    }
+
+    /// <summary>
+    /// Converts Alignment enum to corresponding SKTextAlign value for text rendering.
+    /// </summary>
+    /// <param name="alignment">Alignment enum value.</param>
+    /// <returns>Corresponding SKTextAlign value.</returns>
+    // MARK: GetSKTextAlign
+    private SKTextAlign GetSKTextAlign(Alignment alignment)
+    {
+        return alignment switch
+        {
+            Alignment.Left => SKTextAlign.Left,
+            Alignment.Center => SKTextAlign.Center,
+            Alignment.Right => SKTextAlign.Right,
+            _ => SKTextAlign.Center
+        };
     }
 }

@@ -55,7 +55,7 @@ public class NumeralPosterGenerator : BasePosterGenerator, IPosterGenerator
             canvas.DrawBitmap(original, 0, 0, originalPaint);
 
             // Apply background color overlay for better text visibility
-            var overlayColor = ColorUtils.ParseHexColor(config.BackgroundColor);
+            var overlayColor = ColorUtils.ParseHexColor(config.OverlayColor);
             using var overlayPaint = new SKPaint
             {
                 Color = overlayColor,
@@ -104,7 +104,7 @@ public class NumeralPosterGenerator : BasePosterGenerator, IPosterGenerator
             // Draw episode title if enabled - CENTERED OVER THE NUMERAL
             if (config.ShowTitle)
             {
-                TextUtils.DrawTitle(canvas, episodeTitle, TextPosition.Center, TextAlignment.Center, config, width, height);
+                TextUtils.DrawTitle(canvas, episodeTitle, Position.Center, Alignment.Center, config, width, height);
             }
 
             // Encode and save the final image

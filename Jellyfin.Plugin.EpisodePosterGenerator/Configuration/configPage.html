@@ -13,30 +13,28 @@
                         <h2 class="sectionTitle">Episode Poster Generator</h2>
                     </div>
 
-                    <br>
-
-                    <div class="sectionTitleContainer flex align-items-center">
-                        <h3 class="sectionTitle">Plugin</h3>
+                    <div class="sectionTitleContainer">
+                        <h3 class="sectionTitle" style="width: 100%; border-bottom: 1px solid #555; padding-bottom: 0.5em; margin-bottom: 1em;">Plugin</h3>
                     </div>
-
-                    <hr>
-
-                    <br>
 
                     <label class="checkboxContainer">
-                        <input is="emby-checkbox" type="checkbox" id="chkEnablePlugin" />
-                        <span>Active</span>
+                        <input is="emby-checkbox" type="checkbox" id="chkEnableProvider" />
+                        <span>Provider</span>
                     </label>
 
-                    <br>
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="chkEnableTask" />
+                        <span>Task</span>
+                    </label>
 
-                    <div class="sectionTitleContainer flex align-items-center">
-                        <h3 class="sectionTitle">Poster</h3>
+                    <div class="sectionTitleContainer">
+                        <h3 class="sectionTitle" style="width: 100%; border-bottom: 1px solid #555; padding-bottom: 0.5em; margin-bottom: 1em;">Poster</h3>
                     </div>
 
-                    <hr>
-
-                    <br>
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="chkExtractPoster" />
+                        <span>Extract Poster from Episode</span>
+                    </label>
 
                     <div class="inputContainer">
                         <label for="selectPosterStyle">Style:</label>
@@ -48,12 +46,43 @@
                         </select>
                     </div>
 
+                    <div class="inputContainer" id="selectCutoutBorderContainer">
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="chkCutoutBorder" />
+                            <span>Add Cutout Text Border</span>
+                        </label>
+                    </div>
+    
                     <div class="inputContainer" id="selectCutoutContainer">
                         <label for="selectCutoutType">Type:</label>
                         <select is="emby-select" id="selectCutoutType">
                             <option value="Code">Code</option>
                             <option value="Text">Text</option>
                         </select>
+                    </div>
+
+                    <div class="inputContainer" id="selectLogoAlignmentContainer">
+                        <label for="selectLogoAlignment">Logo Alignment:</label>
+                        <select is="emby-select" id="selectLogoAlignment">
+                            <option value="Left">Left</option>
+                            <option value="Center">Center</option>
+                            <option value="Right">Right</option>
+                        </select>
+                    </div>
+
+                    <div class="inputContainer" id="selectLogoPositionContainer">
+                        <label for="selectLogoPosition">Logo Position:</label>
+                        <select is="emby-select" id="selectLogoPosition">
+                            <option value="Top">Top</option>
+                            <option value="Center">Center</option>
+                            <option value="Bottom">Bottom</option>
+                        </select>
+                    </div> 
+
+                    <div class="inputContainer" id="selectLogoSizeContainer">
+                        <label for="txtPosterSafeArea">Logo Height:</label>
+                        <input is="emby-input" type="number" id="txtLogoHeight" min="1.0" max="100.0" />
+                        <div class="fieldDescription">Logo height as a percentage of the poster height.</div>
                     </div>
 
                     <br>
@@ -79,15 +108,16 @@
                         <div class="fieldDescription">Percentage of veritcal and horizontal space that should be preserved around the edges as a safe area.</div>
                     </div>
 
-                    <br>
-
-                    <div class="sectionTitleContainer flex align-items-center">
-                        <h3 class="sectionTitle">Episode Information</h3>
+                    <div class="sectionTitleContainer">
+                        <h3 class="sectionTitle" style="width: 100%; border-bottom: 1px solid #555; padding-bottom: 0.5em; margin-bottom: 1em;">Episode Information</h3>
                     </div>
 
-                    <hr>
-
-                    <br>
+                    <div class="inputContainer" id="showEpisodeContainer">
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="chkShowEpisode" />
+                            <span>Show Episode</span>
+                        </label>
+                    </div>
 
                     <div class="inputContainer" id="episodeFontFamilyContainer">
                         <label for="selectEpisodeFontFamily">Font:</label>
@@ -148,15 +178,9 @@
                         <div class="fieldDescription">Hex color code for episode number text (e.g., #FFFFFF for white).</div>
                     </div>
 
-                    <br>
-
-                    <div class="sectionTitleContainer flex align-items-center">
-                        <h3 class="sectionTitle">Episode Title</h3>
+                    <div class="sectionTitleContainer">
+                        <h3 class="sectionTitle" style="width: 100%; border-bottom: 1px solid #555; padding-bottom: 0.5em; margin-bottom: 1em;">Episode Title</h3>
                     </div>
-
-                    <hr>
-
-                    <br>
 
                     <div class="inputContainer" id="showTitleContainer">
                         <label class="checkboxContainer">
@@ -224,22 +248,14 @@
                         <div class="fieldDescription">Hex color code for title text (e.g., #FFFFFF for white).</div>
                     </div>
 
-                    <br>
-
-                    <hr>
-
-                    <br>
-
-                    <div class="inputContainer" id="backgroundColorContainer">
-                        <label for="txtBackgroundColor">Background Color:</label>
-                        <input is="emby-input" type="text" id="txtBackgroundColor" placeholder="#66000000" />
-                        <div class="fieldDescription">ARGB hex for background overlay (e.g., #66000000 for semi-transparent black).</div>
+                    <div class="sectionTitleContainer">
+                        <h3 class="sectionTitle" style="width: 100%; border-bottom: 1px solid #555; padding-bottom: 0.5em; margin-bottom: 1em;">Overlay</h3>
                     </div>
 
-                    <div class="inputContainer" id="overlayTintContainer">
-                        <label for="txtOverlayTint">Overlay Tint:</label>
-                        <input is="emby-input" type="text" id="txtOverlayTint" placeholder="#00000000" />
-                        <div class="fieldDescription">ARGB hex for image tint overlay (e.g., #33000000 for subtle darkening).</div>
+                    <div class="inputContainer" id="overlayColorContainer">
+                        <label for="txtOverlayColor">Overlay Color:</label>
+                        <input is="emby-input" type="text" id="txtOverlayColor" placeholder="#66000000" />
+                        <div class="fieldDescription">ARGB hex for background overlay (e.g., #66000000 for semi-transparent black).</div>
                     </div>
 
                     <br>
@@ -259,38 +275,65 @@
             pluginId: 'b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e',
 
             updateVisibility: function() {
-                var posterStyle = document.getElementById('selectPosterStyle').value;
-                var isStandard = posterStyle === 'Standard';
-                var isNumeral = posterStyle === 'Numeral';
-                var isCutout = posterStyle === 'Cutout';
-                var isLogo = posterStyle === 'Logo'
-                var showTitle = document.getElementById('chkShowTitle').checked;
+                // Get current state from the form
+                const posterStyle = document.getElementById('selectPosterStyle').value;
+                const isShowEpisodeChecked = document.getElementById('chkShowEpisode').checked;
+                const isShowTitleChecked = document.getElementById('chkShowTitle').checked;
 
-                // Title-related visibility
-                document.getElementById('showTitleContainer').style.display = 'block';
-                document.getElementById('titleFontFamilyContainer').style.display = showTitle ? 'block' : 'none';
-                document.getElementById('titleFontStyleContainer').style.display = showTitle ? 'block' : 'none';
-                document.getElementById('titleFontSizeContainer').style.display = showTitle ? 'block' : 'none';
-                document.getElementById('titleFontColorContainer').style.display = showTitle ? 'block' : 'none';
+                // Define conditions based on poster style
+                const isStandard = posterStyle === 'Standard';
+                const isCutout = posterStyle === 'Cutout';
+                const isLogo = posterStyle === 'Logo';
 
-                // Style-specific
+                // --- Poster Style Specific Options ---
+                document.getElementById('selectCutoutBorderContainer').style.display = isCutout ? 'block' : 'none';
                 document.getElementById('selectCutoutContainer').style.display = isCutout ? 'block' : 'none';
-                document.getElementById('episodeFontSizeContainer').style.display = (isStandard || isNumeral || isLogo) ? 'block' : 'none';
-                document.getElementById('episodeFontColorContainer').style.display = (isStandard || isNumeral || isLogo) ? 'block' : 'none';
-                document.getElementById('backgroundColorContainer').style.display = (isNumeral || isCutout || isLogo) ? 'block' : 'none';
-                document.getElementById('overlayTintContainer').style.display = isStandard ? 'block' : 'none';
+                document.getElementById('selectLogoAlignmentContainer').style.display = isLogo ? 'block' : 'none';
+                document.getElementById('selectLogoPositionContainer').style.display = isLogo ? 'block' : 'none';
+                document.getElementById('selectLogoSizeContainer').style.display = isLogo ? 'block' : 'none';
+
+                // --- Episode Information Section ---
+                // The "Show Episode" checkbox should only be visible for styles where it's a valid option.
+                const canShowEpisodeSection = isStandard || isLogo;
+                document.getElementById('showEpisodeContainer').style.display = canShowEpisodeSection ? 'block' : 'none';
+
+                // The detailed episode options should only show if the section is visible AND the box is checked.
+                const showEpisodeOptions = canShowEpisodeSection && isShowEpisodeChecked;
+                document.getElementById('episodeFontFamilyContainer').style.display = showEpisodeOptions ? 'block' : 'none';
+                document.getElementById('episodeFontStyleContainer').style.display = showEpisodeOptions ? 'block' : 'none';
+                document.getElementById('episodeFontSizeContainer').style.display = showEpisodeOptions ? 'block' : 'none';
+                document.getElementById('episodeFontColorContainer').style.display = showEpisodeOptions ? 'block' : 'none';
+
+                // --- Episode Title Section ---
+                // The "Show Title" checkbox is always visible. We only toggle the detailed options below it.
+                const showTitleOptions = isShowTitleChecked;
+                document.getElementById('titleFontFamilyContainer').style.display = showTitleOptions ? 'block' : 'none';
+                document.getElementById('titleFontStyleContainer').style.display = showTitleOptions ? 'block' : 'none';
+                document.getElementById('titleFontSizeContainer').style.display = showTitleOptions ? 'block' : 'none';
+                document.getElementById('titleFontColorContainer').style.display = showTitleOptions ? 'block' : 'none';
             },
 
             loadConfig: function () {
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(this.pluginId).then(function (config) {
-                    document.getElementById('chkEnablePlugin').checked = config.EnablePlugin || false;
+                    document.getElementById('chkEnableProvider').checked = config.EnableProvider || false;
+                    document.getElementById('chkEnableTask').checked = config.EnableTask || false;
+
                     document.getElementById('selectPosterStyle').value = config.PosterStyle || 'Standard';
+
+                    document.getElementById('chkCutoutBorder').value = config.CutoutBorder || false;
                     document.getElementById('selectCutoutType').value = config.CutoutType || 'Text';
+
+                    document.getElementById('selectLogoAlignment').value = config.LogoAlignment || 'Text';
+                    document.getElementById('selectLogoPosition').value = config.LogoPosition || 'Text';
+                    document.getElementById('txtLogoHeight').value = config.LogoHeight || 25.0;
+
+                    document.getElementById('chkExtractPoster').checked = config.ExtractPoster || false;
                     document.getElementById('selectPosterFill').value = config.PosterFill || 'Original';
                     document.getElementById('txtPosterDimensionRatio').value = config.PosterDimensionRatio || '16:9';
                     document.getElementById('txtPosterSafeArea').value = config.PosterSafeArea || 5.0;
 
+                    document.getElementById('chkShowEpisode').checked = config.ShowEpisode !== false;
                     document.getElementById('selectEpisodeFontFamily').value = config.EpisodeFontFamily || 'Arial';
                     document.getElementById('selectEpisodeFontStyle').value = config.EpisodeFontStyle || 'Bold';
                     document.getElementById('txtEpisodeFontSize').value = config.EpisodeFontSize || 10.0;
@@ -302,8 +345,7 @@
                     document.getElementById('txtTitleFontSize').value = config.TitleFontSize || 7.0;
                     document.getElementById('txtTitleFontColor').value = config.TitleFontColor || '#FFFFFF';
 
-                    document.getElementById('txtBackgroundColor').value = config.BackgroundColor || '#66000000';
-                    document.getElementById('txtOverlayTint').value = config.OverlayTint || '#00000000';
+                    document.getElementById('txtOverlayColor').value = config.OverlayColor || '#66000000';
 
                     EpisodePosterGeneratorConfig.updateVisibility();
                     Dashboard.hideLoadingMsg();
@@ -317,14 +359,24 @@
             saveConfig: function () {
                 Dashboard.showLoadingMsg();
                 var config = {
-                    EnablePlugin: document.getElementById('chkEnablePlugin').checked,
+                    EnableProvider: document.getElementById('chkEnableProvider').checked,
+                    EnableTask: document.getElementById('chkEnableTask').checked,
 
+                    ExtractPoster: document.getElementById('chkExtractPoster').checked,
                     PosterFill: document.getElementById('selectPosterFill').value,
                     PosterStyle: document.getElementById('selectPosterStyle').value,
+
+                    CutoutBorder: document.getElementById('chkCutoutBorder').checked,
                     CutoutType: document.getElementById('selectCutoutType').value,
+
+                    LogoAlignment: document.getElementById('selectLogoAlignment').value,
+                    LogoPosition: document.getElementById('selectLogoPosition').value,
+                    LogoHeight: document.getElementById('txtLogoHeight').value,
+
                     PosterDimensionRatio: document.getElementById('txtPosterDimensionRatio').value,
                     PosterSafeArea: parseFloat(document.getElementById('txtPosterSafeArea').value),
 
+                    ShowEpisode: document.getElementById('chkShowEpisode').checked,
                     EpisodeFontFamily: document.getElementById('selectEpisodeFontFamily').value,
                     EpisodeFontStyle: document.getElementById('selectEpisodeFontStyle').value,
                     EpisodeFontSize: parseFloat(document.getElementById('txtEpisodeFontSize').value),
@@ -336,8 +388,7 @@
                     TitleFontSize: parseFloat(document.getElementById('txtTitleFontSize').value),
                     TitleFontColor: document.getElementById('txtTitleFontColor').value,
 
-                    BackgroundColor: document.getElementById('txtBackgroundColor').value,
-                    OverlayTint: document.getElementById('txtOverlayTint').value
+                    OverlayColor: document.getElementById('txtOverlayColor').value,
                 };
 
                 ApiClient.updatePluginConfiguration(this.pluginId, config).then(function (result) {
@@ -346,8 +397,9 @@
             }
         };
 
+        // --- Event Listeners ---
         document.getElementById('EpisodePosterGeneratorConfigPage').addEventListener('pageshow', function () {
-            EpisodePosterGeneratorConfig.updateVisibility();
+            // No need to call updateVisibility here, as loadConfig will call it.
             EpisodePosterGeneratorConfig.loadConfig();
         });
 
@@ -356,7 +408,12 @@
             EpisodePosterGeneratorConfig.saveConfig();
         });
 
+        // Add listeners for all controls that change visibility of other elements
         document.getElementById('selectPosterStyle').addEventListener('change', function () {
+            EpisodePosterGeneratorConfig.updateVisibility();
+        });
+
+        document.getElementById('chkShowEpisode').addEventListener('change', function () {
             EpisodePosterGeneratorConfig.updateVisibility();
         });
 
