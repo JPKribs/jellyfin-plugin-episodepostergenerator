@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Screenshots/Logo.png",
     "versions": [
       {
+        "version": "10.10.6",
+        "changelog": "**All Configurations will need to be redone.**\r\n\r\n* Track processed Episodes for Scheduled Tasks\r\n* Choose to not extract an image if you want to just use colors\r\n* Allow Logo positioning\r\n* Allow episode images on all poster types if wanted\r\n* Allow skipping frame extraction for all poster types\r\n* Prevent re-processing previously processed posters\r\n* Updating the poster design will make re-enable processing for posters that used the previous design\r\n* Proper dependency injection\r\n* SQL DB for tracking episode changes - Should track manual poster updates as well.\r\n* Better, inline documentation and summaries",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.6/jellyfin-plugin-episodepostergenerator-10.10.6.zip",
+        "checksum": "eaf8583061634fbccc6547f64faa461c",
+        "timestamp": "2025-06-15T19:53:05Z"
+      },
+      {
         "version": "10.10.5",
         "changelog": "* Utilize HWA if available.\r\n* Add a border on Cutout poster to make them more visible & pop\r\n* More efficient frame extraction (~70% quicker!).\r\n* HWA frame extraction (~95% quicker!!!).\r\n* Cleanup and move some more items out of \r\n* Updated screenshots with new Cutout appearance.",
         "targetAbi": "10.10.7.0",
