@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Screenshots/Logo.png",
     "versions": [
       {
+        "version": "10.10.7",
+        "changelog": "**Configuration Page Revamp**\r\n- Fix hiding policies to show items \r\n- New custom CSS\r\n- Spacing & generic cleanup\r\n- New nested section for poster-specific setting\r\n- Color Picker\r\n- Transparency Picker for Colors",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.7/jellyfin-plugin-episodepostergenerator-10.10.7.zip",
+        "checksum": "9c8f1f5a1c535633928f5933ee5d6ef5",
+        "timestamp": "2025-06-16T05:31:11Z"
+      },
+      {
         "version": "10.10.6",
         "changelog": "**All Configurations will need to be redone.**\r\n\r\n* Track processed Episodes for Scheduled Tasks\r\n* Choose to not extract an image if you want to just use colors\r\n* Allow Logo positioning\r\n* Allow episode images on all poster types if wanted\r\n* Allow skipping frame extraction for all poster types\r\n* Prevent re-processing previously processed posters\r\n* Updating the poster design will make re-enable processing for posters that used the previous design\r\n* Proper dependency injection\r\n* SQL DB for tracking episode changes - Should track manual poster updates as well.\r\n* Better, inline documentation and summaries",
         "targetAbi": "10.10.7.0",
