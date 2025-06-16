@@ -10,118 +10,142 @@
             <form id="EpisodePosterGeneratorConfigForm">
                 <div class="verticalSection verticalSection-extrabottompadding">
                     <div class="sectionTitleContainer flex align-items-center">
-                        <h2 class="sectionTitle">Episode Poster Generator</h2>
+                        <h1 class="sectionTitle">Episode Poster Generator</h1>
                     </div>
 
+                    <!-- Plugin Settings -->
                     <div class="sectionTitleContainer">
-                        <h3 class="sectionTitle" style="width: 100%; border-bottom: 1px solid #555; padding-bottom: 0.5em; margin-bottom: 1em;">Plugin</h3>
+                        <h2 class="sectionTitle">Plugin</h2>
                     </div>
 
-                    <label class="checkboxContainer">
-                        <input is="emby-checkbox" type="checkbox" id="chkEnableProvider" />
-                        <span>Provider</span>
-                    </label>
+                    <div class="inputContainer">
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="chkEnableProvider" data-config="EnableProvider" />
+                            <span>Enable Provider</span>
+                        </label>
+                        <div class="fieldDescription">Enable the plugin as a metadata provider for episode posters.</div>
+                    </div>
 
-                    <label class="checkboxContainer">
-                        <input is="emby-checkbox" type="checkbox" id="chkEnableTask" />
-                        <span>Task</span>
-                    </label>
+                    <div class="inputContainer">
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="chkEnableTask" data-config="EnableTask" />
+                            <span>Enable Scheduled Task</span>
+                        </label>
+                        <div class="fieldDescription">Enable the plugin as a scheduled task for batch poster generation.</div>
+                    </div>
 
+                    <!-- Poster Settings -->
                     <div class="sectionTitleContainer">
-                        <h3 class="sectionTitle" style="width: 100%; border-bottom: 1px solid #555; padding-bottom: 0.5em; margin-bottom: 1em;">Poster</h3>
+                        <h2 class="sectionTitle">Poster</h2>
                     </div>
 
-                    <label class="checkboxContainer">
-                        <input is="emby-checkbox" type="checkbox" id="chkExtractPoster" />
-                        <span>Extract Poster from Episode</span>
-                    </label>
+                    <div class="inputContainer">
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="chkExtractPoster" data-config="ExtractPoster" />
+                            <span>Enable Poster Episode</span>
+                        </label>
+                        <div class="fieldDescription">Extract the poster image from the episode.</div>
+                    </div>
 
                     <div class="inputContainer">
                         <label for="selectPosterStyle">Style:</label>
-                        <select is="emby-select" id="selectPosterStyle">
+                        <select is="emby-select" id="selectPosterStyle" data-config="PosterStyle">
                             <option value="Standard">Standard</option>
                             <option value="Cutout">Cutout</option>
                             <option value="Logo">Logo</option>
                             <option value="Numeral">Numeral</option>
                         </select>
+                        <div class="fieldDescription">Choose the poster generation style and layout.</div>
                     </div>
 
-                    <div class="inputContainer" id="selectCutoutBorderContainer">
-                        <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkCutoutBorder" />
-                            <span>Add Cutout Text Border</span>
-                        </label>
-                    </div>
-    
-                    <div class="inputContainer" id="selectCutoutContainer">
-                        <label for="selectCutoutType">Type:</label>
-                        <select is="emby-select" id="selectCutoutType">
-                            <option value="Code">Code</option>
-                            <option value="Text">Text</option>
-                        </select>
-                    </div>
+                    <!-- Cutout Style Options -->
+                    <div class="cutout-logo-group" id="cutoutOptions" data-poster-styles="Cutout">
+                        <div class="inputContainer">
+                            <label class="checkboxContainer">
+                                <input is="emby-checkbox" type="checkbox" id="chkCutoutBorder" data-config="CutoutBorder" />
+                                <span>Enable Cutout Text Border</span>
+                            </label>
+                            <div class="fieldDescription">Add a contrasting border around the cutout text for better visibility.</div>
+                        </div>
 
-                    <div class="inputContainer" id="selectLogoAlignmentContainer">
-                        <label for="selectLogoAlignment">Logo Alignment:</label>
-                        <select is="emby-select" id="selectLogoAlignment">
-                            <option value="Left">Left</option>
-                            <option value="Center">Center</option>
-                            <option value="Right">Right</option>
-                        </select>
+                        <div class="inputContainer">
+                            <label for="selectCutoutType">Type:</label>
+                            <select is="emby-select" id="selectCutoutType" data-config="CutoutType">
+                                <option value="Code">Code</option>
+                                <option value="Text">Text</option>
+                            </select>
+                            <div class="fieldDescription">Choose between episode code (S01E01) or text (ONE) for cutout display.</div>
+                        </div>
                     </div>
 
-                    <div class="inputContainer" id="selectLogoPositionContainer">
-                        <label for="selectLogoPosition">Logo Position:</label>
-                        <select is="emby-select" id="selectLogoPosition">
-                            <option value="Top">Top</option>
-                            <option value="Center">Center</option>
-                            <option value="Bottom">Bottom</option>
-                        </select>
-                    </div> 
+                    <!-- Logo Style Options -->
+                    <div class="cutout-logo-group" id="logoOptions" data-poster-styles="Logo">
+                        <div class="inputContainer">
+                            <label for="selectLogoAlignment">Logo Alignment:</label>
+                            <select is="emby-select" id="selectLogoAlignment" data-config="LogoAlignment">
+                                <option value="Left">Left</option>
+                                <option value="Center">Center</option>
+                                <option value="Right">Right</option>
+                            </select>
+                            <div class="fieldDescription">Horizontal alignment of the series logo on the poster.</div>
+                        </div>
 
-                    <div class="inputContainer" id="selectLogoSizeContainer">
-                        <label for="txtPosterSafeArea">Logo Height:</label>
-                        <input is="emby-input" type="number" id="txtLogoHeight" min="1.0" max="100.0" />
-                        <div class="fieldDescription">Logo height as a percentage of the poster height.</div>
+                        <div class="inputContainer">
+                            <label for="selectLogoPosition">Logo Position:</label>
+                            <select is="emby-select" id="selectLogoPosition" data-config="LogoPosition">
+                                <option value="Top">Top</option>
+                                <option value="Center">Center</option>
+                                <option value="Bottom">Bottom</option>
+                            </select>
+                            <div class="fieldDescription">Vertical position of the series logo on the poster.</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label for="txtLogoHeight">Logo Height:</label>
+                            <input is="emby-input" type="number" id="txtLogoHeight" min="1.0" max="100.0" data-config="LogoHeight" data-type="number" />
+                            <div class="fieldDescription">Logo height as a percentage of the poster height (1-100%).</div>
+                        </div>
                     </div>
 
-                    <br>
-
+                    <!-- General Poster Options -->
                     <div class="inputContainer">
                         <label for="selectPosterFill">Fill Strategy:</label>
-                        <select is="emby-select" id="selectPosterFill">
+                        <select is="emby-select" id="selectPosterFill" data-config="PosterFill">
                             <option value="Original">Original</option>
                             <option value="Fill">Fill</option>
                             <option value="Fit">Fit</option>
                         </select>
+                        <div class="fieldDescription">How the source image should be resized to fit the poster dimensions.</div>
                     </div>
 
                     <div class="inputContainer">
                         <label for="txtPosterDimensionRatio">Aspect Ratio:</label>
-                        <input is="emby-input" type="text" id="txtPosterDimensionRatio" placeholder="16:9" />
+                        <input is="emby-input" type="text" id="txtPosterDimensionRatio" placeholder="16:9" data-config="PosterDimensionRatio" />
                         <div class="fieldDescription">Aspect ratio for the poster (e.g., 16:9, 3:2, 4:3).</div>
                     </div>
 
                     <div class="inputContainer">
                         <label for="txtPosterSafeArea">Safe Area:</label>
-                        <input is="emby-input" type="number" id="txtPosterSafeArea" min="1.0" max="100.0" />
-                        <div class="fieldDescription">Percentage of veritcal and horizontal space that should be preserved around the edges as a safe area.</div>
+                        <input is="emby-input" type="number" id="txtPosterSafeArea" min="1.0" max="100.0" data-config="PosterSafeArea" data-type="number" />
+                        <div class="fieldDescription">Percentage of vertical and horizontal space preserved around edges as safe area (1-100%).</div>
                     </div>
 
+                    <!-- Episode Information -->
                     <div class="sectionTitleContainer">
-                        <h3 class="sectionTitle" style="width: 100%; border-bottom: 1px solid #555; padding-bottom: 0.5em; margin-bottom: 1em;">Episode Information</h3>
+                        <h2 class="sectionTitle">Episode Information</h2>
                     </div>
 
-                    <div class="inputContainer" id="showEpisodeContainer">
+                    <div class="inputContainer" id="showEpisodeContainer" data-hide-for-styles="Cutout,Numeral">
                         <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkShowEpisode" />
+                            <input is="emby-checkbox" type="checkbox" id="chkShowEpisode" data-config="ShowEpisode" />
                             <span>Show Episode</span>
                         </label>
+                        <div class="fieldDescription">Display season and episode information on the poster.</div>
                     </div>
 
-                    <div class="inputContainer" id="episodeFontFamilyContainer">
+                    <div class="inputContainer">
                         <label for="selectEpisodeFontFamily">Font:</label>
-                        <select is="emby-select" id="selectEpisodeFontFamily">
+                        <select is="emby-select" id="selectEpisodeFontFamily" data-config="EpisodeFontFamily">
                             <option value="Arial">Arial</option>
                             <option value="Arial Black">Arial Black</option>
                             <option value="Book Antiqua">Book Antiqua</option>
@@ -152,46 +176,53 @@
                             <option value="Trebuchet MS">Trebuchet MS</option>
                             <option value="Verdana">Verdana</option>
                         </select>
-                        <div class="fieldDescription">Font for the episode number/season info.</div>
+                        <div class="fieldDescription">Font family for the episode number and season information text.</div>
                     </div>
 
-                    <div class="inputContainer" id="episodeFontStyleContainer">
+                    <div class="inputContainer">
                         <label for="selectEpisodeFontStyle">Font Style:</label>
-                        <select is="emby-select" id="selectEpisodeFontStyle">
+                        <select is="emby-select" id="selectEpisodeFontStyle" data-config="EpisodeFontStyle">
                             <option value="Normal">Normal</option>
                             <option value="Bold">Bold</option>
                             <option value="Italic">Italic</option>
                             <option value="Bold Italic">Bold Italic</option>
                         </select>
-                        <div class="fieldDescription">Font style for the episode number/season info.</div>
+                        <div class="fieldDescription">Font style for the episode number and season information text.</div>
                     </div>
 
-                    <div class="inputContainer" id="episodeFontSizeContainer">
+                    <div class="inputContainer" data-hide-for-styles="Cutout">
                         <label for="txtEpisodeFontSize">Font Size:</label>
-                        <input is="emby-input" type="number" id="txtEpisodeFontSize" min="1.0" max="100.0" />
-                        <div class="fieldDescription">Font size for the episode number/season info as a percentage of the poster height.</div>
+                        <input is="emby-input" type="number" id="txtEpisodeFontSize" min="1.0" max="100.0" data-config="EpisodeFontSize" data-type="number" />
+                        <div class="fieldDescription">Font size for episode information as a percentage of poster height (1-100%).</div>
                     </div>
 
-                    <div class="inputContainer" id="episodeFontColorContainer">
+                    <div class="inputContainer" data-hide-for-styles="Cutout">
                         <label for="txtEpisodeFontColor">Font Color:</label>
-                        <input is="emby-input" type="text" id="txtEpisodeFontColor" placeholder="#FFFFFF" />
-                        <div class="fieldDescription">Hex color code for episode number text (e.g., #FFFFFF for white).</div>
+                        <div class="color-control-group">
+                            <input type="color" id="colorEpisodeFontColor" class="color-picker" />
+                            <input type="range" id="alphaEpisodeFontColor" class="alpha-slider" min="0" max="255" value="255" />
+                            <span class="alpha-label">255</span>
+                            <input is="emby-input" type="text" id="txtEpisodeFontColor" placeholder="#FFFFFFFF" data-config="EpisodeFontColor" class="hex-input" />
+                        </div>
+                        <div class="fieldDescription">ARGB hex color code for episode number text (e.g., #FFFFFFFF for white).</div>
                     </div>
 
+                    <!-- Episode Title -->
                     <div class="sectionTitleContainer">
-                        <h3 class="sectionTitle" style="width: 100%; border-bottom: 1px solid #555; padding-bottom: 0.5em; margin-bottom: 1em;">Episode Title</h3>
+                        <h2 class="sectionTitle">Episode Title</h2>
                     </div>
 
-                    <div class="inputContainer" id="showTitleContainer">
+                    <div class="inputContainer">
                         <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkShowTitle" />
+                            <input is="emby-checkbox" type="checkbox" id="chkShowTitle" data-config="ShowTitle" />
                             <span>Show Title</span>
                         </label>
+                        <div class="fieldDescription">Display the episode title text on the poster.</div>
                     </div>
 
-                    <div class="inputContainer" id="titleFontFamilyContainer">
+                    <div class="inputContainer" data-depends-on="chkShowTitle">
                         <label for="selectTitleFontFamily">Font:</label>
-                        <select is="emby-select" id="selectTitleFontFamily">
+                        <select is="emby-select" id="selectTitleFontFamily" data-config="TitleFontFamily">
                             <option value="Arial">Arial</option>
                             <option value="Arial Black">Arial Black</option>
                             <option value="Book Antiqua">Book Antiqua</option>
@@ -222,45 +253,54 @@
                             <option value="Trebuchet MS">Trebuchet MS</option>
                             <option value="Verdana">Verdana</option>
                         </select>
-                        <div class="fieldDescription">Font for the episode title.</div>
+                        <div class="fieldDescription">Font family for the episode title text.</div>
                     </div>
 
-                    <div class="inputContainer" id="titleFontStyleContainer">
+                    <div class="inputContainer" data-depends-on="chkShowTitle">
                         <label for="selectTitleFontStyle">Font Style:</label>
-                        <select is="emby-select" id="selectTitleFontStyle">
+                        <select is="emby-select" id="selectTitleFontStyle" data-config="TitleFontStyle">
                             <option value="Normal">Normal</option>
                             <option value="Bold">Bold</option>
                             <option value="Italic">Italic</option>
                             <option value="Bold Italic">Bold Italic</option>
                         </select>
-                        <div class="fieldDescription">Font style for the episode title.</div>
+                        <div class="fieldDescription">Font style for the episode title text.</div>
                     </div>
 
-                    <div class="inputContainer" id="titleFontSizeContainer">
+                    <div class="inputContainer" data-depends-on="chkShowTitle">
                         <label for="txtTitleFontSize">Font Size:</label>
-                        <input is="emby-input" type="number" id="txtTitleFontSize" min="1.0" max="100.0" />
-                        <div class="fieldDescription">Font size for the episode title as a percentage of the poster height.</div>
+                        <input is="emby-input" type="number" id="txtTitleFontSize" min="1.0" max="100.0" data-config="TitleFontSize" data-type="number" />
+                        <div class="fieldDescription">Font size for episode title as a percentage of poster height (1-100%).</div>
                     </div>
 
-                    <div class="inputContainer" id="titleFontColorContainer">
+                    <div class="inputContainer" data-depends-on="chkShowTitle">
                         <label for="txtTitleFontColor">Font Color:</label>
-                        <input is="emby-input" type="text" id="txtTitleFontColor" placeholder="#FFFFFF" />
-                        <div class="fieldDescription">Hex color code for title text (e.g., #FFFFFF for white).</div>
+                        <div class="color-control-group">
+                            <input type="color" id="colorTitleFontColor" class="color-picker" />
+                            <input type="range" id="alphaTitleFontColor" class="alpha-slider" min="0" max="255" value="255" />
+                            <span class="alpha-label">255</span>
+                            <input is="emby-input" type="text" id="txtTitleFontColor" placeholder="#FFFFFFFF" data-config="TitleFontColor" class="hex-input" />
+                        </div>
+                        <div class="fieldDescription">ARGB hex color code for episode title text (e.g., #FFFFFFFF for white).</div>
                     </div>
 
+                    <!-- Overlay -->
                     <div class="sectionTitleContainer">
-                        <h3 class="sectionTitle" style="width: 100%; border-bottom: 1px solid #555; padding-bottom: 0.5em; margin-bottom: 1em;">Overlay</h3>
+                        <h2 class="sectionTitle">Overlay</h2>
                     </div>
 
-                    <div class="inputContainer" id="overlayColorContainer">
+                    <div class="inputContainer">
                         <label for="txtOverlayColor">Overlay Color:</label>
-                        <input is="emby-input" type="text" id="txtOverlayColor" placeholder="#66000000" />
-                        <div class="fieldDescription">ARGB hex for background overlay (e.g., #66000000 for semi-transparent black).</div>
+                        <div class="color-control-group">
+                            <input type="color" id="colorOverlayColor" class="color-picker" />
+                            <input type="range" id="alphaOverlayColor" class="alpha-slider" min="0" max="255" value="102" />
+                            <span class="alpha-label">102</span>
+                            <input is="emby-input" type="text" id="txtOverlayColor" placeholder="#66000000" data-config="OverlayColor" class="hex-input" />
+                        </div>
+                        <div class="fieldDescription">ARGB hex for background overlay color and transparency (e.g., #66000000 for semi-transparent black).</div>
                     </div>
 
-                    <br>
-
-                    <div>
+                    <div class="inputContainer">
                         <button is="emby-button" type="submit" data-theme="b" class="raised button-submit block">
                             <span>Save</span>
                         </button>
@@ -270,83 +310,121 @@
         </div>
     </div>
 
+    <style>
+        .sectionTitle {
+            width: 100%; 
+            border-bottom: 1px solid #555; 
+            padding-bottom: 0.5em; 
+            margin-bottom: 1em;
+        }
+
+        .cutout-logo-group {
+            margin-left: 1.5em;
+            margin-bottom: 2em;
+            padding-left: 1em;
+            border-left: 2px solid rgba(85, 85, 85, 0.5);
+        }
+
+        .color-control-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            padding: 8px;
+            border: 1px solid rgba(85, 85, 85, 0.3);
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        .color-picker {
+            width: 50px;
+            height: 40px;
+            border: 1px solid #555;
+            border-radius: 3px;
+            background: none;
+            cursor: pointer;
+        }
+        
+        .alpha-slider {
+            width: 80px;
+            height: 20px;
+        }
+        
+        .alpha-label {
+            min-width: 30px;
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        .hex-input {
+            flex: 1;
+            min-width: 120px;
+        }
+    </style>
+
     <script type="text/javascript">
         var EpisodePosterGeneratorConfig = {
             pluginId: 'b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e',
 
+            // MARK: updateVisibility
             updateVisibility: function() {
-                // Get current state from the form
                 const posterStyle = document.getElementById('selectPosterStyle').value;
-                const isShowEpisodeChecked = document.getElementById('chkShowEpisode').checked;
-                const isShowTitleChecked = document.getElementById('chkShowTitle').checked;
+                
+                // Handle poster style specific hiding (Logo and Cutout variables)
+                document.querySelectorAll('[data-poster-styles]').forEach(element => {
+                    const supportedStyles = element.getAttribute('data-poster-styles').split(',');
+                    const isVisible = supportedStyles.includes(posterStyle);
+                    element.style.display = isVisible ? 'block' : 'none';
+                });
 
-                // Define conditions based on poster style
-                const isStandard = posterStyle === 'Standard';
-                const isCutout = posterStyle === 'Cutout';
-                const isLogo = posterStyle === 'Logo';
+                // Handle styles that should be hidden for certain poster types
+                document.querySelectorAll('[data-hide-for-styles]').forEach(element => {
+                    const hiddenStyles = element.getAttribute('data-hide-for-styles').split(',');
+                    const shouldHide = hiddenStyles.includes(posterStyle);
+                    element.style.display = shouldHide ? 'none' : 'block';
+                });
 
-                // --- Poster Style Specific Options ---
-                document.getElementById('selectCutoutBorderContainer').style.display = isCutout ? 'block' : 'none';
-                document.getElementById('selectCutoutContainer').style.display = isCutout ? 'block' : 'none';
-                document.getElementById('selectLogoAlignmentContainer').style.display = isLogo ? 'block' : 'none';
-                document.getElementById('selectLogoPositionContainer').style.display = isLogo ? 'block' : 'none';
-                document.getElementById('selectLogoSizeContainer').style.display = isLogo ? 'block' : 'none';
+                // Handle ShowTitle dependency
+                document.querySelectorAll('[data-depends-on]').forEach(element => {
+                    const dependencyId = element.getAttribute('data-depends-on');
+                    const dependencyElement = document.getElementById(dependencyId);
+                    
+                    let isVisible = true;
+                    if (dependencyElement) {
+                        isVisible = dependencyElement.checked;
+                    }
+                    
+                    element.style.display = isVisible ? 'block' : 'none';
+                });
 
-                // --- Episode Information Section ---
-                // The "Show Episode" checkbox should only be visible for styles where it's a valid option.
-                const canShowEpisodeSection = isStandard || isLogo;
-                document.getElementById('showEpisodeContainer').style.display = canShowEpisodeSection ? 'block' : 'none';
-
-                // The detailed episode options should only show if the section is visible AND the box is checked.
-                const showEpisodeOptions = canShowEpisodeSection && isShowEpisodeChecked;
-                document.getElementById('episodeFontFamilyContainer').style.display = showEpisodeOptions ? 'block' : 'none';
-                document.getElementById('episodeFontStyleContainer').style.display = showEpisodeOptions ? 'block' : 'none';
-                document.getElementById('episodeFontSizeContainer').style.display = showEpisodeOptions ? 'block' : 'none';
-                document.getElementById('episodeFontColorContainer').style.display = showEpisodeOptions ? 'block' : 'none';
-
-                // --- Episode Title Section ---
-                // The "Show Title" checkbox is always visible. We only toggle the detailed options below it.
-                const showTitleOptions = isShowTitleChecked;
-                document.getElementById('titleFontFamilyContainer').style.display = showTitleOptions ? 'block' : 'none';
-                document.getElementById('titleFontStyleContainer').style.display = showTitleOptions ? 'block' : 'none';
-                document.getElementById('titleFontSizeContainer').style.display = showTitleOptions ? 'block' : 'none';
-                document.getElementById('titleFontColorContainer').style.display = showTitleOptions ? 'block' : 'none';
+                // For Cutout and Numeral styles, ensure ShowEpisode is always true
+                const showEpisodeCheckbox = document.getElementById('chkShowEpisode');
+                if (posterStyle === 'Cutout' || posterStyle === 'Numeral') {
+                    showEpisodeCheckbox.checked = true;
+                }
             },
 
+            // MARK: loadConfig
             loadConfig: function () {
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(this.pluginId).then(function (config) {
-                    document.getElementById('chkEnableProvider').checked = config.EnableProvider || false;
-                    document.getElementById('chkEnableTask').checked = config.EnableTask || false;
+                    // Use data attributes to automatically map config to form elements
+                    document.querySelectorAll('[data-config]').forEach(element => {
+                        const configKey = element.getAttribute('data-config');
+                        const configValue = config[configKey];
+                        
+                        if (element.type === 'checkbox') {
+                            element.checked = configValue !== false;
+                        } else if (element.getAttribute('data-type') === 'number') {
+                            element.value = configValue || 0;
+                        } else {
+                            element.value = configValue || '';
+                        }
+                    });
 
-                    document.getElementById('selectPosterStyle').value = config.PosterStyle || 'Standard';
-
-                    document.getElementById('chkCutoutBorder').value = config.CutoutBorder || false;
-                    document.getElementById('selectCutoutType').value = config.CutoutType || 'Text';
-
-                    document.getElementById('selectLogoAlignment').value = config.LogoAlignment || 'Text';
-                    document.getElementById('selectLogoPosition').value = config.LogoPosition || 'Text';
-                    document.getElementById('txtLogoHeight').value = config.LogoHeight || 25.0;
-
-                    document.getElementById('chkExtractPoster').checked = config.ExtractPoster || false;
-                    document.getElementById('selectPosterFill').value = config.PosterFill || 'Original';
-                    document.getElementById('txtPosterDimensionRatio').value = config.PosterDimensionRatio || '16:9';
-                    document.getElementById('txtPosterSafeArea').value = config.PosterSafeArea || 5.0;
-
-                    document.getElementById('chkShowEpisode').checked = config.ShowEpisode !== false;
-                    document.getElementById('selectEpisodeFontFamily').value = config.EpisodeFontFamily || 'Arial';
-                    document.getElementById('selectEpisodeFontStyle').value = config.EpisodeFontStyle || 'Bold';
-                    document.getElementById('txtEpisodeFontSize').value = config.EpisodeFontSize || 10.0;
-                    document.getElementById('txtEpisodeFontColor').value = config.EpisodeFontColor || '#FFFFFF';
-
-                    document.getElementById('chkShowTitle').checked = config.ShowTitle !== false;
-                    document.getElementById('selectTitleFontFamily').value = config.TitleFontFamily || 'Arial';
-                    document.getElementById('selectTitleFontStyle').value = config.TitleFontStyle || 'Bold';
-                    document.getElementById('txtTitleFontSize').value = config.TitleFontSize || 7.0;
-                    document.getElementById('txtTitleFontColor').value = config.TitleFontColor || '#FFFFFF';
-
-                    document.getElementById('txtOverlayColor').value = config.OverlayColor || '#66000000';
-
+                    // Handle color pickers and alpha sliders
+                    EpisodePosterGeneratorConfig.initializeColorControls();
+                    
                     EpisodePosterGeneratorConfig.updateVisibility();
                     Dashboard.hideLoadingMsg();
                 }).catch(function (error) {
@@ -356,50 +434,126 @@
                 });
             },
 
+            // MARK: saveConfig
             saveConfig: function () {
                 Dashboard.showLoadingMsg();
-                var config = {
-                    EnableProvider: document.getElementById('chkEnableProvider').checked,
-                    EnableTask: document.getElementById('chkEnableTask').checked,
-
-                    ExtractPoster: document.getElementById('chkExtractPoster').checked,
-                    PosterFill: document.getElementById('selectPosterFill').value,
-                    PosterStyle: document.getElementById('selectPosterStyle').value,
-
-                    CutoutBorder: document.getElementById('chkCutoutBorder').checked,
-                    CutoutType: document.getElementById('selectCutoutType').value,
-
-                    LogoAlignment: document.getElementById('selectLogoAlignment').value,
-                    LogoPosition: document.getElementById('selectLogoPosition').value,
-                    LogoHeight: document.getElementById('txtLogoHeight').value,
-
-                    PosterDimensionRatio: document.getElementById('txtPosterDimensionRatio').value,
-                    PosterSafeArea: parseFloat(document.getElementById('txtPosterSafeArea').value),
-
-                    ShowEpisode: document.getElementById('chkShowEpisode').checked,
-                    EpisodeFontFamily: document.getElementById('selectEpisodeFontFamily').value,
-                    EpisodeFontStyle: document.getElementById('selectEpisodeFontStyle').value,
-                    EpisodeFontSize: parseFloat(document.getElementById('txtEpisodeFontSize').value),
-                    EpisodeFontColor: document.getElementById('txtEpisodeFontColor').value,
-
-                    ShowTitle: document.getElementById('chkShowTitle').checked,
-                    TitleFontFamily: document.getElementById('selectTitleFontFamily').value,
-                    TitleFontStyle: document.getElementById('selectTitleFontStyle').value,
-                    TitleFontSize: parseFloat(document.getElementById('txtTitleFontSize').value),
-                    TitleFontColor: document.getElementById('txtTitleFontColor').value,
-
-                    OverlayColor: document.getElementById('txtOverlayColor').value,
-                };
+                var config = {};
+                
+                // Use data attributes to automatically map form elements to config
+                document.querySelectorAll('[data-config]').forEach(element => {
+                    const configKey = element.getAttribute('data-config');
+                    
+                    if (element.type === 'checkbox') {
+                        config[configKey] = element.checked;
+                    } else if (element.getAttribute('data-type') === 'number') {
+                        config[configKey] = parseFloat(element.value) || 0;
+                    } else {
+                        config[configKey] = element.value;
+                    }
+                });
 
                 ApiClient.updatePluginConfiguration(this.pluginId, config).then(function (result) {
                     Dashboard.processPluginConfigurationUpdateResult(result);
                 });
+            },
+
+            // MARK: initializeColorControls
+            initializeColorControls: function() {
+                document.querySelectorAll('.color-picker').forEach(colorPicker => {
+                    const container = colorPicker.parentElement;
+                    const hexInput = container.querySelector('.hex-input');
+                    const alphaSlider = container.querySelector('.alpha-slider');
+                    const alphaLabel = container.querySelector('.alpha-label');
+                    
+                    // Set initial values from hex
+                    if (hexInput.value) {
+                        const parsed = EpisodePosterGeneratorConfig.parseARGBHex(hexInput.value);
+                        if (parsed) {
+                            colorPicker.value = parsed.rgb;
+                            alphaSlider.value = parsed.alpha;
+                            alphaLabel.textContent = parsed.alpha;
+                        }
+                    }
+                    
+                    // Update hex when color picker changes
+                    colorPicker.addEventListener('input', function() {
+                        EpisodePosterGeneratorConfig.updateHexFromControls(container);
+                    });
+                    
+                    // Update hex when alpha slider changes
+                    alphaSlider.addEventListener('input', function() {
+                        alphaLabel.textContent = alphaSlider.value;
+                        EpisodePosterGeneratorConfig.updateHexFromControls(container);
+                    });
+                    
+                    // Update controls when hex input changes
+                    hexInput.addEventListener('input', function() {
+                        EpisodePosterGeneratorConfig.updateControlsFromHex(container);
+                    });
+                });
+            },
+
+            // MARK: updateHexFromControls
+            updateHexFromControls: function(container) {
+                const colorPicker = container.querySelector('.color-picker');
+                const alphaSlider = container.querySelector('.alpha-slider');
+                const hexInput = container.querySelector('.hex-input');
+                
+                const rgb = colorPicker.value.substring(1); // Remove #
+                const alpha = parseInt(alphaSlider.value);
+                const alphaHex = alpha.toString(16).padStart(2, '0').toUpperCase();
+                hexInput.value = '#' + alphaHex + rgb.toUpperCase();
+                
+                // Trigger change event to save config if needed
+                hexInput.dispatchEvent(new Event('change'));
+            },
+
+            // MARK: updateControlsFromHex
+            updateControlsFromHex: function(container) {
+                const colorPicker = container.querySelector('.color-picker');
+                const alphaSlider = container.querySelector('.alpha-slider');
+                const alphaLabel = container.querySelector('.alpha-label');
+                const hexInput = container.querySelector('.hex-input');
+                
+                const parsed = EpisodePosterGeneratorConfig.parseARGBHex(hexInput.value);
+                if (parsed) {
+                    colorPicker.value = parsed.rgb;
+                    alphaSlider.value = parsed.alpha;
+                    alphaLabel.textContent = parsed.alpha;
+                }
+            },
+
+            // MARK: parseARGBHex
+            parseARGBHex: function(input) {
+                if (!input) return null;
+                
+                // Remove # if present
+                input = input.replace('#', '').toUpperCase();
+                
+                // Handle ARGB format (8 characters)
+                if (input.length === 8) {
+                    const alpha = parseInt(input.substring(0, 2), 16);
+                    const rgb = '#' + input.substring(2);
+                    return { rgb: rgb, alpha: alpha };
+                }
+                
+                // Handle RGB format (6 characters) - assume full opacity
+                if (input.length === 6) {
+                    return { rgb: '#' + input, alpha: 255 };
+                }
+                
+                // Handle short format (3 characters) - assume full opacity
+                if (input.length === 3) {
+                    const expanded = input[0] + input[0] + input[1] + input[1] + input[2] + input[2];
+                    return { rgb: '#' + expanded, alpha: 255 };
+                }
+                
+                return null;
             }
         };
 
-        // --- Event Listeners ---
+        // Event Listeners
         document.getElementById('EpisodePosterGeneratorConfigPage').addEventListener('pageshow', function () {
-            // No need to call updateVisibility here, as loadConfig will call it.
             EpisodePosterGeneratorConfig.loadConfig();
         });
 
@@ -408,12 +562,8 @@
             EpisodePosterGeneratorConfig.saveConfig();
         });
 
-        // Add listeners for all controls that change visibility of other elements
+        // Add listeners for visibility changes
         document.getElementById('selectPosterStyle').addEventListener('change', function () {
-            EpisodePosterGeneratorConfig.updateVisibility();
-        });
-
-        document.getElementById('chkShowEpisode').addEventListener('change', function () {
             EpisodePosterGeneratorConfig.updateVisibility();
         });
 

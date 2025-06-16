@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using MediaBrowser.Controller;
 using Microsoft.AspNetCore.Authorization;
@@ -15,21 +16,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
     {
         private readonly ILogger<ConfigurationController> _logger;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ConfigurationController"/> class.
-        /// </summary>
-        /// <param name="logger">The logger instance.</param>
         public ConfigurationController(ILogger<ConfigurationController> logger)
         {
             _logger = logger;
         }
 
         // MARK: GET
-
-        /// <summary>
-        /// Retrieves the current plugin configuration.
-        /// </summary>
-        /// <returns>The plugin configuration or an error response.</returns>
         [HttpGet("Configuration")]
         public IActionResult GetConfiguration()
         {
@@ -44,12 +36,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
         }
 
         // MARK: POST
-
-        /// <summary>
-        /// Updates the plugin configuration.
-        /// </summary>
-        /// <param name="newConfig">The new configuration to apply.</param>
-        /// <returns>Result of the update operation.</returns>
         [HttpPost("Configuration")]
         public IActionResult UpdateConfiguration([FromBody] PluginConfiguration newConfig)
         {
@@ -64,39 +50,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
 
                 _logger.LogInformation("Received config: {@newConfig}", newConfig);
 
-                // Copy values from the new config to the current config
-                var config = plugin.Configuration;
-
-                config.EnableProvider = newConfig.EnableProvider;
-                config.EnableTask = newConfig.EnableTask;
-
-                config.PosterStyle = newConfig.PosterStyle;
-
-                config.CutoutType = newConfig.CutoutType;
-                config.CutoutBorder = newConfig.CutoutBorder;
-
-                config.LogoAlignment = newConfig.LogoAlignment;
-                config.LogoPosition = newConfig.LogoPosition;
-                config.LogoHeight = newConfig.LogoHeight;
-
-                config.ExtractPoster = newConfig.ExtractPoster;
-
-                config.PosterFill = newConfig.PosterFill;
-                config.PosterDimensionRatio = newConfig.PosterDimensionRatio;
-
-                config.ShowEpisode = newConfig.ShowEpisode;
-                config.EpisodeFontFamily = newConfig.EpisodeFontFamily;
-                config.EpisodeFontStyle = newConfig.EpisodeFontStyle;
-                config.EpisodeFontSize = newConfig.EpisodeFontSize;
-                config.EpisodeFontColor = newConfig.EpisodeFontColor;
-
-                config.ShowTitle = newConfig.ShowTitle;
-                config.TitleFontFamily = newConfig.TitleFontFamily;
-                config.TitleFontStyle = newConfig.TitleFontStyle;
-                config.TitleFontSize = newConfig.TitleFontSize;
-                config.TitleFontColor = newConfig.TitleFontColor;
-
-                config.OverlayColor = newConfig.OverlayColor;
+                var currentConfig = plugin.Configuration;
+                CopyConfigurationProperties(newConfig, currentConfig);
 
                 plugin.SaveConfiguration();
 
@@ -107,6 +62,28 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
             {
                 _logger.LogError(ex, "Failed to update configuration.");
                 return BadRequest(new { success = false, error = ex.Message });
+            }
+        }
+
+        // MARK: CopyConfigurationProperties
+        private void CopyConfigurationProperties(PluginConfiguration source, PluginConfiguration target)
+        {
+            var properties = typeof(PluginConfiguration).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+            foreach (var property in properties)
+            {
+                if (property.CanRead && property.CanWrite)
+                {
+                    try
+                    {
+                        var value = property.GetValue(source);
+                        property.SetValue(target, value);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to copy property {PropertyName}", property.Name);
+                    }
+                }
             }
         }
     }

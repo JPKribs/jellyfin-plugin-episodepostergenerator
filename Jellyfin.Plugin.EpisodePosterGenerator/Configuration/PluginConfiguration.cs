@@ -86,9 +86,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public float EpisodeFontSize { get; set; } = 7.0F;
 
         /// <summary>
-        /// Gets or sets the hex color code for episode number text.
+        /// Gets or sets the ARGB hex color code for episode number text.
         /// </summary>
-        public string EpisodeFontColor { get; set; } = "#FFFFFF";
+        public string EpisodeFontColor { get; set; } = "#FFFFFFFF";
 
         /// <summary>
         /// Gets or sets a value indicating whether to show the episode title.
@@ -111,9 +111,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public float TitleFontSize { get; set; } = 10.0F;
 
         /// <summary>
-        /// Gets or sets the hex color code for episode title text.
+        /// Gets or sets the ARGB hex color code for episode title text.
         /// </summary>
-        public string TitleFontColor { get; set; } = "#FFFFFF";
+        public string TitleFontColor { get; set; } = "#FFFFFFFF";
 
         /// <summary>
         /// Gets or sets the ARGB hex color for background overlay / tinting.
