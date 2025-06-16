@@ -1,14 +1,17 @@
 # Episode Poster Generator
 
-A Jellyfin plugin that automatically generates custom episode posters using smart frame analysis, black frame detection, and configurable text styling. Perfect for filling in missing or generic episode artwork with clean, consistent visuals.
+A Jellyfin plugin that automatically generates custom episode posters using smart frame analysis, black frame detection, letterbox detection, and configurable text styling. Perfect for filling in missing or generic episode artwork with clean, consistent visuals.
 
 ## Features
 
 - **Automatic Frame Extraction**: Smart selection of representative frames from video files
 - **Black Frame Detection**: Avoids extracting frames from black/transition scenes
+- **Letterbox Detection**: Automatically detects and crops black letterbox/pillarbox borders from poster images
 - **Multiple Poster Styles**: Choose from Standard, Cutout, Numeral, and Logo designs
 - **Customizable Typography**: Full control over fonts, sizes, colors, and positioning
 - **Flexible Layouts**: Support for various aspect ratios and fill strategies
+- **Enhanced Logo Positioning**: Configurable logo alignment and positioning for Logo style posters
+- **Cutout Text Borders**: Optional contrasting borders for improved cutout text visibility
 - **Episode Information Display**: Show episode codes, titles, and season information
 
 ## Poster Styles
@@ -45,6 +48,7 @@ Large episode numbers displayed as transparent cutouts revealing the screenshot 
 - Background color overlay
 - Multi-line text support for longer episode codes
 - Automatic font scaling
+- Optional contrasting borders for improved visibility
 
 ### Numeral Style
 Roman numeral episode numbers with elegant typography.
@@ -65,13 +69,15 @@ Series logo-focused posters with episode information and clean typography.
 
 | Example |
 |---------|
-| ![Image](https://github.com/user-attachments/assets/08cd825c-2d95-40a6-80eb-e1b66efbf23a) |
+| ![Logo 1](Screenshots/Logo%201.jpg) |
 | ![Logo 2](Screenshots/Logo%202.jpg) |
 
 **Features:**
 - Series logo image as primary visual element
 - Solid background color for clean appearance
-- Automatic logo scaling to fill 75% of available space
+- Configurable logo positioning (Top, Center, Bottom)
+- Configurable logo alignment (Left, Center, Right)
+- Adjustable logo height percentage (1-100%)
 - Episode code display in S##E## format with proper zero-padding
 - Text fallback when series logo image unavailable
 - Optional episode title display
@@ -82,137 +88,3 @@ Series logo-focused posters with episode information and clean typography.
 - **Primary**: Series logo image (when available)
 - **Fallback**: Series primary image
 - **Text Fallback**: Series name with optimized font scaling
-
-## Configuration Options
-
-### Plugin Settings
-- **Active**: Enable/disable the plugin
-- **Style**: Choose between Standard, Cutout, Numeral, or Logo poster styles
-
-### Poster Settings
-- **Fill Strategy**: 
-  - *Original*: Preserve original screenshot dimensions
-  - *Fill*: Expand to fill target aspect ratio (may stretch)
-  - *Fit*: Crop to fit target aspect ratio
-- **Aspect Ratio**: Set poster dimensions (e.g., "16:9", "3:2", "4:3")
-
-### Episode Information
-- **Font**: Choose from extensive font library (Arial, Impact, Helvetica, etc.)
-- **Font Style**: Normal, Bold, Italic, Bold Italic
-- **Font Size**: Percentage of poster height (1-100%)
-- **Font Color**: Hex color code (e.g., #FFFFFF)
-
-### Episode Title
-- **Show Title**: Toggle episode title display
-- **Font**: Independent font selection for titles
-- **Font Style**: Normal, Bold, Italic, Bold Italic  
-- **Font Size**: Percentage of poster height (1-100%)
-- **Font Color**: Hex color code
-
-### Visual Effects
-- **Background Color**: ARGB overlay color for Cutout/Numeral/Logo styles (e.g., #66000000)
-- **Overlay Tint**: ARGB tint for Standard style images (e.g., #33000000)
-
-## Installation
-
-### Method 1: Plugin Repository (Recommended)
-1. Go to **Jellyfin Dashboard** → **Plugins** → **Repositories**
-2. Click **Add Repository**
-3. Enter: `https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/manifest.json`
-4. Go to **Catalog** tab and install **Episode Poster Generator**
-5. Restart Jellyfin
-
-### Method 2: Manual Installation
-1. Download the plugin DLL from the releases page
-2. Place `Jellyfin.Plugin.EpisodePosterGenerator.dll` in your Jellyfin plugins directory
-3. Restart Jellyfin
-4. Navigate to Dashboard → Plugins → Episode Poster Generator to configure
-
-## Requirements
-
-- Jellyfin 10.10.7 or later
-- .NET 8.0 runtime
-- FFmpeg (for frame extraction and black scene detection)
-- SkiaSharp (included with plugin)
-
-## Technical Details
-
-### Frame Selection Process
-1. Analyze video duration using FFprobe
-2. Detect black scenes with configurable thresholds
-3. Select optimal timestamp candidates (25%, 50%, 75% of duration)
-4. Choose first candidate that avoids black intervals
-5. Extract frame using FFmpeg with high quality settings
-
-### Text Rendering
-- Smart text wrapping for long titles (max 2 lines)
-- Automatic font scaling to fit available space
-- Shadow effects for improved readability
-- Safe area margins (5% of image dimensions)
-
-### Supported Formats
-- **Input**: Any video format supported by FFmpeg
-- **Output**: JPEG images with 95% quality
-- **Fonts**: System fonts via SkiaSharp font manager
-
-## Configuration Examples
-
-### Minimal Setup (Standard Style)
-```
-Style: Standard
-Font: Arial Bold
-Episode Font Size: 7%
-Title Font Size: 10%
-Background Color: #66000000
-```
-
-### Dramatic Cutout Setup  
-```
-Style: Cutout
-Cutout Type: Text
-Font: Impact Bold
-Episode Font Size: 15%
-Background Color: #80000000
-```
-
-### Elegant Numeral Setup
-```
-Style: Numeral  
-Font: Garamond Bold
-Episode Font Size: 12%
-Background Color: #4D000000
-Show Title: true
-```
-
-### Clean Logo Setup
-```
-Style: Logo
-Font: Arial Bold
-Episode Font Size: 8%
-Title Font Size: 6%
-Background Color: #E6000000
-Show Title: true
-```
-
-## Troubleshooting
-
-**Plugin not generating posters:**
-- Verify FFmpeg is properly configured in Jellyfin
-- Check that video files are accessible
-- Ensure plugin is enabled in configuration
-
-**Text rendering issues:**
-- Confirm selected fonts are available on system
-- Adjust font sizes for better fit
-
-## Acknowledgments
-
-This project was inspired by [TitleCardMaker](https://github.com/CollinHeist/TitleCardMaker) by CollinHeist, an excellent GPL-licensed standalone application for generating episode title cards. While TitleCardMaker provides comprehensive external tooling, this plugin was created to offer similar functionality as a native, built-in Jellyfin solution for seamless integration and automatic generation.
-
-## License
-
-This project is licensed under the GNU General Public License v3.0. See [LICENSE](LICENSE) for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
