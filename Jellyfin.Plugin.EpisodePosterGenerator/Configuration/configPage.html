@@ -47,6 +47,26 @@
                         <div class="fieldDescription">Extract the poster image from the episode.</div>
                     </div>
 
+                    <div class="inputContainer" id="letterboxDetectionContainer" data-depends-on="chkExtractPoster">
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="chkEnableLetterboxDetection" data-config="EnableLetterboxDetection" />
+                            <span>Enable Letterbox Detection</span>
+                        </label>
+                        <div class="fieldDescription">Automatically detect and crop black letterbox borders from poster images.</div>
+                    </div>
+
+                    <div class="inputContainer letterbox-settings" data-depends-on="chkExtractPoster,chkEnableLetterboxDetection">
+                        <label for="txtLetterboxBlackThreshold">Black Threshold:</label>
+                        <input is="emby-input" type="number" id="txtLetterboxBlackThreshold" min="0" max="255" data-config="LetterboxBlackThreshold" data-type="number" />
+                        <div class="fieldDescription">Pixel brightness threshold for black detection (0-255). Lower values detect darker pixels as letterbox.</div>
+                    </div>
+
+                    <div class="inputContainer letterbox-settings" data-depends-on="chkExtractPoster,chkEnableLetterboxDetection">
+                        <label for="txtLetterboxConfidence">Detection Confidence (%):</label>
+                        <input is="emby-input" type="number" id="txtLetterboxConfidence" min="50" max="100" step="1" data-config="LetterboxConfidence" data-type="number" />
+                        <div class="fieldDescription">Percentage of pixels that must be black to consider it letterboxing (50-100%).</div>
+                    </div>
+
                     <div class="inputContainer">
                         <label for="selectPosterStyle">Style:</label>
                         <select is="emby-select" id="selectPosterStyle" data-config="PosterStyle">
@@ -360,6 +380,12 @@
             flex: 1;
             min-width: 120px;
         }
+
+        .letterbox-settings {
+            margin-left: 1.5em;
+            padding-left: 1em;
+            border-left: 2px solid rgba(85, 85, 85, 0.3);
+        }
     </style>
 
     <script type="text/javascript">
@@ -369,7 +395,7 @@
             // MARK: updateVisibility
             updateVisibility: function() {
                 const posterStyle = document.getElementById('selectPosterStyle').value;
-                
+        
                 // Handle poster style specific hiding (Logo and Cutout variables)
                 document.querySelectorAll('[data-poster-styles]').forEach(element => {
                     const supportedStyles = element.getAttribute('data-poster-styles').split(',');
@@ -384,17 +410,19 @@
                     element.style.display = shouldHide ? 'none' : 'block';
                 });
 
-                // Handle ShowTitle dependency
+                // Handle multiple dependencies (comma-separated)
                 document.querySelectorAll('[data-depends-on]').forEach(element => {
-                    const dependencyId = element.getAttribute('data-depends-on');
-                    const dependencyElement = document.getElementById(dependencyId);
+                    const dependencies = element.getAttribute('data-depends-on').split(',');
+                    let allDependenciesMet = true;
                     
-                    let isVisible = true;
-                    if (dependencyElement) {
-                        isVisible = dependencyElement.checked;
-                    }
+                    dependencies.forEach(dependencyId => {
+                        const dependencyElement = document.getElementById(dependencyId.trim());
+                        if (!dependencyElement || !dependencyElement.checked) {
+                            allDependenciesMet = false;
+                        }
+                    });
                     
-                    element.style.display = isVisible ? 'block' : 'none';
+                    element.style.display = allDependenciesMet ? 'block' : 'none';
                 });
 
                 // For Cutout and Numeral styles, ensure ShowEpisode is always true
@@ -568,6 +596,24 @@
         });
 
         document.getElementById('chkShowTitle').addEventListener('change', function () {
+            EpisodePosterGeneratorConfig.updateVisibility();
+        });
+
+        // Add listeners for visibility changes
+        document.getElementById('selectPosterStyle').addEventListener('change', function () {
+            EpisodePosterGeneratorConfig.updateVisibility();
+        });
+
+        document.getElementById('chkShowTitle').addEventListener('change', function () {
+            EpisodePosterGeneratorConfig.updateVisibility();
+        });
+
+        // Add listeners for letterbox detection dependencies
+        document.getElementById('chkExtractPoster').addEventListener('change', function () {
+            EpisodePosterGeneratorConfig.updateVisibility();
+        });
+
+        document.getElementById('chkEnableLetterboxDetection').addEventListener('change', function () {
             EpisodePosterGeneratorConfig.updateVisibility();
         });
     </script>

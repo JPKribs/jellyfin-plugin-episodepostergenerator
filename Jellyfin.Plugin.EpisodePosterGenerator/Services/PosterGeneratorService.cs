@@ -205,7 +205,7 @@ public class PosterGeneratorService
                 canvas.Clear(SKColors.Black);
                 
                 // Apply sophisticated image drawing with configurable fill strategy processing
-                DrawPosterImage(canvas, original, targetSize, config.PosterFill, original.Width, original.Height);
+                DrawPosterImage(canvas, original, targetSize, config.PosterFill, original.Width, original.Height, config);
             }
 
             // Stage 4: Intermediate Image Generation and Temporary File Management
@@ -538,19 +538,32 @@ public class PosterGeneratorService
     /// Combined with width to establish source proportions for optimal cropping and scaling strategies.
     /// </param>
     // MARK: DrawPosterImage
-    private void DrawPosterImage(SKCanvas canvas, SKBitmap original, SKSizeI targetSize, PosterFill fill, int originalWidth, int originalHeight)
+    private void DrawPosterImage(SKCanvas canvas, SKBitmap original, SKSizeI targetSize, PosterFill fill, int originalWidth, int originalHeight, PluginConfiguration config)
     {
         // Define destination rectangle covering entire target canvas for consistent poster coverage
         var destRect = new SKRect(0, 0, targetSize.Width, targetSize.Height);
 
-        // Fit mode: implement intelligent cropping with center-weighted content preservation
-        if (fill == PosterFill.Fit)
+        SKRect srcRect;
+
+        // Apply letterbox detection first if enabled
+        if (config.EnableLetterboxDetection)
         {
-            // Calculate aspect ratios for cropping strategy determination
+            var letterboxBounds = LetterboxDetectionService.DetectLetterboxBounds(original, config);
+            
+            // Use detected bounds as the source rectangle, removing letterboxing
+            srcRect = letterboxBounds;
+            
+            // Log letterbox detection results for debugging
+            var cropPercentage = (letterboxBounds.Width * letterboxBounds.Height) / (originalWidth * originalHeight) * 100;
+            // Optional: Add logging here if you have access to a logger
+            // _logger?.LogDebug("Letterbox detection removed {Percentage:F1}% of content", 100 - cropPercentage);
+        }
+        else if (fill == PosterFill.Fit)
+        {
+            // Original fit mode: implement intelligent cropping with center-weighted content preservation
             var srcAspect = (float)originalWidth / originalHeight;
             var dstAspect = (float)targetSize.Width / targetSize.Height;
 
-            SKRect srcRect;
             if (srcAspect > dstAspect)
             {
                 // Source is wider than target: apply horizontal cropping with center preservation
@@ -565,15 +578,14 @@ public class PosterGeneratorService
                 int y = (originalHeight - cropHeight) / 2;          // Center cropping vertically
                 srcRect = new SKRect(0, y, originalWidth, y + cropHeight);
             }
-
-            // Render cropped source region to destination canvas with high-quality scaling
-            canvas.DrawBitmap(original, srcRect, destRect);
         }
         else
         {
             // Standard drawing: render entire source bitmap to destination canvas without cropping
-            // Applies to Original and Fill modes where content preservation or simple scaling is preferred
-            canvas.DrawBitmap(original, destRect);
+            srcRect = new SKRect(0, 0, originalWidth, originalHeight);
         }
+
+        // Render the selected source region to destination canvas with high-quality scaling
+        canvas.DrawBitmap(original, srcRect, destRect);
     }
 }

@@ -66,6 +66,21 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public float PosterSafeArea { get; set; } = 5.0f;
 
         /// <summary>
+        /// Gets or sets a value indicating whether letterbox detection and cropping is enabled.
+        /// </summary>
+        public bool EnableLetterboxDetection { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the black threshold for letterbox detection (0-255).
+        /// </summary>
+        public int LetterboxBlackThreshold { get; set; } = 30;
+
+        /// <summary>
+        /// Gets or sets the confidence threshold for letterbox detection (0.0-100.0).
+        /// </summary>
+        public float LetterboxConfidence { get; set; } = 95.0f;
+
+        /// <summary>
         /// Gets or sets a value indicating whether to show the episode title.
         /// </summary>
         public bool ShowEpisode { get; set; } = true;

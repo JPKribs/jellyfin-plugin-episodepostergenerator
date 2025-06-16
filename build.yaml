@@ -13,9 +13,10 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   features:
-  - Configuration page cleanup
+  - Letterbox detection
+  - Letterbox configuration
   fixes: 
-  - Fix unintended hiding on configuration page
+  - -
   technical:
   - -
   other:
