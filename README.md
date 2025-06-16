@@ -19,10 +19,9 @@ A Jellyfin plugin that automatically generates custom episode posters using smar
 ### Standard Style
 Classic episode posters with overlay text and episode information.
 
-| Example |
-|---------|
-| ![Standard 1](Screenshots/Standard%201.jpg) |
-| ![Standard 2](Screenshots/Standard%202.jpg) |
+| Example 1 | Example 2 |
+|-----------|-----------|
+| ![Standard 1](Screenshots/Standard%201.jpg) | ![Standard 2](Screenshots/Standard%202.jpg) |
 
 **Features:**
 - Episode screenshot as background
@@ -34,10 +33,9 @@ Classic episode posters with overlay text and episode information.
 ### Cutout Style  
 Large episode numbers displayed as transparent cutouts revealing the screenshot beneath.
 
-| Example |
-|---------|
-| ![Cutout - Opacity 1](Screenshots/Cutout%20-%20Opacity%201.jpg) |
-| ![Cutout - Opacity 2](Screenshots/Cutout%20-%20Opacity%202.jpg) |
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Cutout 1](Screenshots/Cutout%201.jpg) | ![Cutout 2](Screenshots/Cutout%202.jpg) | ![Cutout 3](Screenshots/Cutout%203.jpg) |
 
 **Cutout Types:**
 - **Code**: Displays episode in format "S01E03" 
@@ -53,10 +51,9 @@ Large episode numbers displayed as transparent cutouts revealing the screenshot 
 ### Numeral Style
 Roman numeral episode numbers with elegant typography.
 
-| Example |
-|---------|
-| ![Numeral 1](Screenshots/Numeral%201.jpg) |
-| ![Numeral 2](Screenshots/Numeral%202.jpg) |
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Numeral 1](Screenshots/Numeral%201.jpg) | ![Numeral 2](Screenshots/Numeral%202.jpg) | ![Numeral 3](Screenshots/Numeral%203.jpg) |
 
 **Features:**
 - Roman numeral conversion (1-3999)
@@ -67,10 +64,9 @@ Roman numeral episode numbers with elegant typography.
 ### Logo Style
 Series logo-focused posters with episode information and clean typography.
 
-| Example |
-|---------|
-| ![Logo 1](Screenshots/Logo%201.jpg) |
-| ![Logo 2](Screenshots/Logo%202.jpg) |
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Logo 1](Screenshots/Logo%201.jpg) | ![Logo 2](Screenshots/Logo%202.jpg) | ![Logo 3](Screenshots/Logo%203.jpg) |
 
 **Features:**
 - Series logo image as primary visual element
