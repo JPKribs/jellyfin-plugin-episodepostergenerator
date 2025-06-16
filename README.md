@@ -65,7 +65,7 @@ Series logo-focused posters with episode information and clean typography.
 
 | Example |
 |---------|
-| ![Logo 1](Screenshots/Logo%201.jpg) |
+| ![Image](https://github.com/user-attachments/assets/08cd825c-2d95-40a6-80eb-e1b66efbf23a) |
 | ![Logo 2](Screenshots/Logo%202.jpg) |
 
 **Features:**
