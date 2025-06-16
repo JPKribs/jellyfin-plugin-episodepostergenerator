@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Screenshots/Logo.png",
     "versions": [
       {
+        "version": "10.10.8",
+        "changelog": "**Letterbox Detection**\r\n\r\n- Optional Letterbox Detection (Pillbox as well)\r\n- Letterbox Detection Customization",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.8/jellyfin-plugin-episodepostergenerator-10.10.8.zip",
+        "checksum": "Not Found",
+        "timestamp": "2025-06-16T16:02:53Z"
+      },
+      {
         "version": "10.10.7",
         "changelog": "**Configuration Page Revamp**\r\n- Fix hiding policies to show items \r\n- New custom CSS\r\n- Spacing & generic cleanup\r\n- New nested section for poster-specific setting\r\n- Color Picker\r\n- Transparency Picker for Colors",
         "targetAbi": "10.10.7.0",
