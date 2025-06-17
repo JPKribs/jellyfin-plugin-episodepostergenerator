@@ -242,7 +242,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
             var config = Plugin.Instance?.Configuration;
             if (config == null || !config.EnableTask)
             {
-                _logger.LogInformation("Episode Poster Generator is disabled, skipping task");
                 return;
             }
 
@@ -254,15 +253,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                 return;
             }
 
-            _logger.LogInformation("Starting Episode Poster Generation task");
-
             try
             {
                 // Comprehensive episode discovery across all media libraries
                 var allEpisodes = GetAllEpisodes();
                 var episodesToProcess = new List<Episode>();
 
-                _logger.LogInformation("Found {TotalCount} episodes, checking which need processing", allEpisodes.Count);
+                _logger.LogInformation("Checking for items that need a poster");
 
                 // Intelligent processing determination using tracking service algorithms
                 foreach (var episode in allEpisodes)
@@ -278,20 +275,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                     }
                 }
 
-                _logger.LogInformation("Found {ProcessCount} episodes that need processing", episodesToProcess.Count);
+                _logger.LogInformation("{ProcessCount} items still need a poster", episodesToProcess.Count);
 
                 // Early completion for cases where no processing is required
                 if (episodesToProcess.Count == 0)
                 {
-                    _logger.LogInformation("No episodes need processing");
                     progress?.Report(100);
                     return;
                 }
 
                 // Execute batch processing with comprehensive monitoring and error handling
                 await ProcessEpisodesAsync(episodesToProcess, config, trackingService, progress, cancellationToken).ConfigureAwait(false);
-
-                _logger.LogInformation("Episode Poster Generation task completed successfully");
             }
             catch (Exception ex)
             {
@@ -421,9 +415,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
 
                     try
                     {
-                        // Detailed episode processing logging for debugging and monitoring
-                        _logger.LogDebug("Processing episode: {EpisodeName} (S{Season}E{Episode})", 
-                            episode.Name, episode.ParentIndexNumber, episode.IndexNumber);
+                        _logger.LogInformation("Starting to create poster for {EpisodeName}", episode.Name);
 
                         // Execute individual episode processing with comprehensive error handling
                         var success = await ProcessSingleEpisodeAsync(episode, config, ffmpegService, posterService, tempDir, cancellationToken).ConfigureAwait(false);
@@ -433,7 +425,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                             // Update tracking database for successful processing
                             await trackingService.MarkEpisodeProcessedAsync(episode, config).ConfigureAwait(false);
                             succeeded++;
-                            _logger.LogDebug("Successfully processed episode: {EpisodeName}", episode.Name);
                         }
                         else
                         {
@@ -452,18 +443,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                     processed++;
                     var progressPercentage = (double)processed / episodes.Count * 100;
                     progress?.Report(progressPercentage);
-
-                    // Periodic milestone logging for batch operation monitoring
-                    if (processed % 10 == 0)
-                    {
-                        _logger.LogInformation("Progress: {Processed}/{Total} episodes processed ({Succeeded} succeeded, {Failed} failed)", 
-                            processed, episodes.Count, succeeded, failed);
-                    }
                 }
 
                 // Final batch processing statistics for administrative review
-                _logger.LogInformation("Batch processing completed: {Processed} total, {Succeeded} succeeded, {Failed} failed", 
-                    processed, succeeded, failed);
+                _logger.LogInformation("{Succeeded} succeeded and {Failed} failed", succeeded, failed);
             }
             finally
             {
@@ -493,32 +476,36 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
         /// 3. Video analysis and frame extraction using FFmpeg services with black scene avoidance
         /// 4. Poster generation using configured style and typography settings
         /// 5. Image upload and metadata integration with Jellyfin's media management system
-        /// 6. Comprehensive cleanup of temporary files regardless of processing outcome
+        /// 6. Comprehensive cleanup of temporary files regardless of processing success or failure
         /// 
-        /// Style-Specific Processing:
-        /// - Numeral Style: Creates transparent background images for pure text-based posters
-        /// - Other Styles: Performs comprehensive video analysis and intelligent frame extraction
+        /// Frame Source Strategy:
+        /// The method intelligently selects between video frame extraction and transparent background
+        /// creation based on poster style configuration, ensuring appropriate source material for
+        /// different poster generation approaches while optimizing processing efficiency.
         /// 
-        /// Frame Extraction Algorithm:
-        /// For video-based poster styles, the method implements sophisticated frame selection:
-        /// - Duration analysis using metadata or direct FFprobe query
-        /// - Black scene detection to avoid extracting frames from transitions or credits
-        /// - Random timestamp selection from content-rich video segments
-        /// - High-quality frame extraction with optimized encoding settings
+        /// Video Analysis:
+        /// When video extraction is required, the method performs comprehensive duration analysis
+        /// using both metadata and direct FFprobe queries, followed by black scene detection and
+        /// intelligent timestamp selection to ensure high-quality source frames for poster generation.
         /// 
-        /// Error Isolation:
-        /// Comprehensive error handling ensures individual episode failures don't affect
-        /// batch operations while providing detailed logging for troubleshooting and debugging.
-        /// Temporary file cleanup occurs regardless of processing success or failure.
+        /// Error Handling:
+        /// Individual processing steps are isolated with specific error handling ensuring detailed
+        /// logging and graceful degradation. Processing failures are contained to prevent batch
+        /// operation termination while providing comprehensive diagnostic information.
+        /// 
+        /// Resource Management:
+        /// Temporary files are automatically cleaned up in finally blocks ensuring system health
+        /// regardless of processing outcomes. The cleanup process includes error handling to prevent
+        /// cleanup failures from affecting core functionality.
         /// </summary>
-        /// <param name="episode">Episode object containing metadata and file information for processing.</param>
-        /// <param name="config">Plugin configuration with poster generation settings and style preferences.</param>
+        /// <param name="episode">Episode object containing metadata required for poster generation and file access.</param>
+        /// <param name="config">Plugin configuration containing poster generation settings and style preferences.</param>
         /// <param name="ffmpegService">FFmpeg service for video analysis and frame extraction operations.</param>
         /// <param name="posterService">Poster generation service for image processing and text overlay operations.</param>
         /// <param name="tempDir">Temporary directory path for intermediate file storage during processing.</param>
-        /// <param name="cancellationToken">Cancellation token for responsive operation termination support.</param>
+        /// <param name="cancellationToken">Cancellation token for responsive processing termination support.</param>
         /// <returns>
-        /// Boolean indicating successful completion of poster generation and integration.
+        /// Boolean indicating successful episode processing and image integration with Jellyfin.
         /// False indicates processing failure with detailed error logging for troubleshooting.
         /// </returns>
         // MARK: ProcessSingleEpisodeAsync
@@ -588,7 +575,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                 
                 if (success)
                 {
-                    _logger.LogInformation("Successfully uploaded poster for episode: {EpisodeName}", episode.Name);
+                    _logger.LogInformation("Poster created for {EpisodeName}", episode.Name);
                     return true;
                 }
                 else

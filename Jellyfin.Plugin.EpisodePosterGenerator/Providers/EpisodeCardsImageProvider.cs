@@ -251,7 +251,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
         {
             _logger = logger;
             _appPaths = appPaths;
-            _logger.LogInformation("Episode Poster Generator image provider initialized");
         }
 
         /// <summary>
@@ -304,19 +303,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
         /// </returns>
         public bool Supports(BaseItem item)
         {
-            // Perform sophisticated media type analysis for episode content detection
             var isEpisode = item is Episode;
-
-            _logger.LogInformation("Supports check - Item: \"{ItemName}\", IsEpisode: {IsEpisode}",
-                item.Name ?? "null", isEpisode);
 
             if (isEpisode)
             {
-                _logger.LogInformation("Supporting episode for library-level configuration");
                 return true;
             }
 
-            _logger.LogInformation("Not supporting item type: \"{ItemType}\"", item.GetType().Name);
             return false;
         }
 
@@ -362,16 +355,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
         /// </returns>
         public IEnumerable<ImageType> GetSupportedImages(BaseItem item)
         {
-            _logger.LogInformation("GetSupportedImages called for item: \"{ItemName}\" (Type: \"{ItemType}\")", item.Name, item.GetType().Name);
-
             if (item is Episode)
             {
-                _logger.LogInformation("Returning Primary image support for episode: \"{EpisodeName}\"", item.Name);
                 yield return ImageType.Primary;
-            }
-            else
-            {
-                _logger.LogInformation("Item is not an Episode, returning no supported images");
             }
         }
 
@@ -447,42 +433,31 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
         /// </returns>
         public async Task<DynamicImageResponse> GetImage(BaseItem item, ImageType type, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("GetImage called for item: \"{ItemName}\" (Type: \"{ItemType}\"), ImageType: {ImageType}",
-                item.Name, item.GetType().Name, type);
-
-            // Configuration validation ensuring plugin availability and operational status
             var config = Plugin.Instance?.Configuration;
             if (config == null || !config.EnableProvider)
             {
-                _logger.LogInformation("Episode Poster Generator is disabled via configuration.");
                 return new DynamicImageResponse { HasImage = false };
             }
 
-            // Media item type validation ensuring appropriate content for poster generation
             if (item is not Episode episode)
             {
                 return new DynamicImageResponse { HasImage = false };
             }
 
-            // Image type validation ensuring supported image generation categories
             if (type != ImageType.Primary)
             {
-                _logger.LogInformation("Image type {ImageType} not supported.", type);
                 return new DynamicImageResponse { HasImage = false };
             }
 
-            // Content accessibility validation for video-based poster styles requiring file access
             if (!config.EnableProvider && (string.IsNullOrEmpty(episode.Path) || !File.Exists(episode.Path)))
             {
-                _logger.LogInformation("Episode \"{EpisodeName}\" has no valid video file.", episode.Name);
                 return new DynamicImageResponse { HasImage = false };
             }
 
             try
             {
-                _logger.LogInformation("Processing episode: \"{EpisodeName}\" with style: {PosterStyle}", episode.Name, config.PosterStyle);
+                _logger.LogInformation("Starting to create poster for {EpisodeName}", episode.Name);
 
-                // Execute comprehensive poster generation workflow with sophisticated error handling
                 var imageStream = await GenerateEpisodeImageAsync(episode, cancellationToken).ConfigureAwait(false);
                 if (imageStream == null)
                 {
@@ -490,14 +465,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                     return new DynamicImageResponse { HasImage = false };
                 }
 
-                // Tracking service integration for processing state management and optimization
                 var trackingService = Plugin.Instance?.TrackingService;
                 if (trackingService != null)
                 {
                     try
                     {
                         await trackingService.MarkEpisodeProcessedAsync(episode, config).ConfigureAwait(false);
-                        _logger.LogDebug("Marked episode as processed in tracking service: {EpisodeName}", episode.Name);
                     }
                     catch (Exception ex)
                     {
@@ -505,9 +478,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                     }
                 }
 
-                _logger.LogInformation("Successfully generated poster for episode: \"{EpisodeName}\"", episode.Name);
+                _logger.LogInformation("Poster created for {EpisodeName}", episode.Name);
 
-                // Successful response generation with optimal format and metadata coordination
                 return new DynamicImageResponse
                 {
                     HasImage = true,
@@ -517,7 +489,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
             }
             catch (Exception ex)
             {
-                // Comprehensive error handling ensuring graceful degradation and system stability
                 _logger.LogError(ex, "Error generating image for episode: \"{EpisodeName}\"", episode.Name);
                 return new DynamicImageResponse { HasImage = false };
             }
@@ -593,12 +564,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
         {
             try
             {
-                _logger.LogInformation("Starting optimized poster generation for episode: \"{EpisodeName}\"", episode.Name);
-
-                // Configuration retrieval with defensive fallback ensuring processing continuity
                 var config = Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
 
-                // Service availability validation ensuring processing capability and resource access
                 var ffmpegService = Plugin.Instance?.FFmpegService;
                 var posterGeneratorService = Plugin.Instance?.PosterGeneratorService;
 
@@ -608,7 +575,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                     return null;
                 }
 
-                // Temporary resource preparation with directory management and path coordination
                 var tempDir = Path.Combine(_appPaths.TempDirectory, "episodeposter");
                 Directory.CreateDirectory(tempDir);
 
@@ -627,11 +593,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                             return null;
                         }
 
-                        // Duration analysis with metadata optimization and FFprobe fallback
                         var duration = GetDurationFromEpisode(episode);
                         if (!duration.HasValue)
                         {
-                            _logger.LogInformation("Episode duration not available from metadata, falling back to FFprobe");
                             duration = await ffmpegService.GetVideoDurationAsync(episode.Path, cancellationToken).ConfigureAwait(false);
                         }
 
@@ -641,15 +605,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                             return null;
                         }
 
-                        _logger.LogDebug("Video duration: {Duration} for episode: \"{EpisodeName}\"", duration.Value, episode.Name);
-
-                        // Advanced video analysis with black scene detection and intelligent frame selection
                         var blackIntervals = await ffmpegService.DetectBlackScenesAsync(episode.Path, duration.Value, 0.1, 0.1, cancellationToken).ConfigureAwait(false);
                         var selectedTimestamp = ffmpegService.SelectRandomTimestamp(duration.Value, blackIntervals);
 
-                        _logger.LogDebug("Random timestamp selected: {Timestamp} for episode: \"{EpisodeName}\"", selectedTimestamp, episode.Name);
-
-                        // High-quality frame extraction with hardware acceleration and optimization
                         extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, cancellationToken).ConfigureAwait(false);
                     }
                     else
@@ -657,14 +615,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                         extractedFramePath = CreateTransparentImage(tempFramePath);
                     }
 
-                    // Source image validation ensuring processing readiness and content availability
                     if (extractedFramePath == null || !File.Exists(extractedFramePath))
                     {
                         _logger.LogWarning("Failed to create source image");
                         return null;
                     }
 
-                    // Comprehensive poster synthesis with style-specific processing and text overlay
                     var processedPath = posterGeneratorService.ProcessImageWithText(extractedFramePath, tempPosterPath, episode, config);
                     if (processedPath == null || !File.Exists(processedPath))
                     {
@@ -672,13 +628,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                         return null;
                     }
 
-                    // Final image preparation with memory stream generation for Jellyfin integration
                     var imageBytes = await File.ReadAllBytesAsync(processedPath, cancellationToken).ConfigureAwait(false);
                     return new MemoryStream(imageBytes);
                 }
                 finally
                 {
-                    // Comprehensive cleanup automation ensuring resource disposal and system cleanliness
                     if (File.Exists(tempFramePath))
                     {
                         try { File.Delete(tempFramePath); } catch (Exception ex) { _logger.LogWarning(ex, "Failed to delete temp frame: \"{Path}\"", tempFramePath); }
@@ -692,7 +646,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
             }
             catch (Exception ex)
             {
-                // Comprehensive error handling ensuring graceful degradation and administrative visibility
                 _logger.LogError(ex, "Error generating poster for episode: \"{EpisodeName}\"", episode.Name);
                 return null;
             }
@@ -735,13 +688,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
         // MARK: GetDurationFromEpisode
         private TimeSpan? GetDurationFromEpisode(Episode episode)
         {
-            // Metadata-based duration extraction with performance optimization and fallback support
             if (episode.RunTimeTicks.HasValue)
             {
                 return TimeSpan.FromTicks(episode.RunTimeTicks.Value);
             }
 
-            // Return null indicating metadata unavailability triggering FFprobe-based analysis
             return null;
         }
 

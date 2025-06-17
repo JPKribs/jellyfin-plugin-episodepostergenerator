@@ -555,8 +555,6 @@ public class PosterGeneratorService
             
             // Log letterbox detection results for debugging
             var cropPercentage = (letterboxBounds.Width * letterboxBounds.Height) / (originalWidth * originalHeight) * 100;
-            // Optional: Add logging here if you have access to a logger
-            // _logger?.LogDebug("Letterbox detection removed {Percentage:F1}% of content", 100 - cropPercentage);
         }
         else if (fill == PosterFill.Fit)
         {

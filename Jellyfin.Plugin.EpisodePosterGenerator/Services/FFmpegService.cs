@@ -46,9 +46,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services;
 /// 
 /// Hardware-Accelerated Frame Extraction:
 /// Sophisticated frame extraction system leveraging available hardware acceleration technologies
-/// including VAAPI, QSV, CUDA, D3D11VA, and VideoToolbox for optimal performance across
-/// different hardware platforms. The system automatically detects and utilizes the best
-/// available acceleration method while maintaining software fallback compatibility.
+/// for optimal performance across different hardware platforms. The system automatically
+/// detects and utilizes the best available acceleration method while maintaining software
+/// fallback compatibility.
 /// 
 /// Content-Aware Timestamp Selection:
 /// Intelligent algorithms for selecting optimal frame extraction timestamps that avoid
@@ -209,6 +209,26 @@ public class FFmpegService
     private static readonly Random _random = new();
 
     /// <summary>
+    /// Cache of video codecs that have failed hardware acceleration and should use software fallback.
+    /// Prevents repeated HWA attempts for codecs known to fail, improving performance and reducing log noise.
+    /// Cache persists until application restart.
+    /// </summary>
+    private static readonly HashSet<string> _failedHwaccelCodecs = new();
+
+    /// <summary>
+    /// Thread synchronization object for safe access to the failed codec cache during concurrent operations.
+    /// </summary>
+    private static readonly object _failedCodecCacheLock = new object();
+
+    /// <summary>
+    /// Cached hardware acceleration arguments determined once at startup to avoid repeated testing
+    /// and provide consistent acceleration method throughout the service lifetime. This optimization
+    /// eliminates the need for per-operation hardware acceleration detection while maintaining
+    /// optimal performance characteristics for video processing operations.
+    /// </summary>
+    private readonly string _hardwareAccelerationArgs;
+
+    /// <summary>
     /// Initializes a new instance of the FFmpeg service with essential Jellyfin integration components
     /// and establishes the foundational infrastructure for video processing operations. Sets up logging
     /// and media encoder integration enabling seamless access to configured video processing tools
@@ -239,6 +259,7 @@ public class FFmpegService
     {
         _logger = logger;
         _mediaEncoder = mediaEncoder;
+        _hardwareAccelerationArgs = DetermineHardwareAcceleration();
     }
 
     /// <summary>
@@ -269,12 +290,43 @@ public class FFmpegService
         var path = _mediaEncoder.EncoderPath;
         if (string.IsNullOrEmpty(path))
         {
-            _logger.LogError("FFmpeg path not available from media encoder");
             return "ffmpeg";  // Fallback to system PATH resolution
         }
 
-        _logger.LogDebug("Using FFmpeg path: {FFmpegPath}", path);
         return path;
+    }
+
+    /// <summary>
+    /// Efficiently determines the video codec type for the specified video file using optimized FFprobe
+    /// analysis with minimal processing overhead. Used for logging and diagnostic purposes during
+    /// frame extraction operations.
+    /// </summary>
+    /// <param name="videoPath">
+    /// File system path to the video file requiring codec analysis.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Cancellation token enabling responsive termination of codec detection operations.
+    /// </param>
+    /// <returns>
+    /// String representing the detected video codec identifier if detection succeeds, "unknown" if
+    /// codec detection fails.
+    /// </returns>
+    // MARK: GetVideoCodecAsync
+    private async Task<string> GetVideoCodecAsync(string videoPath, CancellationToken cancellationToken = default)
+    {
+        var arguments = $"-v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 \"{videoPath}\"";
+        
+        try
+        {
+            var result = await ExecuteFFprobeAsync(arguments, cancellationToken).ConfigureAwait(false);
+            var codec = result.Trim();
+            
+            return !string.IsNullOrEmpty(codec) ? codec : "unknown";
+        }
+        catch
+        {
+            return "unknown";
+        }
     }
 
     /// <summary>
@@ -298,11 +350,130 @@ public class FFmpegService
         var path = _mediaEncoder.ProbePath;
         if (string.IsNullOrEmpty(path))
         {
-            _logger.LogError("FFprobe path not available from media encoder");
             return "ffprobe";  // Fallback to system PATH resolution
         }
 
         return path;
+    }
+
+    /// <summary>
+    /// Determines the optimal hardware acceleration method using Jellyfin's support detection
+    /// without runtime testing overhead. This method checks available hardware acceleration
+    /// support once during service initialization and caches the result for consistent use
+    /// throughout the service lifetime, eliminating per-operation detection overhead while
+    /// ensuring optimal acceleration method selection.
+    /// 
+    /// Acceleration Priority Strategy:
+    /// Tests acceleration methods in order of general compatibility and performance characteristics
+    /// ensuring optimal acceleration selection while maintaining broad hardware support across
+    /// different system configurations and deployment environments. The priority order balances
+    /// performance benefits with compatibility across diverse hardware platforms.
+    /// 
+    /// Platform-Specific Acceleration Support:
+    /// 
+    /// VAAPI (Video Acceleration API):
+    /// Linux-based hardware acceleration leveraging Intel and AMD GPU capabilities for optimal
+    /// video processing performance on Linux systems with compatible hardware and driver configurations.
+    /// 
+    /// QSV (Quick Sync Video):
+    /// Intel Quick Sync hardware acceleration providing efficient video processing on systems
+    /// with compatible Intel processors and integrated graphics capabilities across multiple platforms.
+    /// 
+    /// CUDA (Compute Unified Device Architecture):
+    /// NVIDIA GPU acceleration enabling high-performance video processing on systems with compatible
+    /// NVIDIA graphics hardware and appropriate driver installations for optimal processing throughput.
+    /// 
+    /// D3D11VA (Direct3D 11 Video Acceleration):
+    /// Windows-specific hardware acceleration leveraging DirectX capabilities for optimal video
+    /// processing performance on Windows systems with compatible graphics hardware and driver support.
+    /// 
+    /// VideoToolbox:
+    /// macOS hardware acceleration utilizing Apple's VideoToolbox framework for efficient video
+    /// processing on macOS systems with compatible hardware providing optimal performance characteristics.
+    /// 
+    /// Performance Optimization:
+    /// Single-time determination during service initialization eliminates repeated acceleration
+    /// detection overhead while ensuring consistent acceleration method usage throughout the
+    /// service lifetime, providing optimal performance for batch processing operations.
+    /// </summary>
+    /// <returns>
+    /// Hardware acceleration argument string for FFmpeg command construction enabling optimal
+    /// video processing performance, or empty string for software fallback when hardware
+    /// acceleration is unavailable across all supported platforms.
+    /// </returns>
+    // MARK: DetermineHardwareAcceleration
+    private string DetermineHardwareAcceleration()
+    {
+        try
+        {
+            string hwaccelMethod = string.Empty;
+            string hwaccelArgs = string.Empty;
+            
+            // Platform-based hardware acceleration detection since SupportsHwaccel() 
+            // may not be reliable during early plugin initialization
+            if (OperatingSystem.IsMacOS())
+            {
+                hwaccelMethod = "VideoToolbox";
+                hwaccelArgs = "-hwaccel videotoolbox";
+            }
+            else if (OperatingSystem.IsWindows())
+            {
+                // Check for NVIDIA first, then fallback to D3D11VA
+                var cudaSupported = _mediaEncoder.SupportsHwaccel("cuda");
+                var d3d11vaSupported = _mediaEncoder.SupportsHwaccel("d3d11va");
+                
+                if (cudaSupported)
+                {
+                    hwaccelMethod = "CUDA";
+                    hwaccelArgs = "-hwaccel cuda";
+                }
+                else if (d3d11vaSupported)
+                {
+                    hwaccelMethod = "D3D11VA";
+                    hwaccelArgs = "-hwaccel d3d11va";
+                }
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                // Check for available Linux acceleration methods
+                var vaapiSupported = _mediaEncoder.SupportsHwaccel("vaapi");
+                var qsvSupported = _mediaEncoder.SupportsHwaccel("qsv");
+                var cudaSupported = _mediaEncoder.SupportsHwaccel("cuda");
+                
+                if (vaapiSupported)
+                {
+                    hwaccelMethod = "VAAPI";
+                    hwaccelArgs = "-hwaccel vaapi";
+                }
+                else if (qsvSupported)
+                {
+                    hwaccelMethod = "QSV";
+                    hwaccelArgs = "-hwaccel qsv";
+                }
+                else if (cudaSupported)
+                {
+                    hwaccelMethod = "CUDA";
+                    hwaccelArgs = "-hwaccel cuda";
+                }
+            }
+
+            // Log the final configuration
+            if (!string.IsNullOrEmpty(hwaccelMethod))
+            {
+                _logger.LogInformation("FFmpeg Service initialized - Hardware Acceleration: {HwaccelMethod}, Software Fallback: Enabled", hwaccelMethod);
+            }
+            else
+            {
+                _logger.LogInformation("FFmpeg Service initialized - Hardware Acceleration: Disabled, Software Decoding: Enabled");
+            }
+
+            return hwaccelArgs;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not determine hardware acceleration support, using software decoding");
+            return string.Empty;
+        }
     }
 
     /// <summary>
@@ -463,7 +634,6 @@ public class FFmpegService
         // Skip detection for very short videos to optimize processing efficiency
         if (totalDuration.TotalMinutes < 2)
         {
-            _logger.LogDebug("Skipping black detection for short video: {Duration}", totalDuration);
             return blackIntervals;
         }
         
@@ -495,10 +665,9 @@ public class FFmpegService
     /// media libraries with varied content characteristics.
     /// 
     /// Hardware Acceleration Integration:
-    /// Seamless integration with available hardware acceleration technologies including VAAPI,
-    /// QSV, CUDA, and other platform-specific acceleration methods ensuring optimal processing
-    /// performance while maintaining software fallback compatibility across diverse deployment
-    /// environments and hardware configurations.
+    /// Seamless integration with available hardware acceleration technologies ensuring optimal
+    /// processing performance while maintaining software fallback compatibility across diverse
+    /// deployment environments and hardware configurations.
     /// 
     /// Video Processing Optimization:
     /// Intelligent video scaling to reduced resolution (320x240) significantly improves processing
@@ -554,33 +723,100 @@ public class FFmpegService
         var startSeconds = startTime.TotalSeconds;
         var durationSeconds = duration.TotalSeconds;
         
-        // Integrate hardware acceleration for optimal processing performance
-        var hwaccelArgs = GetHardwareAccelerationArgs();
+        // Get codec for cache checking
+        var codec = await GetVideoCodecAsync(videoPath, cancellationToken).ConfigureAwait(false);
         
-        // Construct optimized FFmpeg command with intelligent processing parameters
-        var arguments = $"-ss {startSeconds:F2} -t {durationSeconds:F2} {hwaccelArgs} -i \"{videoPath}\" -vf \"scale=320:240,blackdetect=d={durationThreshold}:pix_th={pixelThreshold}\" -an -f null - -v info";
+        // Check if this codec previously failed HWA and should use software directly
+        bool shouldUseSoftware = false;
+        lock (_failedCodecCacheLock)
+        {
+            shouldUseSoftware = _failedHwaccelCodecs.Contains(codec);
+        }
+        
+        // Use software directly if codec is known to fail HWA
+        if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
+        {
+            var softwareArguments = $"-ss {startSeconds:F2} -t {durationSeconds:F2} -i \"{videoPath}\" -vf \"scale=320:240,blackdetect=d={durationThreshold}:pix_th={pixelThreshold}\" -an -f null - -v info";
+            
+            try
+            {
+                var output = await ExecuteFFmpegAsync(softwareArguments, cancellationToken).ConfigureAwait(false);
+                var segmentIntervals = ParseBlackDetectOutput(output);
+                
+                foreach (var interval in segmentIntervals)
+                {
+                    blackIntervals.Add(new BlackInterval
+                    {
+                        Start = interval.Start.Add(startTime),
+                        End = interval.End.Add(startTime),
+                        Duration = interval.Duration
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Software black scene detection failed for segment {Start}-{End} in {VideoPath}", startTime, startTime.Add(duration), videoPath);
+            }
+            
+            return blackIntervals;
+        }
+        
+        // Try hardware acceleration first
+        var arguments = $"-ss {startSeconds:F2} -t {durationSeconds:F2} {_hardwareAccelerationArgs} -i \"{videoPath}\" -vf \"scale=320:240,blackdetect=d={durationThreshold}:pix_th={pixelThreshold}\" -an -f null - -v info";
 
         try
         {
-            // Execute FFmpeg detection process with comprehensive error handling
             var output = await ExecuteFFmpegAsync(arguments, cancellationToken).ConfigureAwait(false);
             var segmentIntervals = ParseBlackDetectOutput(output);
             
-            // Adjust timestamps to reflect overall video timeline positioning
             foreach (var interval in segmentIntervals)
             {
                 blackIntervals.Add(new BlackInterval
                 {
-                    Start = interval.Start.Add(startTime),  // Adjust for segment offset
-                    End = interval.End.Add(startTime),      // Maintain interval duration
-                    Duration = interval.Duration            // Preserve original duration
+                    Start = interval.Start.Add(startTime),
+                    End = interval.End.Add(startTime),
+                    Duration = interval.Duration
+                });
+            }
+            
+            return blackIntervals;
+        }
+        catch (Exception ex)
+        {
+            // Cache this codec as failed and log warning only on first occurrence
+            bool shouldLogWarning = false;
+            lock (_failedCodecCacheLock)
+            {
+                shouldLogWarning = _failedHwaccelCodecs.Add(codec);
+            }
+            
+            if (shouldLogWarning)
+            {
+                _logger.LogWarning(ex, "Hardware acceleration failed for {Codec} codec during black detection, falling back to software", codec);
+            }
+        }
+
+        // Software fallback
+        var fallbackArguments = $"-ss {startSeconds:F2} -t {durationSeconds:F2} -i \"{videoPath}\" -vf \"scale=320:240,blackdetect=d={durationThreshold}:pix_th={pixelThreshold}\" -an -f null - -v info";
+        
+        try
+        {
+            var output = await ExecuteFFmpegAsync(fallbackArguments, cancellationToken).ConfigureAwait(false);
+            var segmentIntervals = ParseBlackDetectOutput(output);
+            
+            foreach (var interval in segmentIntervals)
+            {
+                blackIntervals.Add(new BlackInterval
+                {
+                    Start = interval.Start.Add(startTime),
+                    End = interval.End.Add(startTime),
+                    Duration = interval.Duration
                 });
             }
         }
         catch (Exception ex)
         {
-            // Comprehensive error logging for debugging and monitoring without disrupting batch operations
-            _logger.LogError(ex, "Failed to detect black scenes in segment {Start}-{End} for {VideoPath}", startTime, startTime.Add(duration), videoPath);
+            _logger.LogError(ex, "Software fallback black scene detection also failed for segment {Start}-{End} in {VideoPath}", startTime, startTime.Add(duration), videoPath);
         }
 
         return blackIntervals;
@@ -672,10 +908,10 @@ public class FFmpegService
     /// reliability across batch processing scenarios.
     /// 
     /// Hardware Acceleration Optimization:
-    /// Intelligent integration with available hardware acceleration technologies including VAAPI,
-    /// QSV, CUDA, D3D11VA, and VideoToolbox ensuring optimal extraction performance while maintaining
-    /// software fallback compatibility. The acceleration system automatically selects the best
-    /// available method while preserving output quality and processing reliability.
+    /// Intelligent integration with available hardware acceleration technologies ensuring optimal
+    /// extraction performance while maintaining software fallback compatibility. The acceleration
+    /// system automatically selects the best available method while preserving output quality
+    /// and processing reliability.
     /// 
     /// Quality Preservation Strategy:
     /// Extraction parameters are optimized for maximum visual quality using minimal compression
@@ -727,123 +963,83 @@ public class FFmpegService
         // Format timestamp with precision for accurate frame extraction
         var timestampStr = $"{timestamp.Hours:D2}:{timestamp.Minutes:D2}:{timestamp.Seconds:D2}.{timestamp.Milliseconds:D3}";
         
-        // Integrate hardware acceleration for optimal extraction performance
-        var hwaccelArgs = GetHardwareAccelerationArgs();
+        // Get codec for cache checking
+        var codec = await GetVideoCodecAsync(videoPath, cancellationToken).ConfigureAwait(false);
         
-        // Construct optimized FFmpeg command for high-quality frame extraction
-        var arguments = $"-ss {timestampStr} {hwaccelArgs} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
+        // Check if this codec previously failed HWA and should use software directly
+        bool shouldUseSoftware = false;
+        lock (_failedCodecCacheLock)
+        {
+            shouldUseSoftware = _failedHwaccelCodecs.Contains(codec);
+        }
+        
+        // Use software directly if codec is known to fail HWA
+        if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
+        {
+            var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
+            
+            try
+            {
+                await ExecuteFFmpegAsync(softwareArguments, cancellationToken).ConfigureAwait(false);
+                
+                if (File.Exists(outputPath))
+                {
+                    return outputPath;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Software frame extraction failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
+            }
+            
+            return null;
+        }
+        
+        // Try hardware acceleration first
+        var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
 
         try
         {
-            // Execute FFmpeg extraction process with comprehensive error handling
             await ExecuteFFmpegAsync(arguments, cancellationToken).ConfigureAwait(false);
             
-            // Validate successful extraction through file existence verification
             if (File.Exists(outputPath))
             {
-                _logger.LogDebug("Successfully extracted frame to: {OutputPath}", outputPath);
                 return outputPath;
             }
         }
         catch (Exception ex)
         {
-            // Comprehensive error logging for debugging and monitoring purposes
-            _logger.LogError(ex, "Failed to extract frame at {Timestamp} from {VideoPath}", timestamp, videoPath);
+            // Cache this codec as failed and log warning only on first occurrence
+            bool shouldLogWarning = false;
+            lock (_failedCodecCacheLock)
+            {
+                shouldLogWarning = _failedHwaccelCodecs.Add(codec); // Add returns true if item was added (not already present)
+            }
+            
+            if (shouldLogWarning)
+            {
+                _logger.LogWarning(ex, "Hardware acceleration failed for {Codec} codec, falling back to software for this codec", codec);
+            }
         }
 
-        // Return null to indicate extraction failure enabling fallback strategies
-        return null;
-    }
-
-    /// <summary>
-    /// Intelligently detects and configures optimal hardware acceleration settings using Jellyfin's
-    /// media encoder capabilities with comprehensive platform support and graceful fallback mechanisms.
-    /// This method implements sophisticated hardware acceleration detection ensuring optimal video
-    /// processing performance while maintaining compatibility across diverse deployment environments
-    /// and hardware configurations essential for efficient poster generation operations.
-    /// 
-    /// The acceleration detection system provides significant performance improvements for video
-    /// processing operations including black scene detection and frame extraction while ensuring
-    /// reliable operation through intelligent fallback strategies when hardware acceleration
-    /// is unavailable or incompatible with specific video content or system configurations.
-    /// 
-    /// Platform-Specific Acceleration Support:
-    /// 
-    /// VAAPI (Video Acceleration API):
-    /// Linux-based hardware acceleration leveraging Intel and AMD GPU capabilities for optimal
-    /// video processing performance on Linux systems with compatible hardware and driver configurations.
-    /// 
-    /// QSV (Quick Sync Video):
-    /// Intel Quick Sync hardware acceleration providing efficient video processing on systems
-    /// with compatible Intel processors and integrated graphics capabilities across multiple platforms.
-    /// 
-    /// CUDA (Compute Unified Device Architecture):
-    /// NVIDIA GPU acceleration enabling high-performance video processing on systems with compatible
-    /// NVIDIA graphics hardware and appropriate driver installations for optimal processing throughput.
-    /// 
-    /// D3D11VA (Direct3D 11 Video Acceleration):
-    /// Windows-specific hardware acceleration leveraging DirectX capabilities for optimal video
-    /// processing performance on Windows systems with compatible graphics hardware and driver support.
-    /// 
-    /// VideoToolbox:
-    /// macOS hardware acceleration utilizing Apple's VideoToolbox framework for efficient video
-    /// processing on macOS systems with compatible hardware providing optimal performance characteristics.
-    /// 
-    /// Detection Strategy and Prioritization:
-    /// Acceleration methods are tested in order of general compatibility and performance characteristics
-    /// ensuring optimal acceleration selection while maintaining broad hardware support across
-    /// different system configurations and deployment environments.
-    /// 
-    /// Fallback and Compatibility:
-    /// Graceful degradation to software processing ensures continued operation when hardware
-    /// acceleration is unavailable while maintaining consistent output quality and processing
-    /// reliability across all supported platforms and hardware configurations.
-    /// </summary>
-    /// <returns>
-    /// Hardware acceleration argument string for FFmpeg command construction enabling optimal
-    /// video processing performance, or empty string for software fallback when hardware
-    /// acceleration is unavailable or incompatible with current system configuration.
-    /// </returns>
-    // MARK: GetHardwareAccelerationArgs
-    private string GetHardwareAccelerationArgs()
-    {
+        // Software fallback
+        var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
+        
         try
         {
-            // Test acceleration methods in order of compatibility and performance
-            if (_mediaEncoder.SupportsHwaccel("vaapi"))
-            {
-                return "-hwaccel vaapi";      // Linux GPU acceleration
-            }
+            await ExecuteFFmpegAsync(fallbackArguments, cancellationToken).ConfigureAwait(false);
             
-            if (_mediaEncoder.SupportsHwaccel("qsv"))
+            if (File.Exists(outputPath))
             {
-                return "-hwaccel qsv";        // Intel Quick Sync acceleration
+                return outputPath;
             }
-            
-            if (_mediaEncoder.SupportsHwaccel("cuda"))
-            {
-                return "-hwaccel cuda";       // NVIDIA GPU acceleration
-            }
-            
-            if (_mediaEncoder.SupportsHwaccel("d3d11va"))
-            {
-                return "-hwaccel d3d11va";    // Windows DirectX acceleration
-            }
-            
-            if (_mediaEncoder.SupportsHwaccel("videotoolbox"))
-            {
-                return "-hwaccel videotoolbox"; // macOS VideoToolbox acceleration
-            }
-
-            // No hardware acceleration available - use software processing
-            return string.Empty;
         }
         catch (Exception ex)
         {
-            // Graceful degradation with comprehensive logging for debugging
-            _logger.LogDebug(ex, "Could not determine hardware acceleration support, using software decoding");
-            return string.Empty;
+            _logger.LogError(ex, "Software fallback frame extraction also failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
         }
+
+        return null;
     }
 
     /// <summary>
@@ -994,7 +1190,6 @@ public class FFmpegService
             // Validate cache entry expiration for freshness assurance
             if (DateTime.UtcNow - cached.Created < _cacheExpiry)
             {
-                _logger.LogDebug("Using cached black intervals for: {VideoPath}", videoPath);
                 return cached.Intervals;
             }
             

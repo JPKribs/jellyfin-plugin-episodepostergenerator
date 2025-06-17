@@ -13,12 +13,13 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   features:
-  - -
+  - Better HWA detection
   fixes: 
-  - -
+  - Fallback to SW Decoding if HWA fails
   technical:
   - -
   other:
-  - -
+  - Reduce excessive logging
+  - Print HWA configuration to logs
   documentation:
   - -

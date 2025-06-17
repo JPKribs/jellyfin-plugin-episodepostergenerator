@@ -232,6 +232,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         {
             _logger = logger;
             _database = database;
+            _logger.LogInformation("Episode tracking service initialized");
         }
 
         /// <summary>
@@ -318,7 +319,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             // Primary image availability analysis - always process episodes lacking visual representation
             if (!episode.HasImage(ImageType.Primary, 0))
             {
-                _logger.LogDebug("Episode {EpisodeName} has no primary image, should process", episode.Name);
                 return true;
             }
 
@@ -326,7 +326,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             var record = await _database.GetProcessedEpisodeAsync(episode.Id).ConfigureAwait(false);
             if (record == null)
             {
-                _logger.LogDebug("Episode {EpisodeName} not in tracking records, should process", episode.Name);
                 return true;
             }
 
@@ -344,7 +343,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             if (shouldReprocess)
             {
-                _logger.LogDebug("Episode {EpisodeName} video or config changed, should process", episode.Name);
                 return true;
             }
 
@@ -352,12 +350,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             var imageModifiedAfterProcessing = IsImageModifiedAfterProcessing(episode, record);
             if (imageModifiedAfterProcessing)
             {
-                _logger.LogDebug("Episode {EpisodeName} image was modified after processing, should reprocess", episode.Name);
                 return true;
             }
 
             // No processing required - current poster remains adequate and current
-            _logger.LogDebug("Episode {EpisodeName} does not need processing", episode.Name);
             return false;
         }
 
@@ -486,7 +482,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             // Persistent storage with comprehensive error handling and database integration
             await _database.SaveProcessedEpisodeAsync(record).ConfigureAwait(false);
-            _logger.LogDebug("Marked episode as processed: {EpisodeName}", episode.Name);
         }
 
         /// <summary>
@@ -587,9 +582,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         // MARK: RemoveProcessedRecordAsync
         public async Task RemoveProcessedRecordAsync(Guid episodeId)
         {
-            // Targeted record removal with comprehensive error handling and administrative logging
+            // Targeted record removal with comprehensive error handling
             await _database.RemoveProcessedEpisodeAsync(episodeId).ConfigureAwait(false);
-            _logger.LogDebug("Removed processed record for episode: {EpisodeId}", episodeId);
         }
 
         /// <summary>
@@ -702,8 +696,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 // Temporal comparison analysis detecting modifications subsequent to processing completion
                 if (imageLastModified > record.LastProcessed)
                 {
-                    _logger.LogDebug("Image for episode {EpisodeId} was modified {ImageModified} after last processing {LastProcessed}", 
-                        episode.Id, imageLastModified, record.LastProcessed);
                     return true;
                 }
 
