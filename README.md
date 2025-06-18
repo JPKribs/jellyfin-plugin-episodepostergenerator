@@ -84,3 +84,28 @@ Series logo-focused posters with episode information and clean typography.
 - **Primary**: Series logo image (when available)
 - **Fallback**: Series primary image
 - **Text Fallback**: Series name with optimized font scaling
+
+## Installation
+
+### Step 1: Add Plugin Repository
+
+* Open Jellyfin and navigate to Dashboard → Plugins → Repositories
+* Click Add Repository
+* Enter the following repository URL: `https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/manifest.json`
+* Click Save
+
+### Step 2: Install Plugin
+
+* Go to the Catalog tab in the Plugins section
+* Find Episode Poster Generator in the catalog
+* Click Install
+* Wait for installation to complete
+
+### Step 3: Restart Jellyfin
+
+* Restart your Jellyfin server completely
+* Wait for Jellyfin to fully start up
+
+### Verification Check
+
+* After restart, navigate to Dashboard → Plugins → Episode Poster Generator to confirm the plugin configuration page loads properly.
