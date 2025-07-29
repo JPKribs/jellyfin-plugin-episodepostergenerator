@@ -609,8 +609,6 @@ public class FFmpegService
             filters.Add("tonemap=tonemap=hable:desat=0:peak=100");
         }
         
-        filters.Add("format=yuv420p");
-        
         return string.Join(",", filters);
     }
 
@@ -1081,8 +1079,6 @@ public class FFmpegService
         var timestampStr = $"{timestamp.Hours:D2}:{timestamp.Minutes:D2}:{timestamp.Seconds:D2}.{timestamp.Milliseconds:D3}";
         
         var codec = await GetVideoCodecAsync(videoPath, cancellationToken).ConfigureAwait(false);
-        var (isHDR, colorSpace, transferCharacteristic) = await DetectHDRAsync(videoPath, cancellationToken).ConfigureAwait(false);
-        var toneMappingFilter = BuildToneMappingFilter(isHDR, colorSpace, transferCharacteristic);
         
         bool shouldUseSoftware = false;
         lock (_failedCodecCacheLock)
@@ -1090,14 +1086,40 @@ public class FFmpegService
             shouldUseSoftware = _failedHwaccelCodecs.Contains(codec);
         }
         
-        if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
+        // Check if this is HDR content that needs tone mapping
+        var (isHDR, colorSpace, transferCharacteristic) = await DetectHDRAsync(videoPath, cancellationToken).ConfigureAwait(false);
+        
+        if (isHDR)
         {
-            var filterArg = string.IsNullOrEmpty(toneMappingFilter) ? "" : $"-vf \"{toneMappingFilter}\"";
-            var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {filterArg} -q:v 1 \"{outputPath}\"";
+            // Apply tone mapping for HDR content
+            var toneMappingFilter = BuildToneMappingFilter(isHDR, colorSpace, transferCharacteristic);
             
+            if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
+            {
+                var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -vf \"{toneMappingFilter}\" -q:v 1 \"{outputPath}\"";
+                
+                try
+                {
+                    await ExecuteFFmpegAsync(softwareArguments, cancellationToken).ConfigureAwait(false);
+                    
+                    if (File.Exists(outputPath))
+                    {
+                        return outputPath;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Software HDR frame extraction failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
+                }
+                
+                return null;
+            }
+            
+            var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 -vf \"{toneMappingFilter}\" -q:v 1 \"{outputPath}\"";
+
             try
             {
-                await ExecuteFFmpegAsync(softwareArguments, cancellationToken).ConfigureAwait(false);
+                await ExecuteFFmpegAsync(arguments, cancellationToken).ConfigureAwait(false);
                 
                 if (File.Exists(outputPath))
                 {
@@ -1106,56 +1128,103 @@ public class FFmpegService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Software frame extraction failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
+                bool shouldLogWarning = false;
+                lock (_failedCodecCacheLock)
+                {
+                    shouldLogWarning = _failedHwaccelCodecs.Add(codec);
+                }
+                
+                if (shouldLogWarning)
+                {
+                    _logger.LogWarning(ex, "Hardware acceleration failed for {Codec} codec during HDR extraction, falling back to software for this codec", codec);
+                }
             }
+
+            var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -vf \"{toneMappingFilter}\" -q:v 1 \"{outputPath}\"";
             
+            try
+            {
+                await ExecuteFFmpegAsync(fallbackArguments, cancellationToken).ConfigureAwait(false);
+                
+                if (File.Exists(outputPath))
+                {
+                    return outputPath;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Software fallback HDR frame extraction also failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
+            }
+
             return null;
         }
-        
-        var filterArgHwa = string.IsNullOrEmpty(toneMappingFilter) ? "" : $"-vf \"{toneMappingFilter}\"";
-        var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 {filterArgHwa} -q:v 1 \"{outputPath}\"";
-
-        try
+        else
         {
-            await ExecuteFFmpegAsync(arguments, cancellationToken).ConfigureAwait(false);
+            // Use original SDR processing - exactly as it was before
+            if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
+            {
+                var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
+                
+                try
+                {
+                    await ExecuteFFmpegAsync(softwareArguments, cancellationToken).ConfigureAwait(false);
+                    
+                    if (File.Exists(outputPath))
+                    {
+                        return outputPath;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Software frame extraction failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
+                }
+                
+                return null;
+            }
             
-            if (File.Exists(outputPath))
-            {
-                return outputPath;
-            }
-        }
-        catch (Exception ex)
-        {
-            bool shouldLogWarning = false;
-            lock (_failedCodecCacheLock)
-            {
-                shouldLogWarning = _failedHwaccelCodecs.Add(codec);
-            }
-            
-            if (shouldLogWarning)
-            {
-                _logger.LogWarning(ex, "Hardware acceleration failed for {Codec} codec, falling back to software for this codec", codec);
-            }
-        }
+            var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
 
-        var filterArgFallback = string.IsNullOrEmpty(toneMappingFilter) ? "" : $"-vf \"{toneMappingFilter}\"";
-        var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {filterArgFallback} -q:v 1 \"{outputPath}\"";
-        
-        try
-        {
-            await ExecuteFFmpegAsync(fallbackArguments, cancellationToken).ConfigureAwait(false);
-            
-            if (File.Exists(outputPath))
+            try
             {
-                return outputPath;
+                await ExecuteFFmpegAsync(arguments, cancellationToken).ConfigureAwait(false);
+                
+                if (File.Exists(outputPath))
+                {
+                    return outputPath;
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Software fallback frame extraction also failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
-        }
+            catch (Exception ex)
+            {
+                bool shouldLogWarning = false;
+                lock (_failedCodecCacheLock)
+                {
+                    shouldLogWarning = _failedHwaccelCodecs.Add(codec);
+                }
+                
+                if (shouldLogWarning)
+                {
+                    _logger.LogWarning(ex, "Hardware acceleration failed for {Codec} codec, falling back to software for this codec", codec);
+                }
+            }
 
-        return null;
+            var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
+            
+            try
+            {
+                await ExecuteFFmpegAsync(fallbackArguments, cancellationToken).ConfigureAwait(false);
+                
+                if (File.Exists(outputPath))
+                {
+                    return outputPath;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Software fallback frame extraction also failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
+            }
+
+            return null;
+        }
     }
 
     /// <summary>
