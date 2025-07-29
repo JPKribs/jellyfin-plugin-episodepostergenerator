@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Screenshots/Logo.png",
     "versions": [
       {
+        "version": "10.10.14",
+        "changelog": "**FFmpeg Cleanup**\r\n* FFmpeg cleanup from items found during tone mapping",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.14/jellyfin-plugin-episodepostergenerator-10.10.14.zip",
+        "checksum": "1ecb88962bee5561cf88789a6f4efa18",
+        "timestamp": "2025-07-29T16:32:08Z"
+      },
+      {
         "version": "10.10.13",
         "changelog": "**Tone Mapping & Cleanup**\r\n* Remove all SDR tone mapping\r\n* Cleanup inline comments in FFmpegService",
         "targetAbi": "10.10.7.0",
