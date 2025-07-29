@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Screenshots/Logo.png",
     "versions": [
       {
+        "version": "10.10.15",
+        "changelog": "**Cleanup & Tech Debt**\r\n* SDR Color Mapping\r\n* HDR Color Mapping\r\n* Get color space from Jellyfin",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.15/jellyfin-plugin-episodepostergenerator-10.10.15.zip",
+        "checksum": "a5c5c8b9ab5a1d78a46deb393ccb8495",
+        "timestamp": "2025-07-29T17:14:27Z"
+      },
+      {
         "version": "10.10.14",
         "changelog": "**FFmpeg Cleanup**\r\n* FFmpeg cleanup from items found during tone mapping",
         "targetAbi": "10.10.7.0",
