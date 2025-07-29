@@ -526,26 +526,26 @@ public class FFmpegService
             {
                 if (colorSpace.Contains("bt709", StringComparison.OrdinalIgnoreCase))
                 {
-                    filters.Add("colorspace=bt709:bt709:bt709");
+                    filters.Add("colorspace=space=bt709:trc=bt709:primaries=bt709");
                 }
                 else if (colorSpace.Contains("bt601", StringComparison.OrdinalIgnoreCase))
                 {
-                    filters.Add("colorspace=bt709:bt709:bt709:ispace=bt601:iprimaries=bt601:itrc=bt601");
+                    filters.Add("colorspace=space=bt709:trc=bt709:primaries=bt709:ispace=bt601:itrc=bt601:iprimaries=bt601");
                 }
                 else if (colorSpace.Contains("smpte170m", StringComparison.OrdinalIgnoreCase))
                 {
-                    filters.Add("colorspace=bt709:bt709:bt709:ispace=smpte170m:iprimaries=smpte170m:itrc=smpte170m");
+                    filters.Add("colorspace=space=bt709:trc=bt709:primaries=bt709:ispace=smpte170m:itrc=smpte170m:iprimaries=smpte170m");
                 }
                 else
                 {
                     // Default color space conversion for unknown SDR spaces
-                    filters.Add("colorspace=bt709:bt709:bt709");
+                    filters.Add("colorspace=space=bt709:trc=bt709:primaries=bt709");
                 }
             }
             else
             {
                 // No specific color space info, apply basic rec709 conversion
-                filters.Add("colorspace=bt709:bt709:bt709");
+                filters.Add("colorspace=space=bt709:trc=bt709:primaries=bt709");
             }
         }
         
