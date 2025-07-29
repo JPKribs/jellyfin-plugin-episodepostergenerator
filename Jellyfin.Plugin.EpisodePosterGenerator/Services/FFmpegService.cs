@@ -229,6 +229,17 @@ public class FFmpegService
     private readonly string _hardwareAccelerationArgs;
 
     /// <summary>
+    /// Cache for HDR detection results to avoid repeated analysis of the same video files.
+    /// Maps video file paths to HDR detection results for performance optimization.
+    /// </summary>
+    private static readonly Dictionary<string, (DateTime Created, bool IsHDR, string ColorSpace, string TransferCharacteristic)> _hdrCache = new();
+
+    /// <summary>
+    /// Thread synchronization object for safe access to the HDR cache during concurrent operations.
+    /// </summary>
+    private static readonly object _hdrCacheLock = new object();
+
+    /// <summary>
     /// Initializes a new instance of the FFmpeg service with essential Jellyfin integration components
     /// and establishes the foundational infrastructure for video processing operations. Sets up logging
     /// and media encoder integration enabling seamless access to configured video processing tools
@@ -474,6 +485,141 @@ public class FFmpegService
             _logger.LogWarning(ex, "Could not determine hardware acceleration support, using software decoding");
             return string.Empty;
         }
+    }
+
+    // MARK: DetectHDRAsync
+    private async Task<(bool IsHDR, string ColorSpace, string TransferCharacteristic)> DetectHDRAsync(string videoPath, CancellationToken cancellationToken = default)
+    {
+        var fileInfo = new FileInfo(videoPath);
+        var cacheKey = $"{videoPath}_{fileInfo.Length}_{fileInfo.LastWriteTime.Ticks}";
+
+        lock (_hdrCacheLock)
+        {
+            if (_hdrCache.TryGetValue(cacheKey, out var cached))
+            {
+                if (DateTime.UtcNow - cached.Created < _cacheExpiry)
+                {
+                    return (cached.IsHDR, cached.ColorSpace, cached.TransferCharacteristic);
+                }
+                _hdrCache.Remove(cacheKey);
+            }
+        }
+
+        var arguments = $"-v error -select_streams v:0 -show_entries stream=color_space,color_transfer,pix_fmt -of default=noprint_wrappers=1 \"{videoPath}\"";
+        
+        try
+        {
+            var result = await ExecuteFFprobeAsync(arguments, cancellationToken).ConfigureAwait(false);
+            var lines = result.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            
+            var colorSpace = "";
+            var transferCharacteristic = "";
+            var pixelFormat = "";
+            
+            foreach (var line in lines)
+            {
+                var parts = line.Split('=');
+                if (parts.Length == 2)
+                {
+                    var key = parts[0].Trim();
+                    var value = parts[1].Trim();
+                    
+                    switch (key)
+                    {
+                        case "color_space":
+                            colorSpace = value;
+                            break;
+                        case "color_transfer":
+                            transferCharacteristic = value;
+                            break;
+                        case "pix_fmt":
+                            pixelFormat = value;
+                            break;
+                    }
+                }
+            }
+            
+            var isHDR = IsHDRContent(colorSpace, transferCharacteristic, pixelFormat);
+            
+            lock (_hdrCacheLock)
+            {
+                _hdrCache[cacheKey] = (DateTime.UtcNow, isHDR, colorSpace, transferCharacteristic);
+                
+                var expiredKeys = _hdrCache
+                    .Where(kvp => DateTime.UtcNow - kvp.Value.Created > _cacheExpiry)
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+                    
+                foreach (var key in expiredKeys)
+                {
+                    _hdrCache.Remove(key);
+                }
+            }
+            
+            return (isHDR, colorSpace, transferCharacteristic);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to detect HDR characteristics for {VideoPath}", videoPath);
+            return (false, "", "");
+        }
+    }
+
+    // MARK: IsHDRContent
+    private bool IsHDRContent(string colorSpace, string transferCharacteristic, string pixelFormat)
+    {
+        var hdrTransferCharacteristics = new[]
+        {
+            "smpte2084", "arib-std-b67", "smpte428", "iec61966-2-1", "bt2020-10", "bt2020-12"
+        };
+        
+        var hdrColorSpaces = new[]
+        {
+            "bt2020nc", "bt2020c", "smpte431", "smpte432", "jedec-p22"
+        };
+        
+        var hdr10BitFormats = new[]
+        {
+            "yuv420p10le", "yuv422p10le", "yuv444p10le", "yuv420p12le", "yuv422p12le", "yuv444p12le"
+        };
+        
+        return hdrTransferCharacteristics.Contains(transferCharacteristic, StringComparer.OrdinalIgnoreCase) ||
+               hdrColorSpaces.Contains(colorSpace, StringComparer.OrdinalIgnoreCase) ||
+               hdr10BitFormats.Contains(pixelFormat, StringComparer.OrdinalIgnoreCase);
+    }
+
+    // MARK: BuildToneMappingFilter
+    private string BuildToneMappingFilter(bool isHDR, string colorSpace, string transferCharacteristic)
+    {
+        if (!isHDR)
+        {
+            return "eq=brightness=0.05:contrast=1.1,format=yuv420p";
+        }
+
+        var filters = new List<string>();
+        
+        if (transferCharacteristic.Contains("smpte2084", StringComparison.OrdinalIgnoreCase) || 
+            transferCharacteristic.Contains("bt2020", StringComparison.OrdinalIgnoreCase))
+        {
+            filters.Add("zscale=t=linear:npl=100");
+            filters.Add("format=gbrpf32le");
+            filters.Add("zscale=p=bt709");
+            filters.Add("tonemap=tonemap=hable:desat=0:peak=100");
+            filters.Add("zscale=t=bt709:m=bt709:r=tv");
+        }
+        else if (transferCharacteristic.Contains("arib-std-b67", StringComparison.OrdinalIgnoreCase))
+        {
+            filters.Add("tonemap=tonemap=mobius:desat=0.5:peak=100");
+        }
+        else
+        {
+            filters.Add("tonemap=tonemap=hable:desat=0:peak=100");
+        }
+        
+        filters.Add("eq=brightness=0.08:contrast=1.15:gamma=0.95");
+        filters.Add("format=yuv420p");
+        
+        return string.Join(",", filters);
     }
 
     /// <summary>
@@ -965,6 +1111,8 @@ public class FFmpegService
         
         // Get codec for cache checking
         var codec = await GetVideoCodecAsync(videoPath, cancellationToken).ConfigureAwait(false);
+        var (isHDR, colorSpace, transferCharacteristic) = await DetectHDRAsync(videoPath, cancellationToken).ConfigureAwait(false);
+        var toneMappingFilter = BuildToneMappingFilter(isHDR, colorSpace, transferCharacteristic);
         
         // Check if this codec previously failed HWA and should use software directly
         bool shouldUseSoftware = false;
@@ -976,7 +1124,7 @@ public class FFmpegService
         // Use software directly if codec is known to fail HWA
         if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
         {
-            var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
+            var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -vf \"{toneMappingFilter}\" -q:v 1 \"{outputPath}\"";
             
             try
             {
@@ -995,8 +1143,7 @@ public class FFmpegService
             return null;
         }
         
-        // Try hardware acceleration first
-        var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
+        var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 -vf \"{toneMappingFilter}\" -q:v 1 \"{outputPath}\"";
 
         try
         {
@@ -1022,8 +1169,7 @@ public class FFmpegService
             }
         }
 
-        // Software fallback
-        var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
+        var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -vf \"{toneMappingFilter}\" -q:v 1 \"{outputPath}\"";
         
         try
         {
