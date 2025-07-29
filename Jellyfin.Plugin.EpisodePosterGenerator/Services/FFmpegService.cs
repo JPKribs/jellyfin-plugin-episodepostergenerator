@@ -593,7 +593,7 @@ public class FFmpegService
     {
         if (!isHDR)
         {
-            return "eq=brightness=0.05:contrast=1.1,format=yuv420p";
+            return "format=yuv420p";
         }
 
         var filters = new List<string>();
@@ -616,7 +616,7 @@ public class FFmpegService
             filters.Add("tonemap=tonemap=hable:desat=0:peak=100");
         }
         
-        filters.Add("eq=brightness=0.08:contrast=1.15:gamma=0.95");
+        filters.Add("eq=brightness=0.15:contrast=1.15:gamma=0.95");
         filters.Add("format=yuv420p");
         
         return string.Join(",", filters);
