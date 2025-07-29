@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Screenshots/Logo.png",
     "versions": [
       {
+        "version": "10.10.11",
+        "changelog": "* HDR Tone Mapping",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.11/jellyfin-plugin-episodepostergenerator-10.10.11.zip",
+        "checksum": "abca00fb4d29bf05cc2977f1c2e2d035",
+        "timestamp": "2025-07-29T15:36:39Z"
+      },
+      {
         "version": "10.10.10",
         "changelog": "**Logging & FFmpeg Cleanup**\r\n\r\n* Fallback to SW Decoding if HWA fails\r\n* Reduce excessive logging\r\n* Print HWA configuration to logs",
         "targetAbi": "10.10.7.0",
