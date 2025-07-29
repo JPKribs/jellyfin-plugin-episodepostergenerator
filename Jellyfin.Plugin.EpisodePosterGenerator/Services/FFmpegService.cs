@@ -297,11 +297,10 @@ public class FFmpegService
     // MARK: GetFFmpegPath
     private string GetFFmpegPath()
     {
-        // Retrieve configured FFmpeg path from Jellyfin's media encoder infrastructure
         var path = _mediaEncoder.EncoderPath;
         if (string.IsNullOrEmpty(path))
         {
-            return "ffmpeg";  // Fallback to system PATH resolution
+            return "ffmpeg";
         }
 
         return path;
@@ -357,11 +356,10 @@ public class FFmpegService
     // MARK: GetFFprobePath
     private string GetFFprobePath()
     {
-        // Retrieve configured FFprobe path from Jellyfin's media encoder infrastructure
         var path = _mediaEncoder.ProbePath;
         if (string.IsNullOrEmpty(path))
         {
-            return "ffprobe";  // Fallback to system PATH resolution
+            return "ffprobe";
         }
 
         return path;
@@ -420,8 +418,6 @@ public class FFmpegService
             string hwaccelMethod = string.Empty;
             string hwaccelArgs = string.Empty;
             
-            // Platform-based hardware acceleration detection since SupportsHwaccel() 
-            // may not be reliable during early plugin initialization
             if (OperatingSystem.IsMacOS())
             {
                 hwaccelMethod = "VideoToolbox";
@@ -429,7 +425,6 @@ public class FFmpegService
             }
             else if (OperatingSystem.IsWindows())
             {
-                // Check for NVIDIA first, then fallback to D3D11VA
                 var cudaSupported = _mediaEncoder.SupportsHwaccel("cuda");
                 var d3d11vaSupported = _mediaEncoder.SupportsHwaccel("d3d11va");
                 
@@ -446,7 +441,6 @@ public class FFmpegService
             }
             else if (OperatingSystem.IsLinux())
             {
-                // Check for available Linux acceleration methods
                 var vaapiSupported = _mediaEncoder.SupportsHwaccel("vaapi");
                 var qsvSupported = _mediaEncoder.SupportsHwaccel("qsv");
                 var cudaSupported = _mediaEncoder.SupportsHwaccel("cuda");
@@ -468,7 +462,6 @@ public class FFmpegService
                 }
             }
 
-            // Log the final configuration
             if (!string.IsNullOrEmpty(hwaccelMethod))
             {
                 _logger.LogInformation("FFmpeg Service initialized - Hardware Acceleration: {HwaccelMethod}, Software Fallback: Enabled", hwaccelMethod);
@@ -593,7 +586,7 @@ public class FFmpegService
     {
         if (!isHDR)
         {
-            return "format=yuv420p";
+            return string.Empty;
         }
 
         var filters = new List<string>();
@@ -670,15 +663,12 @@ public class FFmpegService
     // MARK: GetVideoDurationAsync
     public async Task<TimeSpan?> GetVideoDurationAsync(string videoPath, CancellationToken cancellationToken = default)
     {
-        // Construct optimized FFprobe command for efficient duration detection
         var arguments = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{videoPath}\"";
         
         try
         {
-            // Execute FFprobe command with comprehensive error handling and cancellation support
             var result = await ExecuteFFprobeAsync(arguments, cancellationToken).ConfigureAwait(false);
             
-            // Parse duration result with robust validation and error handling
             if (double.TryParse(result.Trim(), out var seconds))
             {
                 return TimeSpan.FromSeconds(seconds);
@@ -686,11 +676,9 @@ public class FFmpegService
         }
         catch (Exception ex)
         {
-            // Comprehensive error logging for debugging and monitoring purposes
             _logger.LogError(ex, "Failed to get video duration for {VideoPath}", videoPath);
         }
 
-        // Return null to indicate duration detection failure enabling fallback strategies
         return null;
     }
 
@@ -768,7 +756,6 @@ public class FFmpegService
     // MARK: DetectBlackScenesAsync
     public async Task<List<BlackInterval>> DetectBlackScenesAsync(string videoPath, TimeSpan totalDuration, double pixelThreshold = 0.1, double durationThreshold = 0.1, CancellationToken cancellationToken = default)
     {
-        // Check intelligent cache for existing detection results to optimize performance
         var cachedIntervals = GetCachedBlackIntervals(videoPath);
         if (cachedIntervals != null)
         {
@@ -777,23 +764,19 @@ public class FFmpegService
 
         var blackIntervals = new List<BlackInterval>();
         
-        // Skip detection for very short videos to optimize processing efficiency
         if (totalDuration.TotalMinutes < 2)
         {
             return blackIntervals;
         }
         
-        // Generate strategic sample segments for optimized detection processing
         var sampleSegments = GetSampleSegments(totalDuration);
         
-        // Process each segment with comprehensive error handling and result aggregation
         foreach (var segment in sampleSegments)
         {
             var segmentBlackIntervals = await DetectBlackInSegmentAsync(videoPath, segment.Start, segment.Duration, pixelThreshold, durationThreshold, cancellationToken).ConfigureAwait(false);
             blackIntervals.AddRange(segmentBlackIntervals);
         }
 
-        // Cache results for future processing optimization and performance improvement
         CacheBlackIntervals(videoPath, blackIntervals);
         return blackIntervals;
     }
@@ -869,17 +852,14 @@ public class FFmpegService
         var startSeconds = startTime.TotalSeconds;
         var durationSeconds = duration.TotalSeconds;
         
-        // Get codec for cache checking
         var codec = await GetVideoCodecAsync(videoPath, cancellationToken).ConfigureAwait(false);
         
-        // Check if this codec previously failed HWA and should use software directly
         bool shouldUseSoftware = false;
         lock (_failedCodecCacheLock)
         {
             shouldUseSoftware = _failedHwaccelCodecs.Contains(codec);
         }
         
-        // Use software directly if codec is known to fail HWA
         if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
         {
             var softwareArguments = $"-ss {startSeconds:F2} -t {durationSeconds:F2} -i \"{videoPath}\" -vf \"scale=320:240,blackdetect=d={durationThreshold}:pix_th={pixelThreshold}\" -an -f null - -v info";
@@ -907,7 +887,6 @@ public class FFmpegService
             return blackIntervals;
         }
         
-        // Try hardware acceleration first
         var arguments = $"-ss {startSeconds:F2} -t {durationSeconds:F2} {_hardwareAccelerationArgs} -i \"{videoPath}\" -vf \"scale=320:240,blackdetect=d={durationThreshold}:pix_th={pixelThreshold}\" -an -f null - -v info";
 
         try
@@ -929,7 +908,6 @@ public class FFmpegService
         }
         catch (Exception ex)
         {
-            // Cache this codec as failed and log warning only on first occurrence
             bool shouldLogWarning = false;
             lock (_failedCodecCacheLock)
             {
@@ -942,7 +920,6 @@ public class FFmpegService
             }
         }
 
-        // Software fallback
         var fallbackArguments = $"-ss {startSeconds:F2} -t {durationSeconds:F2} -i \"{videoPath}\" -vf \"scale=320:240,blackdetect=d={durationThreshold}:pix_th={pixelThreshold}\" -an -f null - -v info";
         
         try
@@ -1017,21 +994,17 @@ public class FFmpegService
     private List<(TimeSpan Start, TimeSpan Duration)> GetSampleSegments(TimeSpan totalDuration)
     {
         var segments = new List<(TimeSpan Start, TimeSpan Duration)>();
-        var sampleDuration = TimeSpan.FromSeconds(30);  // Optimal segment length for analysis depth
+        var sampleDuration = TimeSpan.FromSeconds(30);
         
-        // Strategic positioning array for comprehensive video coverage
         var positions = new[] { 0.05, 0.25, 0.5, 0.75, 0.9 };
         
         foreach (var position in positions)
         {
-            // Calculate segment start time based on strategic positioning
             var startTime = TimeSpan.FromSeconds(totalDuration.TotalSeconds * position);
             
-            // Dynamic duration calculation preventing segment overflow
             var remainingTime = totalDuration.Subtract(startTime);
             var segmentDuration = remainingTime < sampleDuration ? remainingTime : sampleDuration;
             
-            // Filter segments ensuring adequate analysis depth for meaningful detection
             if (segmentDuration.TotalSeconds > 5)
             {
                 segments.Add((startTime, segmentDuration));
@@ -1106,25 +1079,22 @@ public class FFmpegService
     // MARK: ExtractFrameAsync
     public async Task<string?> ExtractFrameAsync(string videoPath, TimeSpan timestamp, string outputPath, CancellationToken cancellationToken = default)
     {
-        // Format timestamp with precision for accurate frame extraction
         var timestampStr = $"{timestamp.Hours:D2}:{timestamp.Minutes:D2}:{timestamp.Seconds:D2}.{timestamp.Milliseconds:D3}";
         
-        // Get codec for cache checking
         var codec = await GetVideoCodecAsync(videoPath, cancellationToken).ConfigureAwait(false);
         var (isHDR, colorSpace, transferCharacteristic) = await DetectHDRAsync(videoPath, cancellationToken).ConfigureAwait(false);
         var toneMappingFilter = BuildToneMappingFilter(isHDR, colorSpace, transferCharacteristic);
         
-        // Check if this codec previously failed HWA and should use software directly
         bool shouldUseSoftware = false;
         lock (_failedCodecCacheLock)
         {
             shouldUseSoftware = _failedHwaccelCodecs.Contains(codec);
         }
         
-        // Use software directly if codec is known to fail HWA
         if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
         {
-            var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -vf \"{toneMappingFilter}\" -q:v 1 \"{outputPath}\"";
+            var filterArg = string.IsNullOrEmpty(toneMappingFilter) ? "" : $"-vf \"{toneMappingFilter}\"";
+            var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {filterArg} -q:v 1 \"{outputPath}\"";
             
             try
             {
@@ -1143,7 +1113,8 @@ public class FFmpegService
             return null;
         }
         
-        var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 -vf \"{toneMappingFilter}\" -q:v 1 \"{outputPath}\"";
+        var filterArgHwa = string.IsNullOrEmpty(toneMappingFilter) ? "" : $"-vf \"{toneMappingFilter}\"";
+        var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 {filterArgHwa} -q:v 1 \"{outputPath}\"";
 
         try
         {
@@ -1156,11 +1127,10 @@ public class FFmpegService
         }
         catch (Exception ex)
         {
-            // Cache this codec as failed and log warning only on first occurrence
             bool shouldLogWarning = false;
             lock (_failedCodecCacheLock)
             {
-                shouldLogWarning = _failedHwaccelCodecs.Add(codec); // Add returns true if item was added (not already present)
+                shouldLogWarning = _failedHwaccelCodecs.Add(codec);
             }
             
             if (shouldLogWarning)
@@ -1169,7 +1139,8 @@ public class FFmpegService
             }
         }
 
-        var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -vf \"{toneMappingFilter}\" -q:v 1 \"{outputPath}\"";
+        var filterArgFallback = string.IsNullOrEmpty(toneMappingFilter) ? "" : $"-vf \"{toneMappingFilter}\"";
+        var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {filterArgFallback} -q:v 1 \"{outputPath}\"";
         
         try
         {
@@ -1246,25 +1217,21 @@ public class FFmpegService
     // MARK: SelectRandomTimestamp
     public TimeSpan SelectRandomTimestamp(TimeSpan duration, IReadOnlyList<BlackInterval> blackIntervals)
     {
-        // Define content-rich region boundaries avoiding opening and closing credits
-        var minTime = TimeSpan.FromSeconds(duration.TotalSeconds * 0.1);  // Skip opening credits
-        var maxTime = TimeSpan.FromSeconds(duration.TotalSeconds * 0.9);  // Skip closing credits
+        var minTime = TimeSpan.FromSeconds(duration.TotalSeconds * 0.1);
+        var maxTime = TimeSpan.FromSeconds(duration.TotalSeconds * 0.9);
         
-        // Primary random selection with black interval avoidance
         var maxAttempts = 50;
         for (int attempt = 0; attempt < maxAttempts; attempt++)
         {
             var randomSeconds = _random.NextDouble() * (maxTime.TotalSeconds - minTime.TotalSeconds) + minTime.TotalSeconds;
             var randomTimestamp = TimeSpan.FromSeconds(randomSeconds);
             
-            // Validate timestamp against black interval collision detection
             if (!IsInBlackInterval(randomTimestamp, blackIntervals))
             {
                 return randomTimestamp;
             }
         }
         
-        // Gap analysis fallback for optimal content region identification
         var gapTimestamp = FindLargestGap(duration, blackIntervals);
         if (gapTimestamp.HasValue)
         {
@@ -1272,7 +1239,6 @@ public class FFmpegService
             var gapEnd = FindGapEnd(gapStart, duration, blackIntervals);
             var gapDuration = gapEnd - gapStart;
             
-            // Ensure gap is substantial enough for meaningful content selection
             if (gapDuration.TotalSeconds > 10)
             {
                 var randomOffsetSeconds = _random.NextDouble() * gapDuration.TotalSeconds;
@@ -1280,7 +1246,6 @@ public class FFmpegService
             }
         }
         
-        // Mathematical distribution fallback ensuring timestamp selection success
         return TimeSpan.FromSeconds(duration.TotalSeconds * (0.2 + _random.NextDouble() * 0.6));
     }
 
@@ -1326,24 +1291,19 @@ public class FFmpegService
     // MARK: GetCachedBlackIntervals
     private List<BlackInterval>? GetCachedBlackIntervals(string videoPath)
     {
-        // Generate composite cache key incorporating file attributes for validity assurance
         var fileInfo = new FileInfo(videoPath);
         var cacheKey = $"{videoPath}_{fileInfo.Length}_{fileInfo.LastWriteTime.Ticks}";
         
-        // Attempt cache retrieval with expiration validation
         if (_blackIntervalCache.TryGetValue(cacheKey, out var cached))
         {
-            // Validate cache entry expiration for freshness assurance
             if (DateTime.UtcNow - cached.Created < _cacheExpiry)
             {
                 return cached.Intervals;
             }
             
-            // Remove expired cache entry for cleanup and memory management
             _blackIntervalCache.Remove(cacheKey);
         }
         
-        // Return null to indicate cache miss requiring fresh detection processing
         return null;
     }
 
@@ -1387,20 +1347,16 @@ public class FFmpegService
     // MARK: CacheBlackIntervals
     private void CacheBlackIntervals(string videoPath, List<BlackInterval> intervals)
     {
-        // Generate composite cache key for unique identification and validation
         var fileInfo = new FileInfo(videoPath);
         var cacheKey = $"{videoPath}_{fileInfo.Length}_{fileInfo.LastWriteTime.Ticks}";
         
-        // Store detection results with current timestamp for expiration management
         _blackIntervalCache[cacheKey] = (DateTime.UtcNow, intervals);
         
-        // Proactive cleanup of expired entries for memory management optimization
         var expiredKeys = _blackIntervalCache
             .Where(kvp => DateTime.UtcNow - kvp.Value.Created > _cacheExpiry)
             .Select(kvp => kvp.Key)
             .ToList();
             
-        // Remove expired entries maintaining cache efficiency and memory utilization
         foreach (var key in expiredKeys)
         {
             _blackIntervalCache.Remove(key);
@@ -1436,7 +1392,6 @@ public class FFmpegService
     // MARK: IsInBlackInterval
     private bool IsInBlackInterval(TimeSpan timestamp, IReadOnlyList<BlackInterval> blackIntervals)
     {
-        // Efficient interval collision detection using LINQ optimization
         return blackIntervals.Any(interval => 
             timestamp >= interval.Start && timestamp <= interval.End);
     }
@@ -1485,32 +1440,27 @@ public class FFmpegService
     // MARK: FindLargestGap
     private TimeSpan? FindLargestGap(TimeSpan duration, IReadOnlyList<BlackInterval> blackIntervals)
     {
-        // Return null for empty interval lists indicating no gap analysis requirements
         if (blackIntervals.Count == 0)
         {
             return null;
         }
 
-        // Sort intervals ensuring proper chronological order for gap analysis
         var sortedIntervals = blackIntervals.OrderBy(i => i.Start).ToList();
         var largestGap = TimeSpan.Zero;
         var largestGapStart = TimeSpan.Zero;
 
-        // Analyze gap before first interval for beginning region content
         if (sortedIntervals[0].Start > TimeSpan.FromSeconds(10))
         {
             largestGap = sortedIntervals[0].Start;
             largestGapStart = TimeSpan.Zero;
         }
 
-        // Analyze gaps between consecutive intervals for content-rich regions
         for (int i = 0; i < sortedIntervals.Count - 1; i++)
         {
             var gapStart = sortedIntervals[i].End;
             var gapEnd = sortedIntervals[i + 1].Start;
             var gapDuration = gapEnd - gapStart;
 
-            // Update largest gap tracking for optimal region identification
             if (gapDuration > largestGap)
             {
                 largestGap = gapDuration;
@@ -1518,7 +1468,6 @@ public class FFmpegService
             }
         }
 
-        // Analyze gap after last interval for ending region content assessment
         var lastInterval = sortedIntervals.Last();
         var endGap = duration - lastInterval.End;
         if (endGap > largestGap && endGap > TimeSpan.FromSeconds(10))
@@ -1561,13 +1510,11 @@ public class FFmpegService
     // MARK: FindGapEnd
     private TimeSpan FindGapEnd(TimeSpan gapStart, TimeSpan duration, IReadOnlyList<BlackInterval> blackIntervals)
     {
-        // Identify next black interval limiting gap extent for boundary calculation
         var nextInterval = blackIntervals
             .Where(interval => interval.Start > gapStart)
             .OrderBy(interval => interval.Start)
             .FirstOrDefault();
             
-        // Return next interval start or video duration for gap boundary determination
         return nextInterval?.Start ?? duration;
     }
 
@@ -1593,7 +1540,6 @@ public class FFmpegService
     // MARK: ExecuteFFmpegAsync
     private async Task<string> ExecuteFFmpegAsync(string arguments, CancellationToken cancellationToken = default)
     {
-        // Delegate to unified process execution infrastructure with FFmpeg path resolution
         return await ExecuteProcessAsync(GetFFmpegPath(), arguments, cancellationToken).ConfigureAwait(false);
     }
 
@@ -1619,7 +1565,6 @@ public class FFmpegService
     // MARK: ExecuteFFprobeAsync
     private async Task<string> ExecuteFFprobeAsync(string arguments, CancellationToken cancellationToken = default)
     {
-        // Delegate to unified process execution infrastructure with FFprobe path resolution
         return await ExecuteProcessAsync(GetFFprobePath(), arguments, cancellationToken).ConfigureAwait(false);
     }
 
@@ -1681,21 +1626,19 @@ public class FFmpegService
         var output = string.Empty;
         var error = string.Empty;
 
-        // Configure process with optimal settings for video processing operations
         using var process = new Process
         {
             StartInfo = new ProcessStartInfo
             {
                 FileName = fileName,
                 Arguments = arguments,
-                UseShellExecute = false,          // Enable stream redirection for output capture
-                RedirectStandardOutput = true,    // Capture standard output for result parsing
-                RedirectStandardError = true,     // Capture error stream for diagnostic information
-                CreateNoWindow = true             // Suppress window creation for service operation
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
             }
         };
 
-        // Configure output capture event handlers for comprehensive data collection
         process.OutputDataReceived += (sender, e) =>
         {
             if (!string.IsNullOrEmpty(e.Data))
@@ -1712,21 +1655,17 @@ public class FFmpegService
             }
         };
 
-        // Execute process with asynchronous output capture and comprehensive monitoring
         process.Start();
-        process.BeginOutputReadLine();  // Start asynchronous output capture
-        process.BeginErrorReadLine();   // Start asynchronous error capture
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
 
-        // Wait for process completion with cancellation support and resource management
         await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
-        // Validate process execution success and provide diagnostic logging
         if (process.ExitCode != 0)
         {
             _logger.LogWarning("Process {FileName} exited with code {ExitCode}. Error: {Error}", fileName, process.ExitCode, error);
         }
 
-        // Return combined output and error streams for comprehensive result processing
         return output + error;
     }
 
@@ -1773,24 +1712,20 @@ public class FFmpegService
     {
         var intervals = new List<BlackInterval>();
         
-        // Sophisticated regular expression for precise temporal value extraction
         var regex = new Regex(@"black_start:(\d+\.?\d*) black_end:(\d+\.?\d*) black_duration:(\d+\.?\d*)");
 
-        // Process all matches with comprehensive validation and error handling
         foreach (Match match in regex.Matches(output))
         {
-            // Validate match completeness and extract temporal values with precision
             if (match.Groups.Count >= 4 &&
                 double.TryParse(match.Groups[1].Value, out var start) &&
                 double.TryParse(match.Groups[2].Value, out var end) &&
                 double.TryParse(match.Groups[3].Value, out var duration))
             {
-                // Construct structured interval object with validated temporal boundaries
                 intervals.Add(new BlackInterval
                 {
-                    Start = TimeSpan.FromSeconds(start),      // Precise start timestamp
-                    End = TimeSpan.FromSeconds(end),          // Precise end timestamp
-                    Duration = TimeSpan.FromSeconds(duration) // Validated duration
+                    Start = TimeSpan.FromSeconds(start),
+                    End = TimeSpan.FromSeconds(end),
+                    Duration = TimeSpan.FromSeconds(duration)
                 });
             }
         }
