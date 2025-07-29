@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
@@ -608,7 +609,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                         var blackIntervals = await ffmpegService.DetectBlackScenesAsync(episode.Path, duration.Value, 0.1, 0.1, cancellationToken).ConfigureAwait(false);
                         var selectedTimestamp = ffmpegService.SelectRandomTimestamp(duration.Value, blackIntervals);
 
-                        extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, cancellationToken).ConfigureAwait(false);
+                        var videoStream = episode.GetMediaStreams()?.FirstOrDefault(s => s.Type == MediaStreamType.Video);
+                        var colorSpace = videoStream?.ColorSpace ?? "";
+                        var colorTransfer = videoStream?.ColorTransfer ?? "";
+
+                        extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, colorSpace, colorTransfer, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {

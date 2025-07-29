@@ -551,8 +551,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                     var blackIntervals = await ffmpegService.DetectBlackScenesAsync(episode.Path, duration.Value, 0.1, 0.1, cancellationToken).ConfigureAwait(false);
                     var selectedTimestamp = ffmpegService.SelectRandomTimestamp(duration.Value, blackIntervals);
 
+                    var videoStream = episode.GetMediaStreams()?.FirstOrDefault(s => s.Type == MediaStreamType.Video);
+                    var colorSpace = videoStream?.ColorSpace ?? "";
+                    var colorTransfer = videoStream?.ColorTransfer ?? "";
+
                     // High-quality frame extraction at selected timestamp
-                    extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, cancellationToken).ConfigureAwait(false);
+                    extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, colorSpace, colorTransfer, cancellationToken).ConfigureAwait(false);
                 }
 
                 // Validate successful frame creation or extraction

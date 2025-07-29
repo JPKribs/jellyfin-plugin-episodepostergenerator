@@ -229,17 +229,6 @@ public class FFmpegService
     private readonly string _hardwareAccelerationArgs;
 
     /// <summary>
-    /// Cache for HDR detection results to avoid repeated analysis of the same video files.
-    /// Maps video file paths to HDR detection results for performance optimization.
-    /// </summary>
-    private static readonly Dictionary<string, (DateTime Created, bool IsHDR, string ColorSpace, string TransferCharacteristic)> _hdrCache = new();
-
-    /// <summary>
-    /// Thread synchronization object for safe access to the HDR cache during concurrent operations.
-    /// </summary>
-    private static readonly object _hdrCacheLock = new object();
-
-    /// <summary>
     /// Initializes a new instance of the FFmpeg service with essential Jellyfin integration components
     /// and establishes the foundational infrastructure for video processing operations. Sets up logging
     /// and media encoder integration enabling seamless access to configured video processing tools
@@ -480,84 +469,6 @@ public class FFmpegService
         }
     }
 
-    // MARK: DetectHDRAsync
-    private async Task<(bool IsHDR, string ColorSpace, string TransferCharacteristic)> DetectHDRAsync(string videoPath, CancellationToken cancellationToken = default)
-    {
-        var fileInfo = new FileInfo(videoPath);
-        var cacheKey = $"{videoPath}_{fileInfo.Length}_{fileInfo.LastWriteTime.Ticks}";
-
-        lock (_hdrCacheLock)
-        {
-            if (_hdrCache.TryGetValue(cacheKey, out var cached))
-            {
-                if (DateTime.UtcNow - cached.Created < _cacheExpiry)
-                {
-                    return (cached.IsHDR, cached.ColorSpace, cached.TransferCharacteristic);
-                }
-                _hdrCache.Remove(cacheKey);
-            }
-        }
-
-        var arguments = $"-v error -select_streams v:0 -show_entries stream=color_space,color_transfer,pix_fmt -of default=noprint_wrappers=1 \"{videoPath}\"";
-        
-        try
-        {
-            var result = await ExecuteFFprobeAsync(arguments, cancellationToken).ConfigureAwait(false);
-            var lines = result.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            
-            var colorSpace = "";
-            var transferCharacteristic = "";
-            var pixelFormat = "";
-            
-            foreach (var line in lines)
-            {
-                var parts = line.Split('=');
-                if (parts.Length == 2)
-                {
-                    var key = parts[0].Trim();
-                    var value = parts[1].Trim();
-                    
-                    switch (key)
-                    {
-                        case "color_space":
-                            colorSpace = value;
-                            break;
-                        case "color_transfer":
-                            transferCharacteristic = value;
-                            break;
-                        case "pix_fmt":
-                            pixelFormat = value;
-                            break;
-                    }
-                }
-            }
-            
-            var isHDR = IsHDRContent(colorSpace, transferCharacteristic, pixelFormat);
-            
-            lock (_hdrCacheLock)
-            {
-                _hdrCache[cacheKey] = (DateTime.UtcNow, isHDR, colorSpace, transferCharacteristic);
-                
-                var expiredKeys = _hdrCache
-                    .Where(kvp => DateTime.UtcNow - kvp.Value.Created > _cacheExpiry)
-                    .Select(kvp => kvp.Key)
-                    .ToList();
-                    
-                foreach (var key in expiredKeys)
-                {
-                    _hdrCache.Remove(key);
-                }
-            }
-            
-            return (isHDR, colorSpace, transferCharacteristic);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to detect HDR characteristics for {VideoPath}", videoPath);
-            return (false, "", "");
-        }
-    }
-
     // MARK: IsHDRContent
     private bool IsHDRContent(string colorSpace, string transferCharacteristic, string pixelFormat)
     {
@@ -581,32 +492,61 @@ public class FFmpegService
                hdr10BitFormats.Contains(pixelFormat, StringComparer.OrdinalIgnoreCase);
     }
 
-    // MARK: BuildToneMappingFilter
-    private string BuildToneMappingFilter(bool isHDR, string colorSpace, string transferCharacteristic)
+    // MARK: BuildToneMappingFilterForColorSpace
+    private string BuildToneMappingFilterForColorSpace(string colorSpace, string transferCharacteristic)
     {
-        if (!isHDR)
-        {
-            return string.Empty;
-        }
-
         var filters = new List<string>();
         
-        if (transferCharacteristic.Contains("smpte2084", StringComparison.OrdinalIgnoreCase) || 
-            transferCharacteristic.Contains("bt2020", StringComparison.OrdinalIgnoreCase))
+        // Check if this is HDR content that needs tone mapping
+        if (IsHDRContent(colorSpace, transferCharacteristic, ""))
         {
-            filters.Add("zscale=t=linear:npl=100");
-            filters.Add("format=gbrpf32le");
-            filters.Add("zscale=p=bt709");
-            filters.Add("tonemap=tonemap=hable:desat=0:peak=100");
-            filters.Add("zscale=t=bt709:m=bt709:r=tv");
-        }
-        else if (transferCharacteristic.Contains("arib-std-b67", StringComparison.OrdinalIgnoreCase))
-        {
-            filters.Add("tonemap=tonemap=mobius:desat=0.5:peak=100");
+            // HDR tone mapping
+            if (transferCharacteristic.Contains("smpte2084", StringComparison.OrdinalIgnoreCase) || 
+                transferCharacteristic.Contains("bt2020", StringComparison.OrdinalIgnoreCase))
+            {
+                filters.Add("zscale=t=linear:npl=100");
+                filters.Add("format=gbrpf32le");
+                filters.Add("zscale=p=bt709");
+                filters.Add("tonemap=tonemap=hable:desat=0:peak=100");
+                filters.Add("zscale=t=bt709:m=bt709:r=tv");
+            }
+            else if (transferCharacteristic.Contains("arib-std-b67", StringComparison.OrdinalIgnoreCase))
+            {
+                filters.Add("tonemap=tonemap=mobius:desat=0.5:peak=100");
+            }
+            else
+            {
+                filters.Add("tonemap=tonemap=hable:desat=0:peak=100");
+            }
         }
         else
         {
-            filters.Add("tonemap=tonemap=hable:desat=0:peak=100");
+            // SDR content - apply appropriate color space processing
+            if (!string.IsNullOrEmpty(colorSpace))
+            {
+                if (colorSpace.Contains("bt709", StringComparison.OrdinalIgnoreCase))
+                {
+                    filters.Add("colorspace=bt709:bt709:bt709");
+                }
+                else if (colorSpace.Contains("bt601", StringComparison.OrdinalIgnoreCase))
+                {
+                    filters.Add("colorspace=bt709:bt709:bt709:ispace=bt601:iprimaries=bt601:itrc=bt601");
+                }
+                else if (colorSpace.Contains("smpte170m", StringComparison.OrdinalIgnoreCase))
+                {
+                    filters.Add("colorspace=bt709:bt709:bt709:ispace=smpte170m:iprimaries=smpte170m:itrc=smpte170m");
+                }
+                else
+                {
+                    // Default color space conversion for unknown SDR spaces
+                    filters.Add("colorspace=bt709:bt709:bt709");
+                }
+            }
+            else
+            {
+                // No specific color space info, apply basic rec709 conversion
+                filters.Add("colorspace=bt709:bt709:bt709");
+            }
         }
         
         return string.Join(",", filters);
@@ -1074,11 +1014,12 @@ public class FFmpegService
     /// Success return enables integration with poster generation workflows and quality validation.
     /// </returns>
     // MARK: ExtractFrameAsync
-    public async Task<string?> ExtractFrameAsync(string videoPath, TimeSpan timestamp, string outputPath, CancellationToken cancellationToken = default)
+    public async Task<string?> ExtractFrameAsync(string videoPath, TimeSpan timestamp, string outputPath, string colorSpace, string colorTransfer, CancellationToken cancellationToken = default)
     {
         var timestampStr = $"{timestamp.Hours:D2}:{timestamp.Minutes:D2}:{timestamp.Seconds:D2}.{timestamp.Milliseconds:D3}";
         
         var codec = await GetVideoCodecAsync(videoPath, cancellationToken).ConfigureAwait(false);
+        var toneMappingFilter = BuildToneMappingFilterForColorSpace(colorSpace, colorTransfer);
         
         bool shouldUseSoftware = false;
         lock (_failedCodecCacheLock)
@@ -1086,145 +1027,72 @@ public class FFmpegService
             shouldUseSoftware = _failedHwaccelCodecs.Contains(codec);
         }
         
-        // Check if this is HDR content that needs tone mapping
-        var (isHDR, colorSpace, transferCharacteristic) = await DetectHDRAsync(videoPath, cancellationToken).ConfigureAwait(false);
+        if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
+        {
+            var filterArg = string.IsNullOrEmpty(toneMappingFilter) ? "" : $"-vf \"{toneMappingFilter}\"";
+            var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {filterArg} -q:v 1 \"{outputPath}\"";
+            
+            try
+            {
+                await ExecuteFFmpegAsync(softwareArguments, cancellationToken).ConfigureAwait(false);
+                
+                if (File.Exists(outputPath))
+                {
+                    return outputPath;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Software frame extraction failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
+            }
+            
+            return null;
+        }
         
-        if (isHDR)
+        var filterArgHwa = string.IsNullOrEmpty(toneMappingFilter) ? "" : $"-vf \"{toneMappingFilter}\"";
+        var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 {filterArgHwa} -q:v 1 \"{outputPath}\"";
+
+        try
         {
-            // Apply tone mapping for HDR content
-            var toneMappingFilter = BuildToneMappingFilter(isHDR, colorSpace, transferCharacteristic);
+            await ExecuteFFmpegAsync(arguments, cancellationToken).ConfigureAwait(false);
             
-            if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
+            if (File.Exists(outputPath))
             {
-                var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -vf \"{toneMappingFilter}\" -q:v 1 \"{outputPath}\"";
-                
-                try
-                {
-                    await ExecuteFFmpegAsync(softwareArguments, cancellationToken).ConfigureAwait(false);
-                    
-                    if (File.Exists(outputPath))
-                    {
-                        return outputPath;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Software HDR frame extraction failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
-                }
-                
-                return null;
+                return outputPath;
             }
-            
-            var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 -vf \"{toneMappingFilter}\" -q:v 1 \"{outputPath}\"";
-
-            try
-            {
-                await ExecuteFFmpegAsync(arguments, cancellationToken).ConfigureAwait(false);
-                
-                if (File.Exists(outputPath))
-                {
-                    return outputPath;
-                }
-            }
-            catch (Exception ex)
-            {
-                bool shouldLogWarning = false;
-                lock (_failedCodecCacheLock)
-                {
-                    shouldLogWarning = _failedHwaccelCodecs.Add(codec);
-                }
-                
-                if (shouldLogWarning)
-                {
-                    _logger.LogWarning(ex, "Hardware acceleration failed for {Codec} codec during HDR extraction, falling back to software for this codec", codec);
-                }
-            }
-
-            var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -vf \"{toneMappingFilter}\" -q:v 1 \"{outputPath}\"";
-            
-            try
-            {
-                await ExecuteFFmpegAsync(fallbackArguments, cancellationToken).ConfigureAwait(false);
-                
-                if (File.Exists(outputPath))
-                {
-                    return outputPath;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Software fallback HDR frame extraction also failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
-            }
-
-            return null;
         }
-        else
+        catch (Exception ex)
         {
-            // Use original SDR processing - exactly as it was before
-            if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
+            bool shouldLogWarning = false;
+            lock (_failedCodecCacheLock)
             {
-                var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
-                
-                try
-                {
-                    await ExecuteFFmpegAsync(softwareArguments, cancellationToken).ConfigureAwait(false);
-                    
-                    if (File.Exists(outputPath))
-                    {
-                        return outputPath;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Software frame extraction failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
-                }
-                
-                return null;
+                shouldLogWarning = _failedHwaccelCodecs.Add(codec);
             }
             
-            var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
-
-            try
+            if (shouldLogWarning)
             {
-                await ExecuteFFmpegAsync(arguments, cancellationToken).ConfigureAwait(false);
-                
-                if (File.Exists(outputPath))
-                {
-                    return outputPath;
-                }
+                _logger.LogWarning(ex, "Hardware acceleration failed for {Codec} codec, falling back to software for this codec", codec);
             }
-            catch (Exception ex)
-            {
-                bool shouldLogWarning = false;
-                lock (_failedCodecCacheLock)
-                {
-                    shouldLogWarning = _failedHwaccelCodecs.Add(codec);
-                }
-                
-                if (shouldLogWarning)
-                {
-                    _logger.LogWarning(ex, "Hardware acceleration failed for {Codec} codec, falling back to software for this codec", codec);
-                }
-            }
-
-            var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 -q:v 1 \"{outputPath}\"";
-            
-            try
-            {
-                await ExecuteFFmpegAsync(fallbackArguments, cancellationToken).ConfigureAwait(false);
-                
-                if (File.Exists(outputPath))
-                {
-                    return outputPath;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Software fallback frame extraction also failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
-            }
-
-            return null;
         }
+
+        var filterArgFallback = string.IsNullOrEmpty(toneMappingFilter) ? "" : $"-vf \"{toneMappingFilter}\"";
+        var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {filterArgFallback} -q:v 1 \"{outputPath}\"";
+        
+        try
+        {
+            await ExecuteFFmpegAsync(fallbackArguments, cancellationToken).ConfigureAwait(false);
+            
+            if (File.Exists(outputPath))
+            {
+                return outputPath;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Software fallback frame extraction also failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
+        }
+
+        return null;
     }
 
     /// <summary>
