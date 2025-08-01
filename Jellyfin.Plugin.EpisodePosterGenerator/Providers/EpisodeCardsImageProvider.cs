@@ -613,8 +613,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                         var colorSpace = videoStream?.ColorSpace ?? "";
                         var colorTransfer = videoStream?.ColorTransfer ?? "";
 
-                        extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, colorSpace, colorTransfer, cancellationToken).ConfigureAwait(false);
-                    }
+                        extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, cancellationToken).ConfigureAwait(false);                    }
                     else
                     {
                         extractedFramePath = CreateTransparentImage(tempFramePath);

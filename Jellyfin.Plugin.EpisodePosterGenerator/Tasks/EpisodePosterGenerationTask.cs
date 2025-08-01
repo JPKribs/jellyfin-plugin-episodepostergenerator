@@ -556,8 +556,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                     var colorTransfer = videoStream?.ColorTransfer ?? "";
 
                     // High-quality frame extraction at selected timestamp
-                    extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, colorSpace, colorTransfer, cancellationToken).ConfigureAwait(false);
-                }
+                    extractedFramePath = await ffmpegService.ExtractFrameAsync(episode.Path, selectedTimestamp, tempFramePath, cancellationToken).ConfigureAwait(false);                }
 
                 // Validate successful frame creation or extraction
                 if (extractedFramePath == null || !File.Exists(extractedFramePath))
