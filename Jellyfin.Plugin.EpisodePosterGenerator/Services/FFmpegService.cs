@@ -329,6 +329,63 @@ public class FFmpegService
     }
 
     /// <summary>
+    /// Asynchronously retrieves comprehensive video color properties including color space, transfer
+    /// characteristics, and pixel format information essential for intelligent video processing and
+    /// format conversion operations. This method provides critical metadata enabling optimal processing
+    /// strategies for both SDR and HDR content while ensuring compatibility across diverse video
+    /// formats and encoding characteristics typical in modern media libraries.
+    /// 
+    /// The color property detection system serves as a foundational component for content-aware
+    /// processing enabling the service to apply appropriate conversion strategies based on actual
+    /// video characteristics rather than assumptions, ensuring optimal quality and compatibility
+    /// across various display technologies and processing requirements.
+    /// 
+    /// Property Detection Strategy:
+    /// Uses optimized FFprobe command construction focusing on essential color properties required
+    /// for processing decisions while minimizing analysis overhead and maintaining compatibility
+    /// across diverse video containers and encoding formats commonly encountered in media libraries.
+    /// 
+    /// Error Handling and Reliability:
+    /// Comprehensive error handling ensures graceful degradation when property detection encounters
+    /// issues while providing sensible defaults enabling continued processing with standard conversion
+    /// approaches when detailed color information is unavailable or corrupted in video metadata.
+    /// </summary>
+    /// <param name="videoPath">
+    /// File system path to the video file requiring color property analysis. Must reference an
+    /// accessible video file in a format supported by FFprobe for reliable property detection.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Cancellation token enabling responsive termination of property detection operations while
+    /// maintaining process cleanup and resource management during cancellation scenarios.
+    /// </param>
+    /// <returns>
+    /// Tuple containing color space identifier, transfer characteristic identifier, and pixel format
+    /// specification. Empty strings indicate unavailable or undetected properties enabling fallback
+    /// processing strategies in calling methods.
+    /// </returns>
+    // MARK: GetVideoColorPropertiesAsync
+    private async Task<(string colorSpace, string colorTransfer, string pixelFormat)> GetVideoColorPropertiesAsync(string videoPath, CancellationToken cancellationToken = default)
+    {
+        var arguments = $"-v error -select_streams v:0 -show_entries stream=color_space,color_transfer,pix_fmt -of default=noprint_wrappers=1:nokey=1 \"{videoPath}\"";
+        
+        try
+        {
+            var result = await ExecuteFFprobeAsync(arguments, cancellationToken).ConfigureAwait(false);
+            var lines = result.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            
+            var colorSpace = lines.Length > 0 ? lines[0].Trim() : "";
+            var colorTransfer = lines.Length > 1 ? lines[1].Trim() : "";
+            var pixelFormat = lines.Length > 2 ? lines[2].Trim() : "";
+            
+            return (colorSpace, colorTransfer, pixelFormat);
+        }
+        catch
+        {
+            return ("", "", "");
+        }
+    }
+
+    /// <summary>
     /// Retrieves the configured FFprobe executable path from Jellyfin's media encoder infrastructure
     /// enabling reliable access to video analysis capabilities with robust error handling and
     /// fallback mechanisms. Provides seamless integration with Jellyfin's system configuration
@@ -469,9 +526,53 @@ public class FFmpegService
         }
     }
 
+    /// <summary>
+    /// Performs comprehensive content analysis to determine if video contains HDR characteristics
+    /// requiring specialized processing approaches. This method examines color space specifications,
+    /// transfer characteristics, and pixel format information to identify content requiring tone
+    /// mapping or format conversion for optimal display compatibility and processing reliability.
+    /// 
+    /// The HDR detection system enables intelligent processing decisions ensuring appropriate
+    /// handling of high dynamic range content while maintaining compatibility with standard
+    /// dynamic range processing workflows and display technologies across diverse deployment
+    /// environments and user configurations.
+    /// 
+    /// Detection Criteria and Standards:
+    /// Implements comprehensive detection algorithms covering industry-standard HDR specifications
+    /// including HDR10, Dolby Vision, and HLG formats ensuring accurate identification across
+    /// various encoding implementations and container formats commonly encountered in modern
+    /// media libraries and streaming content distributions.
+    /// 
+    /// Processing Strategy Integration:
+    /// HDR detection results directly influence processing strategy selection enabling optimized
+    /// workflows for both HDR and SDR content while ensuring appropriate format conversion and
+    /// compatibility maintenance across diverse display technologies and processing requirements.
+    /// </summary>
+    /// <param name="colorSpace">
+    /// Color space specification from video metadata used for HDR format identification and
+    /// processing strategy determination. Empty values are handled gracefully with fallback logic.
+    /// </param>
+    /// <param name="transferCharacteristic">
+    /// Transfer characteristic specification indicating gamma curve and dynamic range properties
+    /// essential for HDR detection and appropriate processing strategy selection.
+    /// </param>
+    /// <param name="pixelFormat">
+    /// Pixel format specification indicating bit depth and color sampling characteristics used
+    /// for HDR content identification and processing requirement determination.
+    /// </param>
+    /// <returns>
+    /// Boolean indicating whether the video content contains HDR characteristics requiring
+    /// specialized processing approaches. True indicates HDR content requiring tone mapping
+    /// or format conversion, false indicates standard dynamic range content.
+    /// </returns>
     // MARK: IsHDRContent
     private bool IsHDRContent(string colorSpace, string transferCharacteristic, string pixelFormat)
     {
+        if (string.IsNullOrEmpty(transferCharacteristic) && string.IsNullOrEmpty(colorSpace) && string.IsNullOrEmpty(pixelFormat))
+        {
+            return false;
+        }
+        
         var hdrTransferCharacteristics = new[]
         {
             "smpte2084", "arib-std-b67", "smpte428", "iec61966-2-1", "bt2020-10", "bt2020-12"
@@ -492,64 +593,58 @@ public class FFmpegService
                hdr10BitFormats.Contains(pixelFormat, StringComparer.OrdinalIgnoreCase);
     }
 
-    // MARK: BuildToneMappingFilterForColorSpace
-    private string BuildToneMappingFilterForColorSpace(string colorSpace, string transferCharacteristic)
+    /// <summary>
+    /// Constructs optimized video filter chains for reliable frame extraction across diverse video
+    /// formats while resolving colorspace processing issues that commonly occur with HDR and high
+    /// bit-depth content. This method implements a simplified yet effective approach prioritizing
+    /// processing reliability over complex tone mapping to ensure consistent frame extraction
+    /// success across various video characteristics and encoding implementations.
+    /// 
+    /// The filter construction strategy emphasizes compatibility and reliability by avoiding
+    /// problematic colorspace conversions that can cause processing failures while ensuring
+    /// extracted frames maintain suitable quality for poster generation across diverse content
+    /// types and display requirements in modern media library implementations.
+    /// 
+    /// Processing Strategy Selection:
+    /// Implements intelligent filter selection based on detected video characteristics including
+    /// bit depth and HDR properties ensuring appropriate processing approaches while maintaining
+    /// broad compatibility across various FFmpeg versions and hardware acceleration implementations.
+    /// 
+    /// Reliability and Compatibility Focus:
+    /// The simplified approach prioritizes successful frame extraction over complex color processing
+    /// ensuring consistent operation across diverse video formats while maintaining sufficient
+    /// quality for poster generation requirements and user interface presentation standards.
+    /// </summary>
+    /// <param name="colorSpace">
+    /// Color space specification from video metadata used for processing strategy determination
+    /// and filter selection decisions. Used in conjunction with other properties for optimal
+    /// filter chain construction.
+    /// </param>
+    /// <param name="colorTransfer">
+    /// Transfer characteristic specification used for HDR content identification and processing
+    /// strategy selection enabling appropriate filter chain construction for various content types.
+    /// </param>
+    /// <param name="pixelFormat">
+    /// Pixel format specification indicating bit depth and color sampling characteristics used
+    /// for processing requirement determination and filter chain optimization decisions.
+    /// </param>
+    /// <returns>
+    /// FFmpeg filter argument string optimized for reliable frame extraction, or empty string
+    /// for standard processing when no specialized filtering is required. Results are ready
+    /// for integration into FFmpeg command construction for frame extraction operations.
+    /// </returns>
+    // MARK: BuildVideoFilter
+    private string BuildVideoFilter(string colorSpace, string colorTransfer, string pixelFormat)
     {
-        var filters = new List<string>();
+        var is10Bit = pixelFormat.Contains("10le", StringComparison.Ordinal) || pixelFormat.Contains("12le", StringComparison.Ordinal);
+        var isHDR = IsHDRContent(colorSpace, colorTransfer, pixelFormat);
         
-        // Check if this is HDR content that needs tone mapping
-        if (IsHDRContent(colorSpace, transferCharacteristic, ""))
+        if (is10Bit || isHDR)
         {
-            // HDR tone mapping
-            if (transferCharacteristic.Contains("smpte2084", StringComparison.OrdinalIgnoreCase) || 
-                transferCharacteristic.Contains("bt2020", StringComparison.OrdinalIgnoreCase))
-            {
-                filters.Add("zscale=t=linear:npl=100");
-                filters.Add("format=gbrpf32le");
-                filters.Add("zscale=p=bt709");
-                filters.Add("tonemap=tonemap=hable:desat=0:peak=100");
-                filters.Add("zscale=t=bt709:m=bt709:r=tv");
-            }
-            else if (transferCharacteristic.Contains("arib-std-b67", StringComparison.OrdinalIgnoreCase))
-            {
-                filters.Add("tonemap=tonemap=mobius:desat=0.5:peak=100");
-            }
-            else
-            {
-                filters.Add("tonemap=tonemap=hable:desat=0:peak=100");
-            }
-        }
-        else
-        {
-            // SDR content - apply appropriate color space processing
-            if (!string.IsNullOrEmpty(colorSpace))
-            {
-                if (colorSpace.Contains("bt709", StringComparison.OrdinalIgnoreCase))
-                {
-                    filters.Add("colorspace=space=bt709:trc=bt709:primaries=bt709");
-                }
-                else if (colorSpace.Contains("bt601", StringComparison.OrdinalIgnoreCase))
-                {
-                    filters.Add("colorspace=space=bt709:trc=bt709:primaries=bt709:ispace=bt601:itrc=bt601:iprimaries=bt601");
-                }
-                else if (colorSpace.Contains("smpte170m", StringComparison.OrdinalIgnoreCase))
-                {
-                    filters.Add("colorspace=space=bt709:trc=bt709:primaries=bt709:ispace=smpte170m:itrc=smpte170m:iprimaries=smpte170m");
-                }
-                else
-                {
-                    // Default color space conversion for unknown SDR spaces
-                    filters.Add("colorspace=space=bt709:trc=bt709:primaries=bt709");
-                }
-            }
-            else
-            {
-                // No specific color space info, apply basic rec709 conversion
-                filters.Add("colorspace=space=bt709:trc=bt709:primaries=bt709");
-            }
+            return "-vf \"scale=iw*sar:ih,format=yuv420p\"";
         }
         
-        return string.Join(",", filters);
+        return "";
     }
 
     /// <summary>
@@ -953,44 +1048,58 @@ public class FFmpegService
 
     /// <summary>
     /// Performs high-quality frame extraction at specified timestamps using hardware-accelerated
-    /// processing with optimized encoding settings ensuring professional-grade poster source imagery.
-    /// This method implements sophisticated video processing techniques leveraging available hardware
-    /// acceleration while maintaining consistent output quality across diverse video formats and
-    /// system configurations essential for reliable poster generation workflows.
+    /// processing with optimized encoding settings and intelligent video format handling ensuring
+    /// professional-grade poster source imagery across diverse video characteristics. This method
+    /// implements sophisticated video processing techniques leveraging available hardware acceleration
+    /// while maintaining consistent output quality and processing reliability essential for
+    /// dependable poster generation workflows across various system configurations.
     /// 
     /// The extraction process serves as the critical bridge between video content analysis and
     /// poster generation, providing high-quality source imagery optimized for subsequent text
     /// overlay and style-specific processing operations while maintaining consistency and
-    /// reliability across batch processing scenarios.
+    /// reliability across batch processing scenarios involving diverse video formats and
+    /// encoding characteristics commonly encountered in modern media libraries.
+    /// 
+    /// Enhanced Color Processing and Format Handling:
+    /// Implements intelligent video format analysis and processing strategy selection ensuring
+    /// optimal handling of both SDR and HDR content types while resolving colorspace processing
+    /// issues that commonly cause extraction failures with high bit-depth and HDR video formats.
+    /// The processing approach prioritizes reliability and compatibility over complex tone mapping
+    /// to ensure consistent extraction success across diverse content characteristics.
     /// 
     /// Hardware Acceleration Optimization:
     /// Intelligent integration with available hardware acceleration technologies ensuring optimal
-    /// extraction performance while maintaining software fallback compatibility. The acceleration
-    /// system automatically selects the best available method while preserving output quality
-    /// and processing reliability.
+    /// extraction performance while maintaining software fallback compatibility and codec-specific
+    /// failure tracking to prevent repeated acceleration attempts with problematic codec combinations.
+    /// The acceleration system automatically selects the best available method while preserving
+    /// output quality and processing reliability across diverse hardware platforms.
     /// 
     /// Quality Preservation Strategy:
     /// Extraction parameters are optimized for maximum visual quality using minimal compression
     /// (q:v 1) ensuring poster source imagery maintains professional standards suitable for
     /// media library presentation. The quality settings balance file size efficiency with
-    /// visual fidelity requirements essential for high-quality poster generation.
+    /// visual fidelity requirements essential for high-quality poster generation across
+    /// various display technologies and user interface requirements.
     /// 
     /// Timestamp Precision and Accuracy:
     /// Sophisticated timestamp formatting ensures frame-accurate extraction enabling precise
     /// content selection while maintaining compatibility with various video formats and
     /// frame rate characteristics. The precision approach guarantees consistent extraction
-    /// results essential for reliable poster generation across diverse content types.
+    /// results essential for reliable poster generation across diverse content types and
+    /// temporal positioning requirements within video timelines.
     /// 
     /// Format Compatibility and Reliability:
     /// Comprehensive format support ensures reliable extraction across various video containers,
     /// codecs, and encoding characteristics while maintaining consistent output format (JPEG)
     /// optimized for subsequent poster processing operations and Jellyfin integration requirements.
+    /// The compatibility approach handles edge cases and format variations gracefully while
+    /// maintaining processing reliability and output quality consistency.
     /// 
     /// Error Handling and Recovery:
     /// Robust error handling ensures graceful degradation when extraction operations encounter
     /// issues while providing detailed logging for debugging and monitoring purposes. The error
     /// recovery mechanism maintains batch processing continuity while enabling administrative
-    /// oversight of processing quality and system performance.
+    /// oversight of processing quality and system performance across diverse deployment scenarios.
     /// </summary>
     /// <param name="videoPath">
     /// File system path to the video file requiring frame extraction. Must reference an accessible
@@ -1014,12 +1123,14 @@ public class FFmpegService
     /// Success return enables integration with poster generation workflows and quality validation.
     /// </returns>
     // MARK: ExtractFrameAsync
-    public async Task<string?> ExtractFrameAsync(string videoPath, TimeSpan timestamp, string outputPath, string colorSpace, string colorTransfer, CancellationToken cancellationToken = default)
+    public async Task<string?> ExtractFrameAsync(string videoPath, TimeSpan timestamp, string outputPath, CancellationToken cancellationToken = default)
     {
         var timestampStr = $"{timestamp.Hours:D2}:{timestamp.Minutes:D2}:{timestamp.Seconds:D2}.{timestamp.Milliseconds:D3}";
         
+        var (colorSpace, colorTransfer, pixelFormat) = await GetVideoColorPropertiesAsync(videoPath, cancellationToken).ConfigureAwait(false);
         var codec = await GetVideoCodecAsync(videoPath, cancellationToken).ConfigureAwait(false);
-        var toneMappingFilter = BuildToneMappingFilterForColorSpace(colorSpace, colorTransfer);
+        
+        var filterChain = BuildVideoFilter(colorSpace, colorTransfer, pixelFormat);
         
         bool shouldUseSoftware = false;
         lock (_failedCodecCacheLock)
@@ -1029,8 +1140,7 @@ public class FFmpegService
         
         if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
         {
-            var filterArg = string.IsNullOrEmpty(toneMappingFilter) ? "" : $"-vf \"{toneMappingFilter}\"";
-            var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {filterArg} -q:v 1 \"{outputPath}\"";
+            var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {filterChain} -q:v 1 \"{outputPath}\"";
             
             try
             {
@@ -1049,8 +1159,7 @@ public class FFmpegService
             return null;
         }
         
-        var filterArgHwa = string.IsNullOrEmpty(toneMappingFilter) ? "" : $"-vf \"{toneMappingFilter}\"";
-        var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 {filterArgHwa} -q:v 1 \"{outputPath}\"";
+        var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 {filterChain} -q:v 1 \"{outputPath}\"";
 
         try
         {
@@ -1075,8 +1184,7 @@ public class FFmpegService
             }
         }
 
-        var filterArgFallback = string.IsNullOrEmpty(toneMappingFilter) ? "" : $"-vf \"{toneMappingFilter}\"";
-        var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {filterArgFallback} -q:v 1 \"{outputPath}\"";
+        var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {filterChain} -q:v 1 \"{outputPath}\"";
         
         try
         {
