@@ -25,7 +25,7 @@ get_plugin_version() {
             return
         fi
     fi
-    echo "1.0.0.0"
+    echo "1.0.0"
 }
 
 # MARK: Get plugin info from build.yaml

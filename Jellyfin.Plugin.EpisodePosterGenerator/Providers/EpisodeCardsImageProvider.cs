@@ -606,7 +606,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                             return null;
                         }
 
-                        var blackIntervals = await ffmpegService.DetectBlackScenesAsync(episode.Path, duration.Value, 0.1, 0.1, cancellationToken).ConfigureAwait(false);
+                        var blackIntervals = await ffmpegService.DetectBlackScenesParallelAsync(episode.Path, duration.Value, 0.1, 0.1, cancellationToken).ConfigureAwait(false);
                         var selectedTimestamp = ffmpegService.SelectRandomTimestamp(duration.Value, blackIntervals);
 
                         var videoStream = episode.GetMediaStreams()?.FirstOrDefault(s => s.Type == MediaStreamType.Video);
