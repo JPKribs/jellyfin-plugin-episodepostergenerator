@@ -12,6 +12,7 @@ using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 using Microsoft.Extensions.Logging;
+using MediaBrowser.Controller.Configuration;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator
 {
@@ -82,7 +83,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             IMediaEncoder mediaEncoder,
             ILibraryManager libraryManager,
             ILogger<Plugin> logger,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            IServerConfigurationManager configurationManager)
             : base(applicationPaths, xmlSerializer)
         {
             Instance = this;
@@ -93,8 +95,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _applicationPaths = applicationPaths;
             _loggerFactory = loggerFactory;
 
-            _ffmpegService = new FFmpegService(loggerFactory.CreateLogger<FFmpegService>(), mediaEncoder);
             _posterGeneratorService = new PosterGeneratorService();
+            _ffmpegService = new FFmpegService(loggerFactory.CreateLogger<FFmpegService>(), mediaEncoder, configurationManager);
             _trackingDatabase = new EpisodeTrackingDatabase(loggerFactory.CreateLogger<EpisodeTrackingDatabase>(), applicationPaths);
             _trackingService = new EpisodeTrackingService(loggerFactory.CreateLogger<EpisodeTrackingService>(), _trackingDatabase);
 
@@ -137,10 +139,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         }
 
         // MARK: GetImage
-        public Stream? GetImage()
+        public Stream GetImage()
         {
             var assembly = GetType().Assembly;
-            return assembly.GetManifestResourceStream(typeof(Plugin).Namespace + ".Logo.png");
+            var resourceNames = assembly.GetManifestResourceNames();
+            _logger.LogError("Available resources: {Resources}", string.Join(", ", resourceNames));
+            
+            return assembly.GetManifestResourceStream(typeof(Plugin).Namespace + ".Logo.png")!;
         }
 
         // MARK: Dispose

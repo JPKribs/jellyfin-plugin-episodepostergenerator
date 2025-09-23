@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
+using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.MediaEncoding;
 using Microsoft.Extensions.Logging;
 
@@ -26,6 +27,11 @@ public class FFmpegService : IDisposable
     /// Jellyfin's media encoder service for FFmpeg/FFprobe access
     /// </summary>
     private readonly IMediaEncoder _mediaEncoder;
+
+    /// <summary>
+    /// Jellyfin's server configuration manager for accessing settings
+    /// </summary>
+    private readonly IServerConfigurationManager _configurationManager;
 
     /// <summary>
     /// Cache for black scene detection results
@@ -84,13 +90,13 @@ public class FFmpegService : IDisposable
     private bool _disposed;
 
     // MARK: Constructor
-    public FFmpegService(ILogger<FFmpegService> logger, IMediaEncoder mediaEncoder)
+    public FFmpegService(ILogger<FFmpegService> logger, IMediaEncoder mediaEncoder, IServerConfigurationManager configurationManager)
     {
         _logger = logger;
         _mediaEncoder = mediaEncoder;
+        _configurationManager = configurationManager;
         _hardwareAccelerationArgs = DetermineHardwareAcceleration();
         
-        // Configure threading based on system capabilities
         _maxConcurrentOperations = Math.Max(1, Environment.ProcessorCount / 2);
         _operationSemaphore = new SemaphoreSlim(_maxConcurrentOperations, _maxConcurrentOperations);
         _ffmpegThreads = Math.Max(1, Environment.ProcessorCount / 4);
@@ -98,6 +104,259 @@ public class FFmpegService : IDisposable
         
         _logger.LogInformation("FFmpeg threading configured: {MaxConcurrent} concurrent ops, {Threads} threads per operation", 
             _maxConcurrentOperations, _ffmpegThreads);
+        _logger.LogInformation("FFmpeg service initialized with Jellyfin HWA integration");
+        LogHardwareAccelerationStatus();
+    }
+
+    // MARK: LogHardwareAccelerationStatus
+    private void LogHardwareAccelerationStatus()
+    {
+        if (!string.IsNullOrEmpty(_hardwareAccelerationArgs))
+        {
+            _logger.LogInformation("Jellyfin Hardware Acceleration: ENABLED");
+            _logger.LogInformation("  Arguments: {HwArgs}", _hardwareAccelerationArgs);
+        }
+        else
+        {
+            _logger.LogInformation("Jellyfin Hardware Acceleration: DISABLED - using software decoding");
+        }
+    }
+
+    // MARK: DetermineHardwareAcceleration
+    private string DetermineHardwareAcceleration()
+    {
+        try
+        {
+            var supportedMethods = new Dictionary<string, bool>();
+            
+            // Check all possible hardware acceleration methods
+            var methods = new[] { "videotoolbox", "cuda", "d3d11va", "qsv", "vaapi", "rkmpp" };
+            foreach (var method in methods)
+            {
+                supportedMethods[method] = _mediaEncoder.SupportsHwaccel(method);
+            }
+
+            // Check codec-specific decoding support
+            var h264Decoders = new[] { "h264_cuvid", "h264_qsv", "h264_vaapi", "h264_videotoolbox", "h264_rkmpp" };
+            var hevcDecoders = new[] { "hevc_cuvid", "hevc_qsv", "hevc_vaapi", "hevc_videotoolbox", "hevc_rkmpp" };
+            var vp9Decoders = new[] { "vp9_cuvid", "vp9_qsv", "vp9_vaapi", "vp9_videotoolbox" };
+            var av1Decoders = new[] { "av1_cuvid", "av1_qsv", "av1_vaapi" };
+
+            foreach (var decoder in h264Decoders.Concat(hevcDecoders).Concat(vp9Decoders).Concat(av1Decoders))
+            {
+                supportedMethods[decoder] = _mediaEncoder.SupportsDecoder(decoder);
+            }
+
+            string hwaccelMethod = string.Empty;
+            string hwaccelArgs = string.Empty;
+            
+            if (OperatingSystem.IsMacOS() && supportedMethods.GetValueOrDefault("videotoolbox", false))
+            {
+                hwaccelMethod = "VideoToolbox";
+                hwaccelArgs = "-hwaccel videotoolbox";
+            }
+            else if (OperatingSystem.IsWindows())
+            {
+                if (supportedMethods.GetValueOrDefault("cuda", false))
+                {
+                    hwaccelMethod = "CUDA";
+                    hwaccelArgs = "-hwaccel cuda";
+                }
+                else if (supportedMethods.GetValueOrDefault("qsv", false))
+                {
+                    hwaccelMethod = "QSV";
+                    hwaccelArgs = "-hwaccel qsv";
+                }
+                else if (supportedMethods.GetValueOrDefault("d3d11va", false))
+                {
+                    hwaccelMethod = "D3D11VA";
+                    hwaccelArgs = "-hwaccel d3d11va";
+                }
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                if (supportedMethods.GetValueOrDefault("vaapi", false))
+                {
+                    hwaccelMethod = "VAAPI";
+                    hwaccelArgs = "-hwaccel vaapi -vaapi_device /dev/dri/renderD128";
+                }
+                else if (supportedMethods.GetValueOrDefault("qsv", false))
+                {
+                    hwaccelMethod = "QSV";
+                    hwaccelArgs = "-hwaccel qsv";
+                }
+                else if (supportedMethods.GetValueOrDefault("cuda", false))
+                {
+                    hwaccelMethod = "CUDA";
+                    hwaccelArgs = "-hwaccel cuda";
+                }
+                else if (supportedMethods.GetValueOrDefault("rkmpp", false))
+                {
+                    hwaccelMethod = "RKMPP";
+                    hwaccelArgs = "-hwaccel rkmpp";
+                }
+            }
+
+            if (!string.IsNullOrEmpty(hwaccelMethod))
+            {
+                _logger.LogInformation("Hardware Acceleration: {HwaccelMethod}", hwaccelMethod);
+                
+                // Log supported decoders for debugging
+                var supportedDecoders = supportedMethods.Where(kvp => kvp.Value && kvp.Key.Contains('_', StringComparison.Ordinal)).Select(kvp => kvp.Key).ToArray();
+                if (supportedDecoders.Length > 0)
+                {
+                    _logger.LogInformation("Supported Hardware Decoders: {Decoders}", string.Join(", ", supportedDecoders));
+                }
+            }
+            else
+            {
+                _logger.LogInformation("Hardware Acceleration: No supported methods found, using software decoding");
+            }
+
+            return hwaccelArgs;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not determine hardware acceleration, using software decoding");
+            return string.Empty;
+        }
+    }
+
+    // MARK: GetCodecSpecificHwAccelArgs
+    private string GetCodecSpecificHwAccelArgs(string codec, string baseHwAccelArgs)
+    {
+        if (string.IsNullOrEmpty(baseHwAccelArgs) || string.IsNullOrEmpty(codec))
+            return baseHwAccelArgs;
+
+        // Map codecs to their hardware decoder equivalents
+        var codecDecoderMap = new Dictionary<string, string[]>
+        {
+            ["h264"] = new[] { "h264_cuvid", "h264_qsv", "h264_vaapi", "h264_videotoolbox", "h264_rkmpp" },
+            ["hevc"] = new[] { "hevc_cuvid", "hevc_qsv", "hevc_vaapi", "hevc_videotoolbox", "hevc_rkmpp" },
+            ["vp9"] = new[] { "vp9_cuvid", "vp9_qsv", "vp9_vaapi", "vp9_videotoolbox" },
+            ["av01"] = new[] { "av1_cuvid", "av1_qsv", "av1_vaapi" }
+        };
+
+        if (!codecDecoderMap.TryGetValue(codec.ToLowerInvariant(), out var decoders))
+            return baseHwAccelArgs;
+
+        // Check if any hardware decoder is available for this codec
+        var supportedDecoder = decoders.FirstOrDefault(decoder => _mediaEncoder.SupportsDecoder(decoder));
+        
+        if (supportedDecoder != null)
+        {
+            _logger.LogDebug("Using hardware decoder {Decoder} for codec {Codec}", supportedDecoder, codec);
+            return $"{baseHwAccelArgs} -c:v {supportedDecoder}";
+        }
+
+        return baseHwAccelArgs;
+    }
+
+    // MARK: BuildHardwareVideoFilter
+    private string BuildHardwareVideoFilter(string colorSpace, string colorTransfer, string pixelFormat, string hwaccelArgs)
+    {
+        var filters = new List<string>();
+        var isHdr = IsHDRContent(colorSpace, colorTransfer, pixelFormat);
+        var is10Bit = pixelFormat.Contains("10le", StringComparison.OrdinalIgnoreCase);
+        
+        if (hwaccelArgs.Contains("cuda", StringComparison.OrdinalIgnoreCase))
+        {
+            if (isHdr)
+            {
+                filters.Add("hwdownload,format=nv12");
+                filters.Add("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p");
+            }
+            else if (is10Bit)
+            {
+                filters.Add("hwdownload,format=yuv420p");
+            }
+            else
+            {
+                filters.Add("hwdownload");
+            }
+        }
+        else if (hwaccelArgs.Contains("vaapi", StringComparison.OrdinalIgnoreCase))
+        {
+            if (isHdr)
+            {
+                filters.Add("hwdownload,format=nv12");
+                filters.Add("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p");
+            }
+            else
+            {
+                filters.Add("hwdownload,format=nv12");
+            }
+        }
+        else if (hwaccelArgs.Contains("qsv", StringComparison.OrdinalIgnoreCase))
+        {
+            if (isHdr)
+            {
+                filters.Add("hwdownload,format=nv12");
+                filters.Add("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p");
+            }
+            else
+            {
+                filters.Add("hwdownload,format=nv12");
+            }
+        }
+        else if (hwaccelArgs.Contains("d3d11va", StringComparison.OrdinalIgnoreCase))
+        {
+            if (isHdr)
+            {
+                filters.Add("hwdownload,format=nv12");
+                filters.Add("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p");
+            }
+            else
+            {
+                filters.Add("hwdownload,format=nv12");
+            }
+        }
+        else if (hwaccelArgs.Contains("videotoolbox", StringComparison.OrdinalIgnoreCase))
+        {
+            if (isHdr)
+            {
+                filters.Add("hwdownload,format=nv12");
+                filters.Add("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p");
+            }
+            else
+            {
+                filters.Add("hwdownload,format=nv12");
+            }
+        }
+        else
+        {
+            // Software fallback
+            if (isHdr)
+            {
+                filters.Add("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p");
+            }
+            else if (is10Bit)
+            {
+                filters.Add("format=yuv420p");
+            }
+        }
+        
+        return filters.Count > 0 ? $"-vf \"{string.Join(",", filters)}\"" : "";
+    }
+
+    // MARK: BuildSoftwareVideoFilter
+    private string BuildSoftwareVideoFilter(string hardwareFilterChain)
+    {
+        if (string.IsNullOrEmpty(hardwareFilterChain))
+            return "";
+        
+        var filters = hardwareFilterChain.Replace("-vf \"", "", StringComparison.Ordinal).Replace("\"", "", StringComparison.Ordinal);
+        
+        filters = filters.Replace("hwdownload,", "", StringComparison.Ordinal)
+                        .Replace("hwdownload", "", StringComparison.Ordinal)
+                        .Replace("hwmap=derive_device=vaapi,", "", StringComparison.Ordinal)
+                        .Replace("hwmap=derive_device=opencl,", "", StringComparison.Ordinal)
+                        .Replace("scale_vaapi", "scale", StringComparison.Ordinal)
+                        .Replace("scale_qsv", "scale", StringComparison.Ordinal);
+        
+        filters = filters.Trim().TrimStart(',').TrimEnd(',');
+        
+        return string.IsNullOrEmpty(filters) ? "" : $"-vf \"{filters}\"";
     }
 
     // MARK: GetFFmpegPath
@@ -162,76 +421,6 @@ public class FFmpegService : IDisposable
         return path;
     }
 
-    // MARK: DetermineHardwareAcceleration
-    private string DetermineHardwareAcceleration()
-    {
-        try
-        {
-            string hwaccelMethod = string.Empty;
-            string hwaccelArgs = string.Empty;
-            
-            if (OperatingSystem.IsMacOS())
-            {
-                hwaccelMethod = "VideoToolbox";
-                hwaccelArgs = "-hwaccel videotoolbox";
-            }
-            else if (OperatingSystem.IsWindows())
-            {
-                var cudaSupported = _mediaEncoder.SupportsHwaccel("cuda");
-                var d3d11vaSupported = _mediaEncoder.SupportsHwaccel("d3d11va");
-                
-                if (cudaSupported)
-                {
-                    hwaccelMethod = "CUDA";
-                    hwaccelArgs = "-hwaccel cuda";
-                }
-                else if (d3d11vaSupported)
-                {
-                    hwaccelMethod = "D3D11VA";
-                    hwaccelArgs = "-hwaccel d3d11va";
-                }
-            }
-            else if (OperatingSystem.IsLinux())
-            {
-                var vaapiSupported = _mediaEncoder.SupportsHwaccel("vaapi");
-                var qsvSupported = _mediaEncoder.SupportsHwaccel("qsv");
-                var cudaSupported = _mediaEncoder.SupportsHwaccel("cuda");
-                
-                if (vaapiSupported)
-                {
-                    hwaccelMethod = "VAAPI";
-                    hwaccelArgs = "-hwaccel vaapi";
-                }
-                else if (qsvSupported)
-                {
-                    hwaccelMethod = "QSV";
-                    hwaccelArgs = "-hwaccel qsv";
-                }
-                else if (cudaSupported)
-                {
-                    hwaccelMethod = "CUDA";
-                    hwaccelArgs = "-hwaccel cuda";
-                }
-            }
-
-            if (!string.IsNullOrEmpty(hwaccelMethod))
-            {
-                _logger.LogInformation("Hardware Acceleration: {HwaccelMethod}", hwaccelMethod);
-            }
-            else
-            {
-                _logger.LogInformation("Hardware Acceleration: Disabled, using software decoding");
-            }
-
-            return hwaccelArgs;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Could not determine hardware acceleration, using software decoding");
-            return string.Empty;
-        }
-    }
-
     // MARK: IsHDRContent
     private bool IsHDRContent(string colorSpace, string transferCharacteristic, string pixelFormat)
     {
@@ -258,20 +447,6 @@ public class FFmpegService : IDisposable
         return hdrTransferCharacteristics.Contains(transferCharacteristic, StringComparer.OrdinalIgnoreCase) ||
                hdrColorSpaces.Contains(colorSpace, StringComparer.OrdinalIgnoreCase) ||
                hdr10BitFormats.Contains(pixelFormat, StringComparer.OrdinalIgnoreCase);
-    }
-
-    // MARK: BuildVideoFilter
-    private string BuildVideoFilter(string colorSpace, string colorTransfer, string pixelFormat)
-    {
-        var is10Bit = pixelFormat.Contains("10le", StringComparison.Ordinal) || pixelFormat.Contains("12le", StringComparison.Ordinal);
-        var isHDR = IsHDRContent(colorSpace, colorTransfer, pixelFormat);
-        
-        if (is10Bit || isHDR)
-        {
-            return "-vf \"scale=iw*sar:ih,format=yuv420p\"";
-        }
-        
-        return "";
     }
 
     // MARK: GetVideoDurationAsync
@@ -342,14 +517,12 @@ public class FFmpegService : IDisposable
 
         var sampleSegments = GetSampleSegments(totalDuration);
 
-        // Process segments in parallel
         var tasks = sampleSegments.Select(segment =>
             DetectBlackInSegmentAsync(videoPath, segment.Start, segment.Duration, pixelThreshold, durationThreshold, cancellationToken)
         ).ToArray();
 
         var segmentResults = await Task.WhenAll(tasks).ConfigureAwait(false);
 
-        // Combine results
         foreach (var segmentIntervals in segmentResults)
         {
             blackIntervals.AddRange(segmentIntervals);
@@ -367,6 +540,7 @@ public class FFmpegService : IDisposable
         var durationSeconds = duration.TotalSeconds;
 
         var codec = await GetVideoCodecAsync(videoPath, cancellationToken).ConfigureAwait(false);
+        var hwAccelArgs = GetCodecSpecificHwAccelArgs(codec, _hardwareAccelerationArgs);
 
         bool shouldUseSoftware = false;
         lock (_failedCodecCacheLock)
@@ -374,7 +548,7 @@ public class FFmpegService : IDisposable
             shouldUseSoftware = _failedHwaccelCodecs.Contains(codec);
         }
 
-        if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
+        if (shouldUseSoftware || string.IsNullOrEmpty(hwAccelArgs))
         {
             var softwareArguments = $"-ss {startSeconds:F2} -t {durationSeconds:F2} -i \"{videoPath}\" -vf \"scale=320:240,blackdetect=d={durationThreshold}:pix_th={pixelThreshold}\" -an -f null - -v info {_threadingArgs}";
 
@@ -401,7 +575,7 @@ public class FFmpegService : IDisposable
             return blackIntervals;
         }
 
-        var arguments = $"-ss {startSeconds:F2} -t {durationSeconds:F2} {_hardwareAccelerationArgs} -i \"{videoPath}\" -vf \"scale=320:240,blackdetect=d={durationThreshold}:pix_th={pixelThreshold}\" -an -f null - -v info {_threadingArgs}";
+        var arguments = $"-ss {startSeconds:F2} -t {durationSeconds:F2} {hwAccelArgs} -i \"{videoPath}\" -vf \"scale=320:240,blackdetect=d={durationThreshold}:pix_th={pixelThreshold}\" -an -f null - -v info {_threadingArgs}";
 
         try
         {
@@ -495,7 +669,8 @@ public class FFmpegService : IDisposable
             var (colorSpace, colorTransfer, pixelFormat) = await GetVideoColorPropertiesAsync(videoPath, cancellationToken).ConfigureAwait(false);
             var codec = await GetVideoCodecAsync(videoPath, cancellationToken).ConfigureAwait(false);
             
-            var filterChain = BuildVideoFilter(colorSpace, colorTransfer, pixelFormat);
+            var hwAccelArgs = GetCodecSpecificHwAccelArgs(codec, _hardwareAccelerationArgs);
+            var filterChain = BuildHardwareVideoFilter(colorSpace, colorTransfer, pixelFormat, hwAccelArgs);
             
             bool shouldUseSoftware = false;
             lock (_failedCodecCacheLock)
@@ -503,35 +678,20 @@ public class FFmpegService : IDisposable
                 shouldUseSoftware = _failedHwaccelCodecs.Contains(codec);
             }
             
-            if (shouldUseSoftware || string.IsNullOrEmpty(_hardwareAccelerationArgs))
+            if (shouldUseSoftware || string.IsNullOrEmpty(hwAccelArgs))
             {
-                var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {filterChain} -q:v 1 {_threadingArgs} \"{outputPath}\"";
-                
-                try
-                {
-                    await ExecuteFFmpegAsync(softwareArguments, cancellationToken).ConfigureAwait(false);
-                    
-                    if (File.Exists(outputPath))
-                    {
-                        return outputPath;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Software frame extraction failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
-                }
-                
-                return null;
+                return await ExtractFrameSoftwareAsync(videoPath, timestampStr, filterChain, outputPath, cancellationToken).ConfigureAwait(false);
             }
             
-            var arguments = $"-ss {timestampStr} {_hardwareAccelerationArgs} -i \"{videoPath}\" -frames:v 1 {filterChain} -q:v 1 {_threadingArgs} \"{outputPath}\"";
-
+            var arguments = $"-ss {timestampStr} {hwAccelArgs} -i \"{videoPath}\" -frames:v 1 {filterChain} -q:v 1 {_threadingArgs} \"{outputPath}\"";
+            
             try
             {
                 await ExecuteFFmpegAsync(arguments, cancellationToken).ConfigureAwait(false);
                 
                 if (File.Exists(outputPath))
                 {
+                    _logger.LogDebug("Hardware accelerated frame extraction successful at {Timestamp} using {Codec} decoder", timestamp, codec);
                     return outputPath;
                 }
             }
@@ -545,32 +705,41 @@ public class FFmpegService : IDisposable
                 
                 if (shouldLogWarning)
                 {
-                    _logger.LogWarning(ex, "Hardware acceleration failed for {Codec} codec, falling back to software for this codec", codec);
+                    _logger.LogWarning(ex, "Hardware acceleration failed for {Codec} codec, falling back to software", codec);
                 }
-            }
-
-            var fallbackArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {filterChain} -q:v 1 {_threadingArgs} \"{outputPath}\"";
-            
-            try
-            {
-                await ExecuteFFmpegAsync(fallbackArguments, cancellationToken).ConfigureAwait(false);
                 
-                if (File.Exists(outputPath))
-                {
-                    return outputPath;
-                }
+                return await ExtractFrameSoftwareAsync(videoPath, timestampStr, filterChain, outputPath, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Software fallback frame extraction also failed at {Timestamp} from {VideoPath}", timestamp, videoPath);
-            }
-
+            
             return null;
         }
         finally
         {
             _operationSemaphore.Release();
         }
+    }
+
+    // MARK: ExtractFrameSoftwareAsync
+    private async Task<string?> ExtractFrameSoftwareAsync(string videoPath, string timestampStr, string filterChain, string outputPath, CancellationToken cancellationToken)
+    {
+        var softwareFilterChain = BuildSoftwareVideoFilter(filterChain);
+        var softwareArguments = $"-ss {timestampStr} -i \"{videoPath}\" -frames:v 1 {softwareFilterChain} -q:v 1 {_threadingArgs} \"{outputPath}\"";
+        
+        try
+        {
+            await ExecuteFFmpegAsync(softwareArguments, cancellationToken).ConfigureAwait(false);
+            
+            if (File.Exists(outputPath))
+            {
+                return outputPath;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Software frame extraction also failed at {Timestamp} from {VideoPath}", timestampStr, videoPath);
+        }
+        
+        return null;
     }
 
     // MARK: SelectRandomTimestamp
