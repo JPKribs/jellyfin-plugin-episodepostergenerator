@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.10.18",
+        "changelog": "**Bug Fixes & Crashes**\r\n* Fix Missing Logo\r\n\r\n**Documentation**\r\n* Reduce comments to be more concise",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.18/jellyfin-plugin-episodepostergenerator-10.10.18.zip",
+        "checksum": "30e6310652fe4c885a1e94eedeb42c02",
+        "timestamp": "2025-09-23T21:19:51Z"
+      },
+      {
         "version": "10.10.17",
         "changelog": "**Bug Fixes & Crashes**\r\n*  Crash AVC 10 bit ColorSpace",
         "targetAbi": "10.10.7.0",
