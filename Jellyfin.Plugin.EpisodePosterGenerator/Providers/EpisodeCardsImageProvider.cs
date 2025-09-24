@@ -91,16 +91,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                 _logger.LogInformation("Starting to create poster for {EpisodeName}", episode.Name);
 
                 // Pass single episode to orchestrator (no filtering - provider always processes)
-                var posterPaths = await orchestrator.GeneratePoster(new[] { episode }, config, cancellationToken).ConfigureAwait(false);
+                var posterPath = await orchestrator.GeneratePoster(episode, config, cancellationToken).ConfigureAwait(false);
                 
-                if (posterPaths.Length == 0 || string.IsNullOrEmpty(posterPaths[0]) || !File.Exists(posterPaths[0]))
+                if (string.IsNullOrEmpty(posterPath) || !File.Exists(posterPath))
                 {
                     _logger.LogWarning("Failed to generate image for episode: {EpisodeName}", episode.Name);
                     return new DynamicImageResponse { HasImage = false };
                 }
 
                 // Load poster into memory stream for Jellyfin
-                var imageBytes = await File.ReadAllBytesAsync(posterPaths[0], cancellationToken).ConfigureAwait(false);
+                var imageBytes = await File.ReadAllBytesAsync(posterPath, cancellationToken).ConfigureAwait(false);
                 var imageStream = new MemoryStream(imageBytes);
 
                 // Mark as processed in tracking service

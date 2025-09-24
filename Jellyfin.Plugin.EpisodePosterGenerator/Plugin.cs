@@ -106,8 +106,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _trackingService = new EpisodeTrackingService(loggerFactory.CreateLogger<EpisodeTrackingService>(), _trackingDatabase);
             _orchestrator = new EpisodePosterOrchestrator(
                 _loggerFactory.CreateLogger<EpisodePosterOrchestrator>(),
-                _ffmpegService,
-                _posterGeneratorService);
+                _posterGeneratorService,
+                configurationManager,
+                null,
+                _trackingService);
 
             _ = Task.Run(async () =>
             {

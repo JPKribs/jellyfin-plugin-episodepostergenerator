@@ -8,6 +8,7 @@ using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services;
 using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
+using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
@@ -42,6 +43,34 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             _configurationManager = configurationManager;
             _providerManager = providerManager;
             _trackingService = trackingService;
+        }
+
+        // MARK: GeneratePoster
+        public async Task<string?> GeneratePoster(
+            Episode episode,
+            PluginConfiguration config,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var encodingOptions = await GetEncodingOptionsAsync().ConfigureAwait(false);
+                var metadata = CollectEpisodeMetadata(episode, encodingOptions);
+                
+                var outputPath = Path.GetTempFileName();
+                
+                var result = _posterGeneratorService.ProcessImageWithText(
+                    metadata.Episode.Path,
+                    outputPath,
+                    episode,
+                    config);
+                    
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to generate poster for episode: {EpisodeName}", episode.Name);
+                return null;
+            }
         }
 
         // MARK: ProcessEpisodesAsync
@@ -109,7 +138,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 try
                 {
                     var posterPath = _posterGeneratorService.ProcessImageWithText(
-                        metadata.MediaDetails.FilePath ?? "", 
+                        metadata.Episode.Path, 
                         Path.GetTempFileName(), 
                         metadata.Episode, 
                         config);
@@ -139,6 +168,29 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
 
             return results.ToArray();
+        }
+
+        // MARK: GetEncodingOptionsAsync
+        private async Task<EncodingOptions?> GetEncodingOptionsAsync()
+        {
+            if (_configurationManager == null)
+            {
+                _logger.LogWarning("Configuration manager not available - using defaults");
+                return null;
+            }
+
+            try
+            {
+                var encodingOptions = _configurationManager.GetEncodingOptions();
+                _logger.LogDebug("Retrieved encoding configuration - HWAccel: {HardwareAccelerationType}, Threads: {EncodingThreadCount}",
+                    encodingOptions.HardwareAccelerationType, encodingOptions.EncodingThreadCount);
+                return await Task.FromResult(encodingOptions).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to retrieve encoding configuration - using defaults");
+                return null;
+            }
         }
 
         // MARK: CollectEpisodeMetadata
@@ -180,14 +232,21 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 _logger.LogWarning(ex, "Failed to get series logo for episode: {EpisodeName}", episode.Name);
             }
 
-            return new EpisodePosterMetadata(
-                episode,
-                mediaDetails,
-                seasonNumber,
-                episodeNumber,
-                episodeTitle,
-                seriesName,
-                seriesLogoPath);
+            return new EpisodePosterMetadata
+            {
+                Episode = episode,
+                SeasonNumber = seasonNumber,
+                EpisodeNumber = episodeNumber,
+                EpisodeTitle = episodeTitle,
+                SeriesName = seriesName,
+                LogoInfo = new LogoInfo
+                {
+                    SeriesName = seriesName,
+                    SeriesId = episode.Series?.Id ?? Guid.Empty,
+                    HasLogo = !string.IsNullOrEmpty(seriesLogoPath),
+                    LogoPath = seriesLogoPath
+                }
+            };
         }
 
         // MARK: ProcessSingleResult

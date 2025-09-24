@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
+using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
@@ -102,11 +103,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                     return;
                 }
 
-                // Pass array to orchestrator and let it handle everything
-                var posterPaths = await orchestrator.GeneratePoster(episodesToProcess, config, cancellationToken).ConfigureAwait(false);
+                // Use ProcessEpisodesAsync for batch processing
+                var results = await orchestrator.ProcessEpisodesAsync(episodesToProcess, config, TaskTrigger.Task, progress, cancellationToken).ConfigureAwait(false);
                 
-                // Upload generated posters to Jellyfin and update tracking
-                await ProcessGeneratedPosters(episodesToProcess, posterPaths, config, trackingService, progress, cancellationToken).ConfigureAwait(false);
+                // Log results
+                var succeeded = results.Count(r => r.Success);
+                var failed = results.Length - succeeded;
+                _logger.LogInformation("{Succeeded} succeeded and {Failed} failed", succeeded, failed);
             }
             catch (Exception ex)
             {
@@ -152,79 +155,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
             }
 
             return episodesToProcess.ToArray();
-        }
-
-        // MARK: ProcessGeneratedPosters
-        private async Task ProcessGeneratedPosters(
-            Episode[] episodes,
-            string[] posterPaths,
-            Configuration.PluginConfiguration config,
-            EpisodeTrackingService trackingService,
-            IProgress<double> progress,
-            CancellationToken cancellationToken)
-        {
-            int succeeded = 0;
-            int failed = 0;
-
-            for (int i = 0; i < episodes.Length; i++)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                    break;
-
-                var episode = episodes[i];
-                
-                // Check if we have a poster for this episode
-                if (i < posterPaths.Length && !string.IsNullOrEmpty(posterPaths[i]))
-                {
-                    var success = await UploadImageToJellyfinAsync(episode, posterPaths[i], cancellationToken).ConfigureAwait(false);
-                    
-                    if (success)
-                    {
-                        await trackingService.MarkEpisodeProcessedAsync(episode, config).ConfigureAwait(false);
-                        succeeded++;
-                    }
-                    else
-                    {
-                        failed++;
-                    }
-                }
-                else
-                {
-                    failed++;
-                }
-
-                var progressPercentage = (double)(i + 1) / episodes.Length * 100;
-                progress?.Report(progressPercentage);
-            }
-
-            _logger.LogInformation("{Succeeded} succeeded and {Failed} failed", succeeded, failed);
-        }
-
-        // MARK: UploadImageToJellyfinAsync
-        private async Task<bool> UploadImageToJellyfinAsync(Episode episode, string imagePath, CancellationToken cancellationToken)
-        {
-            try
-            {
-                var imageBytes = await File.ReadAllBytesAsync(imagePath, cancellationToken).ConfigureAwait(false);
-                using var imageStream = new MemoryStream(imageBytes);
-
-                await _providerManager.SaveImage(
-                    episode,
-                    imageStream,
-                    "image/jpeg",
-                    ImageType.Primary,
-                    null,
-                    cancellationToken).ConfigureAwait(false);
-
-                await episode.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, cancellationToken).ConfigureAwait(false);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to upload image for episode: {EpisodeName}", episode.Name);
-                return false;
-            }
         }
     }
 }
