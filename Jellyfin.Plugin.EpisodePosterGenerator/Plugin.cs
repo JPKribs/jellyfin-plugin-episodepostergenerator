@@ -3,6 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
+using Jellyfin.Plugin.EpisodePosterGenerator.Managers;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services.Database;
 using MediaBrowser.Common.Configuration;
@@ -67,9 +68,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         private readonly EpisodeTrackingService _trackingService;
 
         /// <summary>
-        /// Orchestrator for coordinating poster generation workflows
+        /// Manager for coordinating poster generation workflows
         /// </summary>
-        private readonly EpisodePosterOrchestrator _orchestrator;
+        private readonly PosterGenerationManager _manager;
 
         /// <summary>
         /// SQLite database service
@@ -104,8 +105,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _ffmpegService = new FFmpegService(loggerFactory.CreateLogger<FFmpegService>(), mediaEncoder, configurationManager);
             _trackingDatabase = new EpisodeTrackingDatabase(loggerFactory.CreateLogger<EpisodeTrackingDatabase>(), applicationPaths);
             _trackingService = new EpisodeTrackingService(loggerFactory.CreateLogger<EpisodeTrackingService>(), _trackingDatabase);
-            _orchestrator = new EpisodePosterOrchestrator(
-                _loggerFactory.CreateLogger<EpisodePosterOrchestrator>(),
+            _manager = new PosterGenerationManager(
+                _loggerFactory.CreateLogger<PosterGenerationManager>(),
                 _posterGeneratorService,
                 configurationManager,
                 null,
@@ -137,7 +138,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public FFmpegService FFmpegService => _ffmpegService;
         public PosterGeneratorService PosterGeneratorService => _posterGeneratorService;
         public EpisodeTrackingService TrackingService => _trackingService;
-        public EpisodePosterOrchestrator Orchestrator => _orchestrator;
+        public PosterGenerationManager Manager => _manager;
         public EpisodeTrackingDatabase TrackingDatabase => _trackingDatabase;
 
         // MARK: GetPages

@@ -19,7 +19,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
 {
     /// <summary>
     /// Scheduled task trigger for batch episode poster generation.
-    /// Gets episodes from Jellyfin, filters by tracking database, passes to orchestrator.
+    /// Gets episodes from Jellyfin, filters by tracking database, passes to manager.
     /// </summary>
     public class EpisodePosterGenerationTask : IScheduledTask
     {
@@ -79,9 +79,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
             }
 
             var trackingService = Plugin.Instance?.TrackingService;
-            var orchestrator = Plugin.Instance?.Orchestrator;
+            var manager = Plugin.Instance?.Manager;
 
-            if (trackingService == null || orchestrator == null)
+            if (trackingService == null || manager == null)
             {
                 _logger.LogError("Required services not available");
                 return;
@@ -104,7 +104,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                 }
 
                 // Use ProcessEpisodesAsync for batch processing
-                var results = await orchestrator.ProcessEpisodesAsync(episodesToProcess, config, TaskTrigger.Task, progress, cancellationToken).ConfigureAwait(false);
+                var results = await manager.ProcessEpisodesAsync(episodesToProcess, config, TaskTrigger.Task, progress, cancellationToken).ConfigureAwait(false);
                 
                 // Log results
                 var succeeded = results.Count(r => r.Success);

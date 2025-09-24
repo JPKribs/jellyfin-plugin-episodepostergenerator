@@ -15,7 +15,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
 {
     /// <summary>
     /// Image provider trigger for on-demand episode poster generation.
-    /// Gets episode from Jellyfin, passes directly to orchestrator (no filtering).
+    /// Gets episode from Jellyfin, passes directly to manager (no filtering).
     /// </summary>
     public class EpisodePosterImageProvider : IDynamicImageProvider
     {
@@ -79,10 +79,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                 return new DynamicImageResponse { HasImage = false };
             }
 
-            var orchestrator = Plugin.Instance?.Orchestrator;
-            if (orchestrator == null)
+            var manager = Plugin.Instance?.Manager;
+            if (manager == null)
             {
-                _logger.LogError("Plugin orchestrator not available");
+                _logger.LogError("Plugin manager not available");
                 return new DynamicImageResponse { HasImage = false };
             }
 
@@ -90,8 +90,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
             {
                 _logger.LogInformation("Starting to create poster for {EpisodeName}", episode.Name);
 
-                // Pass single episode to orchestrator (no filtering - provider always processes)
-                var posterPath = await orchestrator.GeneratePoster(episode, config, cancellationToken).ConfigureAwait(false);
+                // Pass single episode to manager (no filtering - provider always processes)
+                var posterPath = await manager.GeneratePoster(episode, config, cancellationToken).ConfigureAwait(false);
                 
                 if (string.IsNullOrEmpty(posterPath) || !File.Exists(posterPath))
                 {

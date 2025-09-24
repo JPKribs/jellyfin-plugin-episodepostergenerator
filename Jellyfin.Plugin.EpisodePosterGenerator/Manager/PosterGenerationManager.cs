@@ -17,22 +17,22 @@ using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.Entities;
 using Microsoft.Extensions.Logging;
 
-namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
+namespace Jellyfin.Plugin.EpisodePosterGenerator.Managers
 {
     /// <summary>
     /// Orchestrates complete episode poster workflow including metadata collection, generation, and result handling.
     /// </summary>
-    public class EpisodePosterOrchestrator
+    public class PosterGenerationManager
     {
-        private readonly ILogger<EpisodePosterOrchestrator> _logger;
+        private readonly ILogger<PosterGenerationManager> _logger;
         private readonly PosterGeneratorService _posterGeneratorService;
         private readonly IServerConfigurationManager? _configurationManager;
         private readonly IProviderManager? _providerManager;
         private readonly EpisodeTrackingService? _trackingService;
 
         // MARK: Constructor
-        public EpisodePosterOrchestrator(
-            ILogger<EpisodePosterOrchestrator> logger,
+        public PosterGenerationManager(
+            ILogger<PosterGenerationManager> logger,
             PosterGeneratorService posterGeneratorService,
             IServerConfigurationManager? configurationManager = null,
             IProviderManager? providerManager = null,
@@ -53,11 +53,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         {
             try
             {
-                var encodingOptions = await GetEncodingOptionsAsync().ConfigureAwait(false);
+                var encodingOptions = await GetEncodingOptionsAsync().ConfigureAwait(true);
                 var metadata = CollectEpisodeMetadata(episode, encodingOptions);
-                
+
                 var outputPath = Path.GetTempFileName();
-                
+
                 var result = _posterGeneratorService.ProcessImageWithText(
                     metadata.Episode.Path,
                     outputPath,
@@ -200,10 +200,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             var mediaDetails = BaseItemVideoDetails.GetMediaDetails(episode);
 
             // Extract episode information
-            var seasonNumber = episode.ParentIndexNumber ?? 0;
-            var episodeNumber = episode.IndexNumber ?? 0;
-            var episodeTitle = episode.Name ?? "Unknown Episode";
-            var seriesName = episode.Series?.Name ?? "Unknown Series";
+            var seasonNumber = episode.ParentIndexNumber;
+            var episodeNumber = episode.IndexNumber;
+            var episodeTitle = episode.Name;
+            var seriesName = episode.Series?.Name;
 
             // Get series logo path if available
             string? seriesLogoPath = null;
@@ -217,19 +217,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     {
                         seriesLogoPath = logoPath;
                     }
-                    else
-                    {
-                        var primaryPath = series.GetImagePath(ImageType.Primary, 0);
-                        if (!string.IsNullOrEmpty(primaryPath) && File.Exists(primaryPath))
-                        {
-                            seriesLogoPath = primaryPath;
-                        }
-                    }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to get series logo for episode: {EpisodeName}", episode.Name);
+                _logger.LogWarning(ex, "Failed to get series logo for episode: {SeriesName} - {EpisodeName}", episode.Series?.Name, episode.Name);
             }
 
             return new EpisodePosterMetadata
@@ -296,7 +288,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to update tracking for provider-generated poster: {EpisodeName}", metadata.Episode.Name);
+                            _logger.LogWarning(ex, "Failed to update tracking for provider-generated poster: {SeriesName} - {EpisodeName}", metadata.Episode.Series.Name, metadata.Episode.Name);
                         }
                     }
                 }
@@ -333,12 +325,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     null,
                     cancellationToken).ConfigureAwait(false);
 
-                _logger.LogInformation("Successfully uploaded poster for episode: {EpisodeName}", episode.Name);
+                _logger.LogInformation("Successfully uploaded poster for episode: {SeriesName} - {EpisodeName}", episode.Series.Name, episode.Name);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to upload image for episode: {EpisodeName}", episode.Name);
+                _logger.LogError(ex, "Failed to upload image for episode: {SeriesName} - {EpisodeName}", episode.Series.Name, episode.Name);
                 return false;
             }
         }

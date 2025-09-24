@@ -17,22 +17,22 @@ public class EpisodePosterMetadata
     /// <summary>
     /// Episode number within the season
     /// </summary>
-    public int EpisodeNumber { get; set; }
+    public int? EpisodeNumber { get; set; }
 
     /// <summary>
     /// Season number
     /// </summary>
-    public int SeasonNumber { get; set; }
+    public int? SeasonNumber { get; set; }
 
     /// <summary>
     /// Episode title
     /// </summary>
-    public string EpisodeTitle { get; set; } = string.Empty;
+    public string? EpisodeTitle { get; set; } = string.Empty;
 
     /// <summary>
     /// Series name
     /// </summary>
-    public string SeriesName { get; set; } = string.Empty;
+    public string? SeriesName { get; set; } = string.Empty;
 
     /// <summary>
     /// Video duration for timestamp calculation
@@ -129,7 +129,7 @@ public class LogoInfo
     /// <summary>
     /// Series name
     /// </summary>
-    public string SeriesName { get; set; } = string.Empty;
+    public string? SeriesName { get; set; } = string.Empty;
 
     /// <summary>
     /// Series identifier
