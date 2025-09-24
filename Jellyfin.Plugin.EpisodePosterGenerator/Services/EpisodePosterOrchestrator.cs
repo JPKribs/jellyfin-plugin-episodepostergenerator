@@ -1,225 +1,286 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
+using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
+using Jellyfin.Plugin.EpisodePosterGenerator.Models;
+using Jellyfin.Plugin.EpisodePosterGenerator.Services;
 using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
+using MediaBrowser.Controller.Configuration;
+using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
+using MediaBrowser.Controller.Providers;
+using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.Entities;
 using Microsoft.Extensions.Logging;
-using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
     /// <summary>
-    /// Orchestrates episode poster generation for arrays of episodes.
+    /// Orchestrates complete episode poster workflow including metadata collection, generation, and result handling.
     /// </summary>
     public class EpisodePosterOrchestrator
     {
         private readonly ILogger<EpisodePosterOrchestrator> _logger;
-        private readonly FFmpegService _ffmpegService;
         private readonly PosterGeneratorService _posterGeneratorService;
+        private readonly IServerConfigurationManager? _configurationManager;
+        private readonly IProviderManager? _providerManager;
+        private readonly EpisodeTrackingService? _trackingService;
 
         // MARK: Constructor
         public EpisodePosterOrchestrator(
             ILogger<EpisodePosterOrchestrator> logger,
-            FFmpegService ffmpegService,
-            PosterGeneratorService posterGeneratorService)
+            PosterGeneratorService posterGeneratorService,
+            IServerConfigurationManager? configurationManager = null,
+            IProviderManager? providerManager = null,
+            EpisodeTrackingService? trackingService = null)
         {
             _logger = logger;
-            _ffmpegService = ffmpegService;
             _posterGeneratorService = posterGeneratorService;
+            _configurationManager = configurationManager;
+            _providerManager = providerManager;
+            _trackingService = trackingService;
         }
 
-        // MARK: GeneratePoster
-        public async Task<string[]> GeneratePoster(
+        // MARK: ProcessEpisodesAsync
+        public async Task<ProcessingResult[]> ProcessEpisodesAsync(
             Episode[] episodes,
             PluginConfiguration config,
+            TaskTrigger trigger,
+            IProgress<double>? progress = null,
             CancellationToken cancellationToken = default)
         {
-            var results = new List<string>();
-            var tempDir = Path.Combine(Path.GetTempPath(), "episodeposter");
-            Directory.CreateDirectory(tempDir);
+            var results = new List<ProcessingResult>();
 
-            foreach (var episode in episodes)
+            // Get encoding configuration once at start
+            EncodingOptions? encodingOptions = null;
+            try
+            {
+                var namedConfig = _configurationManager?.GetConfiguration("encoding");
+                if (namedConfig is EncodingOptions options)
+                {
+                    encodingOptions = options;
+                    _logger.LogDebug("Retrieved encoding configuration - HWAccel: {HardwareAccelerationType}, Threads: {EncodingThreadCount}",
+                        encodingOptions.HardwareAccelerationType, encodingOptions.EncodingThreadCount);
+                }
+                else
+                {
+                    _logger.LogWarning("Could not retrieve encoding configuration - using defaults");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to retrieve encoding configuration - using defaults");
+            }
+
+            // Collect metadata for all episodes
+            var episodeMetadataList = new List<EpisodePosterMetadata>();
+            for (int i = 0; i < episodes.Length; i++)
             {
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
                 try
                 {
-                    var posterPath = await GenerateSinglePoster(episode, config, tempDir, cancellationToken).ConfigureAwait(false);
-                    if (posterPath != null)
-                    {
-                        results.Add(posterPath);
-                    }
+                    var metadata = CollectEpisodeMetadata(episodes[i], encodingOptions);
+                    episodeMetadataList.Add(metadata);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to generate poster for episode: {EpisodeName}", episode.Name);
+                    _logger.LogError(ex, "Failed to collect metadata for episode: {EpisodeName}", episodes[i].Name);
+                    results.Add(new ProcessingResult 
+                    { 
+                        Episode = episodes[i], 
+                        Success = false, 
+                        ErrorMessage = ex.Message 
+                    });
                 }
+            }
+
+            // Generate posters for all episodes with metadata
+            var posterPaths = new List<string?>();
+            foreach (var metadata in episodeMetadataList)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                try
+                {
+                    var posterPath = _posterGeneratorService.ProcessImageWithText(
+                        metadata.MediaDetails.FilePath ?? "", 
+                        Path.GetTempFileName(), 
+                        metadata.Episode, 
+                        config);
+                    posterPaths.Add(posterPath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to generate poster for episode: {EpisodeName}", metadata.Episode.Name);
+                    posterPaths.Add(null);
+                }
+            }
+
+            // Process results based on trigger type
+            for (int i = 0; i < episodeMetadataList.Count; i++)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                var metadata = episodeMetadataList[i];
+                var posterPath = i < posterPaths.Count ? posterPaths[i] : null;
+
+                var result = await ProcessSingleResult(metadata, posterPath, config, trigger, cancellationToken).ConfigureAwait(false);
+                results.Add(result);
+
+                var progressPercentage = (double)(i + 1) / episodeMetadataList.Count * 100;
+                progress?.Report(progressPercentage);
             }
 
             return results.ToArray();
         }
 
-        // MARK: GenerateSinglePoster
-        private async Task<string?> GenerateSinglePoster(
-            Episode episode,
+        // MARK: CollectEpisodeMetadata
+        private EpisodePosterMetadata CollectEpisodeMetadata(Episode episode, EncodingOptions? encodingOptions)
+        {
+            // Get video metadata using utility
+            var mediaDetails = BaseItemVideoDetails.GetMediaDetails(episode);
+
+            // Extract episode information
+            var seasonNumber = episode.ParentIndexNumber ?? 0;
+            var episodeNumber = episode.IndexNumber ?? 0;
+            var episodeTitle = episode.Name ?? "Unknown Episode";
+            var seriesName = episode.Series?.Name ?? "Unknown Series";
+
+            // Get series logo path if available
+            string? seriesLogoPath = null;
+            try
+            {
+                var series = episode.Series;
+                if (series != null)
+                {
+                    var logoPath = series.GetImagePath(ImageType.Logo, 0);
+                    if (!string.IsNullOrEmpty(logoPath) && File.Exists(logoPath))
+                    {
+                        seriesLogoPath = logoPath;
+                    }
+                    else
+                    {
+                        var primaryPath = series.GetImagePath(ImageType.Primary, 0);
+                        if (!string.IsNullOrEmpty(primaryPath) && File.Exists(primaryPath))
+                        {
+                            seriesLogoPath = primaryPath;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get series logo for episode: {EpisodeName}", episode.Name);
+            }
+
+            return new EpisodePosterMetadata(
+                episode,
+                mediaDetails,
+                seasonNumber,
+                episodeNumber,
+                episodeTitle,
+                seriesName,
+                seriesLogoPath);
+        }
+
+        // MARK: ProcessSingleResult
+        private async Task<ProcessingResult> ProcessSingleResult(
+            EpisodePosterMetadata metadata,
+            string? posterPath,
             PluginConfiguration config,
-            string tempDir,
+            TaskTrigger trigger,
             CancellationToken cancellationToken)
         {
-            var tempFramePath = Path.Combine(tempDir, $"frame_{episode.Id}_{DateTime.UtcNow.Ticks}.jpg");
-            var tempPosterPath = Path.Combine(tempDir, $"poster_{episode.Id}_{DateTime.UtcNow.Ticks}.jpg");
+            var result = new ProcessingResult { Episode = metadata.Episode };
+
+            if (string.IsNullOrEmpty(posterPath) || !File.Exists(posterPath))
+            {
+                result.Success = false;
+                result.ErrorMessage = "Poster generation failed - no output file";
+                return result;
+            }
 
             try
             {
-                // Pull media video metadata early using static utility
-                var mediaDetails = BaseItemVideoDetails.GetMediaDetails(episode);
-                var video = mediaDetails.VideoDetails;
-
-                if (video == null)
+                if (trigger == TaskTrigger.Task)
                 {
-                    _logger.LogWarning("No video stream found for episode: {EpisodeName}", episode.Name);
-                    return null;
+                    // Task mode: Upload to Jellyfin filesystem and update tracking
+                    var success = await UploadToJellyfinAsync(metadata.Episode, posterPath, cancellationToken).ConfigureAwait(false);
+                    if (success && _trackingService != null)
+                    {
+                        await _trackingService.MarkEpisodeProcessedAsync(metadata.Episode, config).ConfigureAwait(false);
+                    }
+                    result.Success = success;
+                    result.PosterPath = success ? posterPath : null;
                 }
-
-                _logger.LogInformation(
-                    "Video metadata for {EpisodeName}: {Codec} {Width}x{Height} {ColorSpace} HDR={HDR}",
-                    episode.Name,
-                    video.Codec,
-                    video.Width,
-                    video.Height,
-                    video.ColorSpace,
-                    video.VideoRangeType
-                );
-
-                // Extract frame or create blank background
-                string? sourceImagePath = null;
-
-                if (!config.ExtractPoster)
+                else if (trigger == TaskTrigger.Provider)
                 {
-                    sourceImagePath = CreateTransparentBackground(tempFramePath);
-                }
-                else
-                {
-                    sourceImagePath = await ExtractVideoFrame(episode, tempFramePath, cancellationToken).ConfigureAwait(false);
-                }
+                    // Provider mode: Load into memory stream for immediate return
+                    var imageBytes = await File.ReadAllBytesAsync(posterPath, cancellationToken).ConfigureAwait(false);
+                    result.Success = true;
+                    result.SetImageData(imageBytes);
+                    result.PosterPath = posterPath;
 
-                if (sourceImagePath == null)
-                {
-                    _logger.LogWarning("Failed to create source image for episode: {EpisodeName}", episode.Name);
-                    return null;
+                    // Still mark as processed for tracking
+                    if (_trackingService != null)
+                    {
+                        try
+                        {
+                            await _trackingService.MarkEpisodeProcessedAsync(metadata.Episode, config).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to update tracking for provider-generated poster: {EpisodeName}", metadata.Episode.Name);
+                        }
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process result for episode: {EpisodeName}", metadata.Episode.Name);
+                result.Success = false;
+                result.ErrorMessage = ex.Message;
+            }
 
-                // Generate poster with video-aware metadata available
-                var posterPath = _posterGeneratorService.ProcessImageWithText(
-                    sourceImagePath,
-                    tempPosterPath,
+            return result;
+        }
+
+        // MARK: UploadToJellyfinAsync
+        private async Task<bool> UploadToJellyfinAsync(Episode episode, string imagePath, CancellationToken cancellationToken)
+        {
+            if (_providerManager == null)
+            {
+                _logger.LogError("Provider manager not available for uploading");
+                return false;
+            }
+
+            try
+            {
+                var imageBytes = await File.ReadAllBytesAsync(imagePath, cancellationToken).ConfigureAwait(false);
+                using var imageStream = new MemoryStream(imageBytes);
+
+                await _providerManager.SaveImage(
                     episode,
-                    config
-                );
-
-                if (posterPath == null || !File.Exists(posterPath))
-                {
-                    _logger.LogWarning("Failed to generate poster for episode: {EpisodeName}", episode.Name);
-                    return null;
-                }
-
-                return posterPath;
-            }
-            finally
-            {
-                CleanupTempFile(tempFramePath);
-            }
-        }
-
-        // MARK: ExtractVideoFrame
-        private async Task<string?> ExtractVideoFrame(Episode episode, string outputPath, CancellationToken cancellationToken)
-        {
-            try
-            {
-                var duration = GetEpisodeDuration(episode);
-                if (!duration.HasValue)
-                {
-                    duration = await _ffmpegService.GetVideoDurationAsync(episode.Path, cancellationToken).ConfigureAwait(false);
-                }
-
-                if (!duration.HasValue)
-                {
-                    _logger.LogWarning("Could not determine video duration for: {Path}", episode.Path);
-                    return null;
-                }
-
-                var blackIntervals = await _ffmpegService.DetectBlackScenesParallelAsync(
-                    episode.Path,
-                    duration.Value,
-                    0.1,
-                    0.1,
+                    imageStream,
+                    "image/jpeg",
+                    ImageType.Primary,
+                    null,
                     cancellationToken).ConfigureAwait(false);
 
-                var selectedTimestamp = _ffmpegService.SelectRandomTimestamp(duration.Value, blackIntervals);
-
-                return await _ffmpegService.ExtractFrameAsync(
-                    episode.Path,
-                    selectedTimestamp,
-                    outputPath,
-                    cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation("Successfully uploaded poster for episode: {EpisodeName}", episode.Name);
+                return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to extract video frame for episode: {EpisodeName}", episode.Name);
-                return null;
-            }
-        }
-
-        // MARK: CreateTransparentBackground
-        private string? CreateTransparentBackground(string outputPath)
-        {
-            try
-            {
-                using var surface = SKSurface.Create(new SKImageInfo(1920, 1080, SKColorType.Rgba8888));
-                using var canvas = surface.Canvas;
-                canvas.Clear(SKColors.Transparent);
-
-                using var image = surface.Snapshot();
-                using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-                using var stream = File.OpenWrite(outputPath);
-                data.SaveTo(stream);
-
-                return outputPath;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to create transparent background at {Path}", outputPath);
-                return null;
-            }
-        }
-
-        // MARK: GetEpisodeDuration
-        private TimeSpan? GetEpisodeDuration(Episode episode)
-        {
-            return episode.RunTimeTicks.HasValue
-                ? TimeSpan.FromTicks(episode.RunTimeTicks.Value)
-                : null;
-        }
-
-        // MARK: CleanupTempFile
-        private void CleanupTempFile(string filePath)
-        {
-            if (File.Exists(filePath))
-            {
-                try
-                {
-                    File.Delete(filePath);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to cleanup temp file: {Path}", filePath);
-                }
+                _logger.LogError(ex, "Failed to upload image for episode: {EpisodeName}", episode.Name);
+                return false;
             }
         }
     }
