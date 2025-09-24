@@ -67,6 +67,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         private readonly EpisodeTrackingService _trackingService;
 
         /// <summary>
+        /// Orchestrator for coordinating poster generation workflows
+        /// </summary>
+        private readonly EpisodePosterOrchestrator _orchestrator;
+
+        /// <summary>
         /// SQLite database service
         /// </summary>
         private readonly EpisodeTrackingDatabase _trackingDatabase;
@@ -99,6 +104,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _ffmpegService = new FFmpegService(loggerFactory.CreateLogger<FFmpegService>(), mediaEncoder, configurationManager);
             _trackingDatabase = new EpisodeTrackingDatabase(loggerFactory.CreateLogger<EpisodeTrackingDatabase>(), applicationPaths);
             _trackingService = new EpisodeTrackingService(loggerFactory.CreateLogger<EpisodeTrackingService>(), _trackingDatabase);
+            _orchestrator = new EpisodePosterOrchestrator(
+                _loggerFactory.CreateLogger<EpisodePosterOrchestrator>(),
+                _ffmpegService,
+                _posterGeneratorService);
 
             _ = Task.Run(async () =>
             {
@@ -126,6 +135,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public FFmpegService FFmpegService => _ffmpegService;
         public PosterGeneratorService PosterGeneratorService => _posterGeneratorService;
         public EpisodeTrackingService TrackingService => _trackingService;
+        public EpisodePosterOrchestrator Orchestrator => _orchestrator;
         public EpisodeTrackingDatabase TrackingDatabase => _trackingDatabase;
 
         // MARK: GetPages
