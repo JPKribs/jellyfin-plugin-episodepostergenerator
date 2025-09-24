@@ -97,7 +97,7 @@ public class FFmpegService : IDisposable
         _configurationManager = configurationManager;
         _hardwareAccelerationArgs = DetermineHardwareAcceleration();
         
-        _maxConcurrentOperations = Math.Max(1, Environment.ProcessorCount / 2);
+        _maxConcurrentOperations = Math.Max(1, (Environment.ProcessorCount  - 2) / 2);
         _operationSemaphore = new SemaphoreSlim(_maxConcurrentOperations, _maxConcurrentOperations);
         _ffmpegThreads = Math.Max(1, Environment.ProcessorCount / 4);
         _threadingArgs = $"-threads {_ffmpegThreads}";

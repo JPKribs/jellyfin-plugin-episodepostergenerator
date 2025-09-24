@@ -104,6 +104,7 @@ mkdir -p "$TEMP_DIR"
 
 # Copy DLL to temp directory
 cp "$DLL_PATTERN" "$TEMP_DIR/"
+cp "$PROJECT_DIR/Logo.png" "$TEMP_DIR/"
 
 # Create ZIP
 if command -v zip >/dev/null 2>&1; then
