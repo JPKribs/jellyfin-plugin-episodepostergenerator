@@ -13,11 +13,11 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   features:
-  - HDR Tone Mapping (Maybe?)
+  - -
   fixes: 
-  - Missing Logo
+  - Maybe Fix Missing Logo
   technical:
-  - HWA Re-enabled
+  - Better? Concurrency
   other:
   - Additional cleanup
   documentation:
