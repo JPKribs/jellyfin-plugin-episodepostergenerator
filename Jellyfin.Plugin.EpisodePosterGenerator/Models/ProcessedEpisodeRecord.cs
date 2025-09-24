@@ -2,11 +2,6 @@ using System;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 {
-    /// <summary>
-    /// Represents a record of an episode that has been processed by the poster generator.
-    /// Used to track when episodes were last processed and determine if they need reprocessing
-    /// based on changes to the video file, configuration, or processing timestamp.
-    /// </summary>
     public class ProcessedEpisodeRecord
     {
         /// <summary>
