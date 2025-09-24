@@ -22,17 +22,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Managers
     /// <summary>
     /// Orchestrates complete episode poster workflow including metadata collection, generation, and result handling.
     /// </summary>
-    public class PosterGenerationManager
+    public class GenerationManager
     {
-        private readonly ILogger<PosterGenerationManager> _logger;
+        private readonly ILogger<GenerationManager> _logger;
         private readonly PosterGeneratorService _posterGeneratorService;
         private readonly IServerConfigurationManager? _configurationManager;
         private readonly IProviderManager? _providerManager;
         private readonly EpisodeTrackingService? _trackingService;
 
         // MARK: Constructor
-        public PosterGenerationManager(
-            ILogger<PosterGenerationManager> logger,
+        public GenerationManager(
+            ILogger<GenerationManager> logger,
             PosterGeneratorService posterGeneratorService,
             IServerConfigurationManager? configurationManager = null,
             IProviderManager? providerManager = null,

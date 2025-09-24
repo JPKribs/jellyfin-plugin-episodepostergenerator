@@ -70,7 +70,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         /// <summary>
         /// Manager for coordinating poster generation workflows
         /// </summary>
-        private readonly PosterGenerationManager _manager;
+        private readonly GenerationManager _manager;
 
         /// <summary>
         /// SQLite database service
@@ -105,8 +105,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _ffmpegService = new FFmpegService(loggerFactory.CreateLogger<FFmpegService>(), mediaEncoder, configurationManager);
             _trackingDatabase = new EpisodeTrackingDatabase(loggerFactory.CreateLogger<EpisodeTrackingDatabase>(), applicationPaths);
             _trackingService = new EpisodeTrackingService(loggerFactory.CreateLogger<EpisodeTrackingService>(), _trackingDatabase);
-            _manager = new PosterGenerationManager(
-                _loggerFactory.CreateLogger<PosterGenerationManager>(),
+            _manager = new GenerationManager(
+                _loggerFactory.CreateLogger<GenerationManager>(),
                 _posterGeneratorService,
                 configurationManager,
                 null,
@@ -138,7 +138,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public FFmpegService FFmpegService => _ffmpegService;
         public PosterGeneratorService PosterGeneratorService => _posterGeneratorService;
         public EpisodeTrackingService TrackingService => _trackingService;
-        public PosterGenerationManager Manager => _manager;
+        public GenerationManager Manager => _manager;
         public EpisodeTrackingDatabase TrackingDatabase => _trackingDatabase;
 
         // MARK: GetPages
