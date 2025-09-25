@@ -15,7 +15,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
 {
     /// <summary>
     /// Image provider trigger for on-demand episode poster generation.
-    /// Gets episode from Jellyfin, passes directly to manager (no filtering).
+    /// Gets episode from Jellyfin, passes directly to PosterService (no filtering).
     /// </summary>
     public class EpisodePosterImageProvider : IDynamicImageProvider
     {
@@ -79,23 +79,23 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                 return new DynamicImageResponse { HasImage = false };
             }
 
-            var manager = Plugin.Instance?.Manager;
-            if (manager == null)
+            var posterService = Plugin.Instance?.PosterService;
+            if (posterService == null)
             {
-                _logger.LogError("Plugin manager not available");
+                _logger.LogError("PosterService not available");
                 return new DynamicImageResponse { HasImage = false };
             }
 
             try
             {
-                _logger.LogInformation("Starting to create poster for {EpisodeName}", episode.Name);
+                _logger.LogInformation("Starting to create poster for {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
 
-                // Pass single episode to manager (no filtering - provider always processes)
-                var posterPath = await manager.GeneratePoster(episode, config, cancellationToken).ConfigureAwait(false);
+                // Generate poster using PosterService
+                var posterPath = await posterService.GenerateAsync(Models.TaskTrigger.Provider, episode, config).ConfigureAwait(false);
                 
                 if (string.IsNullOrEmpty(posterPath) || !File.Exists(posterPath))
                 {
-                    _logger.LogWarning("Failed to generate image for episode: {EpisodeName}", episode.Name);
+                    _logger.LogWarning("Failed to generate image for episode: {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
                     return new DynamicImageResponse { HasImage = false };
                 }
 
@@ -113,11 +113,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to mark episode as processed in tracking service: {EpisodeName}", episode.Name);
+                        _logger.LogWarning(ex, "Failed to mark episode as processed in tracking service: {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
                     }
                 }
 
-                _logger.LogInformation("Poster created for {EpisodeName}", episode.Name);
+                _logger.LogInformation("Poster created for {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
 
                 return new DynamicImageResponse
                 {
@@ -128,7 +128,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error generating image for episode: {EpisodeName}", episode.Name);
+                _logger.LogError(ex, "Error generating image for episode: {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
                 return new DynamicImageResponse { HasImage = false };
             }
         }

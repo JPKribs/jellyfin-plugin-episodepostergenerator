@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -19,7 +20,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
 {
     /// <summary>
     /// Scheduled task trigger for batch episode poster generation.
-    /// Gets episodes from Jellyfin, filters by tracking database, passes to manager.
+    /// Gets episodes from Jellyfin, filters by tracking database, passes to PosterService.
     /// </summary>
     public class EpisodePosterGenerationTask : IScheduledTask
     {
@@ -79,9 +80,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
             }
 
             var trackingService = Plugin.Instance?.TrackingService;
-            var manager = Plugin.Instance?.Manager;
+            var posterService = Plugin.Instance?.PosterService;
 
-            if (trackingService == null || manager == null)
+            if (trackingService == null || posterService == null)
             {
                 _logger.LogError("Required services not available");
                 return;
@@ -103,13 +104,65 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                     return;
                 }
 
-                // Use ProcessEpisodesAsync for batch processing
-                var results = await manager.ProcessEpisodesAsync(episodesToProcess, config, TaskTrigger.Task, progress, cancellationToken).ConfigureAwait(false);
-                
-                // Log results
-                var succeeded = results.Count(r => r.Success);
-                var failed = results.Length - succeeded;
-                _logger.LogInformation("{Succeeded} succeeded and {Failed} failed", succeeded, failed);
+                // Process episodes using PosterService
+                var successCount = 0;
+                var failureCount = 0;
+
+                for (int i = 0; i < episodesToProcess.Length; i++)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                        break;
+
+                    var episode = episodesToProcess[i];
+                    
+                    try
+                    {
+                        _logger.LogDebug("Processing episode {Current}/{Total}: {SeriesName} - {EpisodeName}",
+                            i + 1, episodesToProcess.Length,
+                            episode.Series?.Name ?? "Unknown Series",
+                            episode.Name ?? "Unknown Episode");
+
+                        // Generate poster using PosterService
+                        var posterPath = await posterService.GenerateAsync(TaskTrigger.Task, episode, config).ConfigureAwait(false);
+
+                        if (!string.IsNullOrEmpty(posterPath))
+                        {
+                            // Successfully generated poster
+                            successCount++;
+
+                            // Mark episode as processed in tracking database
+                            await trackingService.MarkEpisodeProcessedAsync(episode, config).ConfigureAwait(false);
+
+                            _logger.LogInformation("Successfully processed episode: {SeriesName} - {EpisodeName}",
+                                episode.Series?.Name ?? "Unknown Series",
+                                episode.Name ?? "Unknown Episode");
+                        }
+                        else
+                        {
+                            // Failed to generate poster
+                            failureCount++;
+                            
+                            _logger.LogWarning("Failed to generate poster for episode: {SeriesName} - {EpisodeName}",
+                                episode.Series?.Name ?? "Unknown Series",
+                                episode.Name ?? "Unknown Episode");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failureCount++;
+                        _logger.LogError(ex, "Error processing episode: {SeriesName} - {EpisodeName}",
+                            episode.Series?.Name ?? "Unknown Series",
+                            episode.Name ?? "Unknown Episode");
+                    }
+
+                    // Update progress
+                    var progressPercent = (double)(i + 1) / episodesToProcess.Length * 100;
+                    progress?.Report(progressPercent);
+                }
+
+                // Log final results
+                _logger.LogInformation("Poster generation completed. {SuccessCount} succeeded, {FailureCount} failed",
+                    successCount, failureCount);
             }
             catch (Exception ex)
             {

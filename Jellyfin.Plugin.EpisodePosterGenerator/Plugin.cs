@@ -3,43 +3,39 @@ using System.IO;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
-using Jellyfin.Plugin.EpisodePosterGenerator.Managers;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services.Database;
-using Jellyfin.Plugin.EpisodePosterGenerator.Services.Generation;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
+using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Library;
-using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 using Microsoft.Extensions.Logging;
-using MediaBrowser.Controller.Configuration;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator
 {
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IDisposable
     {
+        public override string Name => "Episode Poster Generator";
+
         public static Plugin? Instance { get; private set; }
 
         private readonly ILogger<Plugin> _logger;
-        private readonly IMediaEncoder _mediaEncoder;
-        private readonly ILibraryManager _libraryManager;
-        private readonly IApplicationPaths _applicationPaths;
         private readonly ILoggerFactory _loggerFactory;
-        private readonly FFmpegManager _ffmpegManager;
-        private readonly PosterGeneratorService _posterGeneratorService;
         private readonly EpisodeTrackingService _trackingService;
-        private readonly GenerationManager _manager;
         private readonly EpisodeTrackingDatabase _trackingDatabase;
+        private readonly CanvasService _canvasService;
+        private readonly FFmpegService _ffmpegService;
+        private readonly HardwareFFmpegService _hardwareFFmpegService;
+        private readonly SoftwareFFmpegService _softwareFFmpegService;
+        private readonly PosterService _posterService;
         private bool _disposed;
 
         // MARK: Constructor
         public Plugin(
             IApplicationPaths applicationPaths,
             IXmlSerializer xmlSerializer,
-            IMediaEncoder mediaEncoder,
-            ILibraryManager libraryManager,
             ILogger<Plugin> logger,
             ILoggerFactory loggerFactory,
             IServerConfigurationManager configurationManager)
@@ -48,33 +44,30 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             Instance = this;
 
             _logger = logger;
-            _mediaEncoder = mediaEncoder;
-            _libraryManager = libraryManager;
-            _applicationPaths = applicationPaths;
             _loggerFactory = loggerFactory;
 
-            // Initialize tracking services first
+            // Initialize tracking services
             _trackingDatabase = new EpisodeTrackingDatabase(loggerFactory.CreateLogger<EpisodeTrackingDatabase>(), applicationPaths);
             _trackingService = new EpisodeTrackingService(loggerFactory.CreateLogger<EpisodeTrackingService>(), _trackingDatabase);
 
-            // Initialize FFmpeg Manager (coordinates your existing FFmpeg services)
-            _ffmpegManager = new FFmpegManager(
-                loggerFactory.CreateLogger<FFmpegManager>(),
-                loggerFactory.CreateLogger<Services.FFmpegService>(),
-                mediaEncoder,
-                configurationManager);
-
-            // Initialize poster generation service
-            _posterGeneratorService = new PosterGeneratorService();
-
-            // Initialize generation manager with FFmpegManager
-            _manager = new GenerationManager(
-                loggerFactory.CreateLogger<GenerationManager>(),
-                _posterGeneratorService,
-                _ffmpegManager,
+            // Initialize FFmpeg services
+            _hardwareFFmpegService = new HardwareFFmpegService(loggerFactory.CreateLogger<HardwareFFmpegService>());
+            _softwareFFmpegService = new SoftwareFFmpegService(loggerFactory.CreateLogger<SoftwareFFmpegService>());
+            _ffmpegService = new FFmpegService(
+                loggerFactory.CreateLogger<FFmpegService>(),
                 configurationManager,
-                null, // IProviderManager - add if available
-                _trackingService);
+                _hardwareFFmpegService,
+                _softwareFFmpegService,
+                loggerFactory);
+
+            // Initialize canvas service
+            _canvasService = new CanvasService(loggerFactory.CreateLogger<CanvasService>(), _ffmpegService);
+
+            // Initialize poster service with canvas dependency
+            _posterService = new PosterService(
+                loggerFactory.CreateLogger<PosterService>(), 
+                _canvasService,
+                configurationManager);
 
             // Initialize database
             _ = Task.Run(async () =>
@@ -93,14 +86,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _logger.LogInformation("Episode Poster Generator plugin initialized");
         }
 
-        public IMediaEncoder MediaEncoder => _mediaEncoder;
-        public ILibraryManager LibraryManager => _libraryManager;
         public ILoggerFactory LoggerFactory => _loggerFactory;
-        public FFmpegManager FFmpegManager => _ffmpegManager;
-        public PosterGeneratorService PosterGeneratorService => _posterGeneratorService;
         public EpisodeTrackingService TrackingService => _trackingService;
-        public GenerationManager Manager => _manager;
         public EpisodeTrackingDatabase TrackingDatabase => _trackingDatabase;
+        public CanvasService CanvasService => _canvasService;
+        public FFmpegService FFmpegService => _ffmpegService;
+        public HardwareFFmpegService HardwareFFmpegService => _hardwareFFmpegService;
+        public SoftwareFFmpegService SoftwareFFmpegService => _softwareFFmpegService;
+        public PosterService PosterService => _posterService;
 
         public IEnumerable<PluginPageInfo> GetPages()
         {
@@ -131,7 +124,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             if (!_disposed && disposing)
             {
                 _trackingDatabase?.Dispose();
-                _ffmpegManager?.Dispose();
                 _disposed = true;
             }
         }

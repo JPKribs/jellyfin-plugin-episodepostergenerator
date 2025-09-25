@@ -61,6 +61,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public string PosterDimensionRatio { get; set; } = "16:9";
 
         /// <summary>
+        /// Gets or sets the poster file type (e.g., JPEG, WEBP, etc.).
+        /// </summary>
+        public PosterFileType PosterFileType { get; set; } = PosterFileType.JPEG;
+
+        /// <summary>
         /// Gets or sets the percentage of height and width perserved as a safe area (e.g., 7.0 for 7%).
         /// </summary>
         public float PosterSafeArea { get; set; } = 5.0f;

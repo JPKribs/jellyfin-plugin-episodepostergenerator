@@ -1,20 +1,34 @@
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
+using MediaBrowser.Model.Configuration;
 
-namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.FFmpeg
+namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
-    public interface IFFmpegService : IDisposable
+    /// <summary>
+    /// Interface for FFmpeg-based scene extraction services
+    /// </summary>
+    public interface IFFmpegService
     {
-        Task<string?> ExtractFrameAsync(string videoPath, TimeSpan timestamp, string outputPath, CancellationToken cancellationToken = default);
-        Task<List<BlackInterval>> DetectBlackScenesAsync(
-            string videoPath,
-            TimeSpan totalDuration,
-            double pixelThreshold = 0.1,
-            double durationThreshold = 0.1,
+        /// <summary>
+        /// Extract a scene frame from video at specified timestamp
+        /// </summary>
+        Task<string?> ExtractSceneAsync(
+            string outputPath,
+            EpisodeMetadata metadata,
+            EncodingOptions encodingOptions,
             CancellationToken cancellationToken = default);
-        Task<TimeSpan?> GetVideoDurationAsync(string videoPath, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Check if this service can handle the given video metadata
+        /// </summary>
+        bool CanProcess(EpisodeMetadata metadata, EncodingOptions encodingOptions);
+
+        /// <summary>
+        /// Optionally build FFmpeg command arguments without executing.
+        /// Useful for hardware services that want the controller to run FFmpeg.
+        /// </summary>
+        string? BuildFFmpegArgs(string outputPath, EpisodeMetadata metadata, EncodingOptions encodingOptions);
     }
 }
