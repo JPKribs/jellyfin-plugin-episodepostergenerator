@@ -7,6 +7,7 @@ using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services;
+using Jellyfin.Plugin.EpisodePosterGenerator.Services.Media;
 using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Configuration;
@@ -26,6 +27,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Managers
     {
         private readonly ILogger<GenerationManager> _logger;
         private readonly PosterGeneratorService _posterGeneratorService;
+        private readonly FFmpegManager _ffmpegManager;
         private readonly IServerConfigurationManager? _configurationManager;
         private readonly IProviderManager? _providerManager;
         private readonly EpisodeTrackingService? _trackingService;
@@ -34,12 +36,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Managers
         public GenerationManager(
             ILogger<GenerationManager> logger,
             PosterGeneratorService posterGeneratorService,
+            FFmpegManager ffmpegManager,
             IServerConfigurationManager? configurationManager = null,
             IProviderManager? providerManager = null,
             EpisodeTrackingService? trackingService = null)
         {
             _logger = logger;
             _posterGeneratorService = posterGeneratorService;
+            _ffmpegManager = ffmpegManager;
             _configurationManager = configurationManager;
             _providerManager = providerManager;
             _trackingService = trackingService;
@@ -53,23 +57,129 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Managers
         {
             try
             {
-                var encodingOptions = await GetEncodingOptionsAsync().ConfigureAwait(true);
+                var encodingOptions = await GetEncodingOptionsAsync().ConfigureAwait(false);
                 var metadata = CollectEpisodeMetadata(episode, encodingOptions);
 
-                var outputPath = Path.GetTempFileName();
+                // Extract frame from video using sophisticated FFmpegManager
+                var extractedFramePath = await ExtractVideoFrameAsync(metadata, config, cancellationToken).ConfigureAwait(false);
+                
+                if (string.IsNullOrEmpty(extractedFramePath))
+                {
+                    _logger.LogWarning("Failed to extract frame from video: {VideoPath}", metadata.Episode.Path);
+                    return null;
+                }
 
+                // Generate poster from extracted frame
+                var outputPath = Path.GetTempFileName() + ".jpg";
                 var result = _posterGeneratorService.ProcessImageWithText(
-                    metadata.Episode.Path,
+                    extractedFramePath,
                     outputPath,
                     episode,
                     config);
-                    
+
+                // Cleanup temporary extracted frame
+                try
+                {
+                    if (File.Exists(extractedFramePath))
+                    {
+                        File.Delete(extractedFramePath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to cleanup temporary frame: {FramePath}", extractedFramePath);
+                }
+
                 return result;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to generate poster for episode: {EpisodeName}", episode.Name);
                 return null;
+            }
+        }
+
+        // MARK: ExtractVideoFrameAsync
+        private async Task<string?> ExtractVideoFrameAsync(
+            EpisodePosterMetadata metadata,
+            PluginConfiguration config,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrEmpty(metadata.Episode.Path) || !File.Exists(metadata.Episode.Path))
+            {
+                _logger.LogWarning("Video file not found: {VideoPath}", metadata.Episode.Path);
+                return null;
+            }
+
+            try
+            {
+                // Get video duration for smart timestamp calculation
+                var duration = await _ffmpegManager.GetVideoDurationAsync(metadata.Episode.Path, cancellationToken).ConfigureAwait(false);
+                if (!duration.HasValue)
+                {
+                    _logger.LogWarning("Could not determine video duration for: {VideoPath}", metadata.Episode.Path);
+                    duration = TimeSpan.FromMinutes(45); // Default assumption
+                }
+
+                // Calculate optimal timestamp based on configuration
+                var timestamp = CalculateExtractionTimestamp(duration.Value, config);
+                
+                _logger.LogDebug("Extracting frame at {Timestamp} from {VideoPath}", timestamp, metadata.Episode.Path);
+
+                // Use FFmpegManager for intelligent frame extraction (HW/SW routing + black scene avoidance)
+                var extractedFramePath = await _ffmpegManager.ExtractFrameAsync(
+                    metadata.Episode.Path,
+                    timestamp,
+                    cancellationToken).ConfigureAwait(false);
+
+                if (string.IsNullOrEmpty(extractedFramePath) || !File.Exists(extractedFramePath))
+                {
+                    // Fallback: try different timestamp if first attempt failed
+                    var fallbackTimestamp = CalculateFallbackTimestamp(duration.Value, timestamp);
+                    _logger.LogDebug("Retrying frame extraction at fallback timestamp: {Timestamp}", fallbackTimestamp);
+                    
+                    extractedFramePath = await _ffmpegManager.ExtractFrameAsync(
+                        metadata.Episode.Path,
+                        fallbackTimestamp,
+                        cancellationToken).ConfigureAwait(false);
+                }
+
+                return extractedFramePath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to extract frame from video: {VideoPath}", metadata.Episode.Path);
+                return null;
+            }
+        }
+
+        // MARK: CalculateExtractionTimestamp  
+        private TimeSpan CalculateExtractionTimestamp(TimeSpan duration, PluginConfiguration config)
+        {
+            // Use the frame extraction method from config if it exists, otherwise default to beginning
+            var extractionMethod = config.ExtractionMethod;
+            
+            return extractionMethod switch
+            {
+                FrameExtractionMethod.Beginning => TimeSpan.FromSeconds(Math.Min(30, duration.TotalSeconds * 0.1)),
+                FrameExtractionMethod.Middle => TimeSpan.FromSeconds(duration.TotalSeconds * 0.5),
+                FrameExtractionMethod.End => TimeSpan.FromSeconds(duration.TotalSeconds * 0.8),
+                FrameExtractionMethod.Custom => TimeSpan.FromSeconds(config.CustomTimestampSeconds),
+                _ => TimeSpan.FromSeconds(Math.Min(30, duration.TotalSeconds * 0.1))
+            };
+        }
+
+        // MARK: CalculateFallbackTimestamp
+        private TimeSpan CalculateFallbackTimestamp(TimeSpan duration, TimeSpan originalTimestamp)
+        {
+            // Try middle of video as fallback
+            if (originalTimestamp < TimeSpan.FromSeconds(duration.TotalSeconds * 0.5))
+            {
+                return TimeSpan.FromSeconds(duration.TotalSeconds * 0.5);
+            }
+            else
+            {
+                return TimeSpan.FromSeconds(duration.TotalSeconds * 0.25);
             }
         }
 
@@ -84,25 +194,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Managers
             var results = new List<ProcessingResult>();
 
             // Get encoding configuration once at start
-            EncodingOptions? encodingOptions = null;
-            try
-            {
-                var namedConfig = _configurationManager?.GetConfiguration("encoding");
-                if (namedConfig is EncodingOptions options)
-                {
-                    encodingOptions = options;
-                    _logger.LogDebug("Retrieved encoding configuration - HWAccel: {HardwareAccelerationType}, Threads: {EncodingThreadCount}",
-                        encodingOptions.HardwareAccelerationType, encodingOptions.EncodingThreadCount);
-                }
-                else
-                {
-                    _logger.LogWarning("Could not retrieve encoding configuration - using defaults");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to retrieve encoding configuration - using defaults");
-            }
+            var encodingOptions = await GetEncodingOptionsAsync().ConfigureAwait(false);
 
             // Collect metadata for all episodes
             var episodeMetadataList = new List<EpisodePosterMetadata>();
@@ -137,11 +229,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Managers
 
                 try
                 {
-                    var posterPath = _posterGeneratorService.ProcessImageWithText(
-                        metadata.Episode.Path, 
-                        Path.GetTempFileName(), 
-                        metadata.Episode, 
-                        config);
+                    var posterPath = await GeneratePoster(metadata.Episode, config, cancellationToken).ConfigureAwait(false);
                     posterPaths.Add(posterPath);
                 }
                 catch (Exception ex)
@@ -158,38 +246,35 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Managers
                     break;
 
                 var metadata = episodeMetadataList[i];
-                var posterPath = i < posterPaths.Count ? posterPaths[i] : null;
+                var posterPath = posterPaths[i];
 
                 var result = await ProcessSingleResult(metadata, posterPath, config, trigger, cancellationToken).ConfigureAwait(false);
                 results.Add(result);
-
-                var progressPercentage = (double)(i + 1) / episodeMetadataList.Count * 100;
-                progress?.Report(progressPercentage);
+                
+                progress?.Report((double)(i + 1) / episodeMetadataList.Count * 100);
             }
 
             return results.ToArray();
         }
 
         // MARK: GetEncodingOptionsAsync
-        private async Task<EncodingOptions?> GetEncodingOptionsAsync()
+        private async Task<EncodingOptions> GetEncodingOptionsAsync()
         {
             if (_configurationManager == null)
             {
-                _logger.LogWarning("Configuration manager not available - using defaults");
-                return null;
+                _logger.LogWarning("Configuration manager not available, using default encoding options");
+                return new EncodingOptions();
             }
 
             try
             {
                 var encodingOptions = _configurationManager.GetEncodingOptions();
-                _logger.LogDebug("Retrieved encoding configuration - HWAccel: {HardwareAccelerationType}, Threads: {EncodingThreadCount}",
-                    encodingOptions.HardwareAccelerationType, encodingOptions.EncodingThreadCount);
-                return await Task.FromResult(encodingOptions).ConfigureAwait(false);
+                return encodingOptions ?? new EncodingOptions();
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to retrieve encoding configuration - using defaults");
-                return null;
+                _logger.LogError(ex, "Failed to get encoding options, using defaults");
+                return new EncodingOptions();
             }
         }
 
@@ -288,7 +373,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Managers
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to update tracking for provider-generated poster: {SeriesName} - {EpisodeName}", metadata.Episode.Series.Name, metadata.Episode.Name);
+                            _logger.LogWarning(ex, "Failed to update tracking for provider-generated poster: {SeriesName} - {EpisodeName}", metadata.Episode.Series?.Name, metadata.Episode.Name);
                         }
                     }
                 }
@@ -325,12 +410,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Managers
                     null,
                     cancellationToken).ConfigureAwait(false);
 
-                _logger.LogInformation("Successfully uploaded poster for episode: {SeriesName} - {EpisodeName}", episode.Series.Name, episode.Name);
+                _logger.LogInformation("Successfully uploaded poster for episode: {SeriesName} - {EpisodeName}", episode.Series?.Name, episode.Name);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to upload image for episode: {SeriesName} - {EpisodeName}", episode.Series.Name, episode.Name);
+                _logger.LogError(ex, "Failed to upload image for episode: {SeriesName} - {EpisodeName}", episode.Series?.Name, episode.Name);
                 return false;
             }
         }
