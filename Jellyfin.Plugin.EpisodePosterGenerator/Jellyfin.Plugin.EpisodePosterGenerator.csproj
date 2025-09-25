@@ -18,6 +18,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Configuration\configPage.html" />
+    <EmbeddedResource Include="Configuration\configPage.js" />
+    <EmbeddedResource Include="Configuration\configPage.css" />
     <EmbeddedResource Include="Logo.png" />
   </ItemGroup>
 
