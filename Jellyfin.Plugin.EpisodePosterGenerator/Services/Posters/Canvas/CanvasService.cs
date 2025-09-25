@@ -16,15 +16,18 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
     {
         private readonly ILogger<CanvasService> _logger;
         private readonly FFmpegService _ffmpegService;
+        private readonly CroppingService _croppingService;
 
         // MARK: Constructor
         public CanvasService(
             ILogger<CanvasService> logger,
-            FFmpegService ffmpegService
+            FFmpegService ffmpegService,
+            CroppingService croppingService
         )
         {
             _logger = logger;
             _ffmpegService = ffmpegService;
+            _croppingService = croppingService;
         }
 
         // MARK: GenerateCanvas
@@ -41,30 +44,61 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 var videoMeta = metadata.VideoMetadata;
                 _logger.LogDebug("Generating canvas for {Width}x{Height} video", videoMeta.VideoWidth, videoMeta.VideoHeight);
 
+                SKBitmap canvasBitmap;
+                string? ffmpegOutputPath = null;
+
                 if (config.ExtractPoster)
                 {
-                    var outputPath = await _ffmpegService.ExtractSceneAsync(
+                    ffmpegOutputPath = await _ffmpegService.ExtractSceneAsync(
                         metadata,
                         config,
                         CancellationToken.None
                     ).ConfigureAwait(false);
 
-                    if (string.IsNullOrEmpty(outputPath) || !File.Exists(outputPath))
+                    if (string.IsNullOrEmpty(ffmpegOutputPath) || !File.Exists(ffmpegOutputPath))
                     {
                         _logger.LogWarning("FFmpeg did not produce a valid poster file");
                         return null;
                     }
 
-                    return await File.ReadAllBytesAsync(outputPath, CancellationToken.None).ConfigureAwait(false);
+                    using var bitmap = SKBitmap.Decode(ffmpegOutputPath);
+                    if (bitmap == null)
+                    {
+                        _logger.LogWarning("Failed to decode FFmpeg output");
+                        return null;
+                    }
+
+                    canvasBitmap = bitmap.Copy(); // make a writable copy
                 }
                 else
                 {
-                    return CreateTransparentCanvas(
+                    canvasBitmap = CreateTransparentCanvas(
                         videoMeta.VideoWidth,
                         videoMeta.VideoHeight,
                         config.PosterFileType
-                    );
+                    ) is byte[] data
+                        ? SKBitmap.Decode(data) ?? new SKBitmap(videoMeta.VideoWidth, videoMeta.VideoHeight)
+                        : new SKBitmap(videoMeta.VideoWidth, videoMeta.VideoHeight);
                 }
+
+                // MARK: Apply Cropping
+                canvasBitmap = _croppingService.CropPoster(canvasBitmap, metadata.VideoMetadata, config);
+
+                // MARK: Cleanup FFmpeg temporary file
+                if (!string.IsNullOrEmpty(ffmpegOutputPath) && File.Exists(ffmpegOutputPath))
+                {
+                    try
+                    {
+                        File.Delete(ffmpegOutputPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete temporary FFmpeg output file: {Path}", ffmpegOutputPath);
+                    }
+                }
+
+                // MARK: Encode and return final canvas
+                return EncodeImage(canvasBitmap, config.PosterFileType);
             }
             catch (Exception ex)
             {

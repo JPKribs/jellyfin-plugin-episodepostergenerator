@@ -15,21 +15,28 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator
 {
+    /// <summary>
+    /// Main plugin class for Episode Poster Generator
+    /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IDisposable
     {
         public override string Name => "Episode Poster Generator";
 
         public static Plugin? Instance { get; private set; }
 
+        // MARK: Dependencies
         private readonly ILogger<Plugin> _logger;
         private readonly ILoggerFactory _loggerFactory;
+
         private readonly EpisodeTrackingService _trackingService;
         private readonly EpisodeTrackingDatabase _trackingDatabase;
-        private readonly CanvasService _canvasService;
         private readonly FFmpegService _ffmpegService;
         private readonly HardwareFFmpegService _hardwareFFmpegService;
         private readonly SoftwareFFmpegService _softwareFFmpegService;
+        private readonly CanvasService _canvasService;
+        private readonly CroppingService _croppingService;
         private readonly PosterService _posterService;
+
         private bool _disposed;
 
         // MARK: Constructor
@@ -46,13 +53,19 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _logger = logger;
             _loggerFactory = loggerFactory;
 
-            // Initialize tracking services
-            _trackingDatabase = new EpisodeTrackingDatabase(loggerFactory.CreateLogger<EpisodeTrackingDatabase>(), applicationPaths);
-            _trackingService = new EpisodeTrackingService(loggerFactory.CreateLogger<EpisodeTrackingService>(), _trackingDatabase);
+            // MARK: Initialize tracking services
+            _trackingDatabase = new EpisodeTrackingDatabase(
+                loggerFactory.CreateLogger<EpisodeTrackingDatabase>(),
+                applicationPaths);
+            _trackingService = new EpisodeTrackingService(
+                loggerFactory.CreateLogger<EpisodeTrackingService>(),
+                _trackingDatabase);
 
-            // Initialize FFmpeg services
-            _hardwareFFmpegService = new HardwareFFmpegService(loggerFactory.CreateLogger<HardwareFFmpegService>());
-            _softwareFFmpegService = new SoftwareFFmpegService(loggerFactory.CreateLogger<SoftwareFFmpegService>());
+            // MARK: Initialize FFmpeg services
+            _hardwareFFmpegService = new HardwareFFmpegService(
+                loggerFactory.CreateLogger<HardwareFFmpegService>());
+            _softwareFFmpegService = new SoftwareFFmpegService(
+                loggerFactory.CreateLogger<SoftwareFFmpegService>());
             _ffmpegService = new FFmpegService(
                 loggerFactory.CreateLogger<FFmpegService>(),
                 configurationManager,
@@ -60,16 +73,23 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
                 _softwareFFmpegService,
                 loggerFactory);
 
-            // Initialize canvas service
-            _canvasService = new CanvasService(loggerFactory.CreateLogger<CanvasService>(), _ffmpegService);
+            // MARK: Initialize cropping service
+            _croppingService = new CroppingService(
+                loggerFactory.CreateLogger<CroppingService>());
 
-            // Initialize poster service with canvas dependency
+            // MARK: Initialize canvas service with cropping support
+            _canvasService = new CanvasService(
+                loggerFactory.CreateLogger<CanvasService>(),
+                _ffmpegService,
+                _croppingService);
+
+            // MARK: Initialize poster service
             _posterService = new PosterService(
-                loggerFactory.CreateLogger<PosterService>(), 
+                loggerFactory.CreateLogger<PosterService>(),
                 _canvasService,
                 configurationManager);
 
-            // Initialize database
+            // MARK: Initialize database asynchronously
             _ = Task.Run(async () =>
             {
                 try
@@ -86,39 +106,45 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _logger.LogInformation("Episode Poster Generator plugin initialized");
         }
 
+        // MARK: Public property accessors
         public ILoggerFactory LoggerFactory => _loggerFactory;
         public EpisodeTrackingService TrackingService => _trackingService;
         public EpisodeTrackingDatabase TrackingDatabase => _trackingDatabase;
         public CanvasService CanvasService => _canvasService;
+        public CroppingService CroppingService => _croppingService;
         public FFmpegService FFmpegService => _ffmpegService;
         public HardwareFFmpegService HardwareFFmpegService => _hardwareFFmpegService;
         public SoftwareFFmpegService SoftwareFFmpegService => _softwareFFmpegService;
         public PosterService PosterService => _posterService;
 
+        // MARK: GetPages
         public IEnumerable<PluginPageInfo> GetPages()
         {
             yield return new PluginPageInfo
             {
                 Name = "Episode Poster Generator",
-                EmbeddedResourcePath = typeof(Plugin).Namespace + ".Configuration.configPage.html"
+                EmbeddedResourcePath = $"{typeof(Plugin).Namespace}.Configuration.configPage.html"
             };
         }
 
+        // MARK: GetImage
         public Stream GetImage()
         {
             var assembly = GetType().Assembly;
             var resourceNames = assembly.GetManifestResourceNames();
             _logger.LogError("Available resources: {Resources}", string.Join(", ", resourceNames));
-            
-            return assembly.GetManifestResourceStream(typeof(Plugin).Namespace + ".Logo.png")!;
+
+            return assembly.GetManifestResourceStream($"{typeof(Plugin).Namespace}.Logo.png")!;
         }
 
+        // MARK: Dispose
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
+        // MARK: Dispose(bool)
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed && disposing)
