@@ -10,27 +10,31 @@ using SkiaSharp;
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
     /// <summary>
-    /// Canvas service for creating poster canvases using SkiaSharp
+    /// Canvas service for creating poster canvases using SkiaSharp.
+    /// Pipeline: Extract -> Crop -> Brighten -> Encode
     /// </summary>
     public class CanvasService
     {
         private readonly ILogger<CanvasService> _logger;
         private readonly FFmpegService _ffmpegService;
         private readonly CroppingService _croppingService;
+        private readonly BrightnessService _brightnessService;
 
         // MARK: Constructor
         public CanvasService(
             ILogger<CanvasService> logger,
             FFmpegService ffmpegService,
-            CroppingService croppingService
+            CroppingService croppingService,
+            BrightnessService brightnessService
         )
         {
             _logger = logger;
             _ffmpegService = ffmpegService;
             _croppingService = croppingService;
+            _brightnessService = brightnessService;
         }
 
-        // MARK: GenerateCanvas
+        // MARK: GenerateCanvasAsync
         public async Task<byte[]?> GenerateCanvasAsync(EpisodeMetadata metadata, PluginConfiguration config)
         {
             if (metadata?.VideoMetadata == null)
@@ -49,6 +53,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                 if (config.ExtractPoster)
                 {
+                    // Step 1: Extract frame (dark, uncropped)
                     ffmpegOutputPath = await _ffmpegService.ExtractSceneAsync(
                         metadata,
                         config,
@@ -68,10 +73,33 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                         return null;
                     }
 
-                    canvasBitmap = bitmap.Copy(); // make a writable copy
+                    canvasBitmap = bitmap.Copy();
+
+                    // Step 2: Apply cropping on dark image (better letterbox detection)
+                    var croppedBitmap = _croppingService.CropPoster(canvasBitmap, metadata.VideoMetadata, config);
+                    if (croppedBitmap != canvasBitmap)
+                    {
+                        canvasBitmap.Dispose();
+                        canvasBitmap = croppedBitmap;
+                    }
+
+                    // Step 3: Check brightness and apply brightening if needed
+                    if (config.BrightenHDR > 0)
+                    {
+                        if (_brightnessService.IsFrameBrightEnough(canvasBitmap))
+                        {
+                            _logger.LogDebug("Frame is already bright enough, skipping HDR brightening");
+                        }
+                        else
+                        {
+                            _logger.LogDebug("Applying HDR brightening: +{Brightness}%", config.BrightenHDR);
+                            _brightnessService.BrightenBitmap(canvasBitmap, config.BrightenHDR);
+                        }
+                    }
                 }
                 else
                 {
+                    // Create transparent canvas
                     canvasBitmap = CreateTransparentCanvas(
                         videoMeta.VideoWidth,
                         videoMeta.VideoHeight,
@@ -81,10 +109,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                         : new SKBitmap(videoMeta.VideoWidth, videoMeta.VideoHeight);
                 }
 
-                // MARK: Apply Cropping
-                canvasBitmap = _croppingService.CropPoster(canvasBitmap, metadata.VideoMetadata, config);
-
-                // MARK: Cleanup FFmpeg temporary file
+                // Cleanup FFmpeg temporary file
                 if (!string.IsNullOrEmpty(ffmpegOutputPath) && File.Exists(ffmpegOutputPath))
                 {
                     try
@@ -97,7 +122,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     }
                 }
 
-                // MARK: Encode and return final canvas
+                // Step 4: Encode and return final canvas
                 return EncodeImage(canvasBitmap, config.PosterFileType);
             }
             catch (Exception ex)

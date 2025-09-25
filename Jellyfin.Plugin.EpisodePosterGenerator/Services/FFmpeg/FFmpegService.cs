@@ -9,32 +9,20 @@ using MediaBrowser.Model.Configuration;
 using MediaBrowser.Controller.Configuration;
 using Microsoft.Extensions.Logging;
 using Jellyfin.Data.Enums;
-using SkiaSharp;
 using MediaBrowser.Common.Configuration;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
     /// <summary>
-    /// Handles video frame extraction using FFmpeg with hardware/software fallback and QA checks.
+    /// Handles video frame extraction using FFmpeg with hardware/software fallback.
     /// </summary>
     public class FFmpegService
     {
-        /// <summary>Logger for this service</summary>
         private readonly ILogger<FFmpegService> _logger;
-
-        /// <summary>Hardware FFmpeg processing service</summary>
         private readonly HardwareFFmpegService _hardwareService;
-
-        /// <summary>Software FFmpeg processing service</summary>
         private readonly SoftwareFFmpegService _softwareService;
-
-        /// <summary>Server configuration manager</summary>
         private readonly IServerConfigurationManager _configurationManager;
 
-        /// <summary>Quality assurance service for frame brightness</summary>
-        private readonly QualityAssuranceService _qaService;
-
-        /// <summary>Maximum number of retries for extracting a non-dark frame</summary>
         private const int MaxRetries = 50;
 
         // MARK: Constructor
@@ -42,17 +30,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             ILogger<FFmpegService> logger,
             IServerConfigurationManager configurationManager,
             HardwareFFmpegService hardwareService,
-            SoftwareFFmpegService softwareService,
-            ILoggerFactory loggerFactory)
+            SoftwareFFmpegService softwareService)
         {
             _logger = logger;
             _configurationManager = configurationManager;
             _hardwareService = hardwareService;
             _softwareService = softwareService;
-
-            _qaService = new QualityAssuranceService(
-                loggerFactory.CreateLogger<QualityAssuranceService>(), 
-                darkThreshold: 0.05);
         }
 
         // MARK: ExtractSceneAsync
@@ -67,27 +50,30 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 return null;
             }
 
-            var encodingOptions = _configurationManager.GetEncodingOptions();
+            var encodingOptions = _configurationManager.GetConfiguration<EncodingOptions>("encoding");
             var service = SelectFFmpegService(metadata, encodingOptions);
 
             _logger.LogDebug("Selected {ServiceType} for scene extraction", service.GetType().Name);
 
             string? bestFramePath = null;
-            double bestBrightness = 0;
 
             for (int attempt = 0; attempt < MaxRetries; attempt++)
             {
-                // Build output path and FFmpeg args
-                var outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.{config.PosterFileType.ToString().ToLowerInvariant()}");
-                string? args = service.BuildFFmpegArgs(outputPath, metadata, encodingOptions);
+                var outputPath = Path.Combine(
+                    Path.GetTempPath(),
+                    $"{Guid.NewGuid()}.{config.PosterFileType.ToString().ToLowerInvariant()}");
 
+                string? args = service.BuildFFmpegArgs(outputPath, metadata, encodingOptions);
                 if (string.IsNullOrWhiteSpace(args))
                 {
                     _logger.LogError("FFmpeg args could not be built, aborting extraction");
                     return null;
                 }
 
-                var ffmpegPath = string.IsNullOrWhiteSpace(encodingOptions.EncoderAppPath) ? "ffmpeg" : encodingOptions.EncoderAppPath;
+                var ffmpegPath = string.IsNullOrWhiteSpace(encodingOptions.EncoderAppPath)
+                    ? "ffmpeg"
+                    : encodingOptions.EncoderAppPath;
+
                 bool success = await RunFFmpegAsync(ffmpegPath, args, outputPath, cancellationToken).ConfigureAwait(false);
 
                 // Hardware -> software fallback
@@ -103,26 +89,18 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                 if (!success) continue;
 
-                // QA brightness check
-                if (_qaService.IsFrameBrightEnough(outputPath))
-                {
-                    _logger.LogInformation("Frame passed QA on attempt {Attempt}", attempt + 1);
-                    return outputPath;
-                }
-
-                double brightness = GetFrameBrightness(outputPath);
-                if (brightness > bestBrightness)
-                {
-                    bestBrightness = brightness;
-                    bestFramePath = outputPath;
-                }
-                else
-                {
-                    File.Delete(outputPath);
-                }
+                _logger.LogInformation("Frame extracted successfully on attempt {Attempt}: {OutputPath}", 
+                    attempt + 1, outputPath);
+                    
+                bestFramePath = outputPath;
+                break;
             }
 
-            _logger.LogWarning("QA failed for all attempts; returning brightest frame found");
+            if (bestFramePath == null)
+            {
+                _logger.LogError("Failed to extract frame after {MaxRetries} attempts", MaxRetries);
+            }
+
             return bestFramePath;
         }
 
@@ -163,44 +141,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     return false;
                 }
 
-                _logger.LogInformation("Frame extracted successfully: {OutputPath}", outputPath);
                 return true;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "FFmpeg execution failed");
                 return false;
-            }
-        }
-
-        // MARK: GetFrameBrightness
-        private double GetFrameBrightness(string filePath)
-        {
-            try
-            {
-                using var input = File.OpenRead(filePath);
-                using var bitmap = SKBitmap.Decode(input);
-                if (bitmap == null) return 0;
-
-                double totalBrightness = 0;
-                int pixelCount = 0;
-
-                for (int y = 0; y < bitmap.Height; y += 2)
-                {
-                    for (int x = 0; x < bitmap.Width; x += 2)
-                    {
-                        var color = bitmap.GetPixel(x, y);
-                        double brightness = (0.299 * color.Red + 0.587 * color.Green + 0.114 * color.Blue) / 255.0;
-                        totalBrightness += brightness;
-                        pixelCount++;
-                    }
-                }
-
-                return totalBrightness / pixelCount;
-            }
-            catch
-            {
-                return 0;
             }
         }
     }

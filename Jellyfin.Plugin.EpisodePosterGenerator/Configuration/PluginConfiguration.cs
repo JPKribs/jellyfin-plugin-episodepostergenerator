@@ -51,6 +51,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public bool ExtractPoster { get; set; } = true;
 
         /// <summary>
+        /// Brightens HDR posters that were extracted (e.g., 7.0 for 7%).
+        /// </summary>
+        public float BrightenHDR { get; set; } = 30.0f;
+
+        /// <summary>
         /// Gets or sets how the screenshot is fit into the poster.
         /// </summary>
         public PosterFill PosterFill { get; set; } = PosterFill.Original;
@@ -73,7 +78,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         /// <summary>
         /// Gets or sets a value indicating whether letterbox detection and cropping is enabled.
         /// </summary>
-        public bool EnableLetterboxDetection { get; set; } = false;
+        public bool EnableLetterboxDetection { get; set; } = true;
 
         /// <summary>
         /// Gets or sets the black threshold for letterbox detection (0-255).

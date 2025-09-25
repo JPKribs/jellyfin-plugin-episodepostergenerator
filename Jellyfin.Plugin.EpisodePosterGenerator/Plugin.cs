@@ -34,6 +34,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         private readonly HardwareFFmpegService _hardwareFFmpegService;
         private readonly SoftwareFFmpegService _softwareFFmpegService;
         private readonly CanvasService _canvasService;
+        private readonly BrightnessService _brightnessService;
         private readonly CroppingService _croppingService;
         private readonly PosterService _posterService;
 
@@ -70,10 +71,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
                 loggerFactory.CreateLogger<FFmpegService>(),
                 configurationManager,
                 _hardwareFFmpegService,
-                _softwareFFmpegService,
-                loggerFactory);
+                _softwareFFmpegService);
 
             // MARK: Initialize cropping service
+            _brightnessService = new BrightnessService(
+                loggerFactory.CreateLogger<BrightnessService>());
+    
             _croppingService = new CroppingService(
                 loggerFactory.CreateLogger<CroppingService>());
 
@@ -81,7 +84,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _canvasService = new CanvasService(
                 loggerFactory.CreateLogger<CanvasService>(),
                 _ffmpegService,
-                _croppingService);
+                _croppingService,
+                _brightnessService);
 
             // MARK: Initialize poster service
             _posterService = new PosterService(
