@@ -55,7 +55,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
 
             var encodingOptions = _configurationManager.GetEncodingOptions();
-            var service = SelectFFmpegService(metadata, encodingOptions);
+            var service = SelectFFmpegService(metadata, encodingOptions, config);
 
             bool toneMappingWasEnabled = encodingOptions.EnableTonemapping && metadata.VideoMetadata.VideoHdrType != VideoRangeType.SDR;
 
@@ -217,10 +217,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // MARK: SelectFFmpegService
-        private IFFmpegService SelectFFmpegService(EpisodeMetadata metadata, EncodingOptions encodingOptions)
+        private IFFmpegService SelectFFmpegService(EpisodeMetadata metadata, EncodingOptions encodingOptions, PluginConfiguration config)
         {
             var hdr = metadata.VideoMetadata.VideoHdrType;
-            if (hdr == VideoRangeType.Unknown) return _softwareService;
+            if (hdr == VideoRangeType.Unknown || !config.EnableHWA) return _softwareService;
 
             return _hardwareService.CanProcess(metadata, encodingOptions) ? _hardwareService : _softwareService;
         }

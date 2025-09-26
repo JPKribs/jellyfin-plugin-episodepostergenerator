@@ -65,6 +65,14 @@
                             <input is="emby-input" type="number" id="txtBrightenHDR" min="0" max="100" data-config="BrightenHDR" data-type="number" />
                             <div class="fieldDescription">Brightness adjustment for HDR content as percentage (0-100%).</div>
                         </div>
+                                                
+                        <div class="inputContainer">
+                            <label class="checkboxContainer">
+                                <input is="emby-checkbox" type="checkbox" id="chkEnableHWA" data-config="EnableHWA" />
+                                <span>Enable Hardware Accelerated Decoding</span>
+                            </label>
+                            <div class="fieldDescription">Uses the transcoding settings for Hardware Acceleration to extract the canvas image.</div>
+                        </div>
                     </div>
                 
                     <div class="inputContainer" id="letterboxDetectionContainer" data-depends-on="chkExtractPoster">

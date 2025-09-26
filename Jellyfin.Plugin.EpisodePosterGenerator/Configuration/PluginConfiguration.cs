@@ -21,6 +21,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public bool ExtractPoster { get; set; } = true;
 
         /// <summary>
+        /// Extracts the poster from the Episode using HWA
+        /// </summary>
+        public bool EnableHWA { get; set; } = false;
+
+        /// <summary>
         /// Gets or sets a value indicating whether letterbox detection and cropping is enabled.
         /// </summary>
         public bool EnableLetterboxDetection { get; set; } = true;

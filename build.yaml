@@ -1,7 +1,7 @@
 ---
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
-version: "10.10.22"
+version: "10.10.23"
 targetAbi: "10.10.7.0"
 framework: "net8.0"
 overview: "Generate Custom Episode Posters"
@@ -13,19 +13,12 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   features:
-  - Allow for Extract Window configuration
-  - Allow for custom Graphics on top of the overlay
-  - Allow clearing the database of previously processed work
+  - Allow disabling HWA
   fixes: 
-  - Fix missing Plugin Page
-  - Only track changes to poster configurations not task/provider changes
+  - Disable HWA by default to prevent issues with VPP / VideoToolBox filters
   technical:
-  - Rework to a generic 4 layer structure for extensibility
-  - Use HWA filters instead of always defaulting to SW
-  - VideoToolBox always defaults to SW tone mapping
+  - -
   other:
-  - Standardize all comments in code 
+  - Will need to get HWA more stable in a later release
   documentation:
-  - Update Read Me to better explain the processing
-  - Renew screenshots on latest version
-  - Add screenshot configuration steps
+  - -
