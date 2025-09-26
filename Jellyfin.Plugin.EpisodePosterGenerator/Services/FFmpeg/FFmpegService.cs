@@ -74,7 +74,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             {
                 var outputPath = Path.Combine(
                     Path.GetTempPath(),
-                    $"{Guid.NewGuid()}.{config.PosterFileType.ToString().ToLowerInvariant()}");
+                    $"{Guid.NewGuid()}.png");
 
                 int seekTime = GenerateSeekTime(videoDurationSeconds, attempt);
                 string? args = service.BuildFFmpegArgs(outputPath, metadata, encodingOptions, seekTime);

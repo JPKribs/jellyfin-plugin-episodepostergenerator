@@ -152,24 +152,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         // MARK: SaveBitmap
         private void SaveBitmap(SKBitmap bitmap, string filePath, PosterFileType fileType)
         {
-            var format = fileType switch
-            {
-                PosterFileType.PNG => SKEncodedImageFormat.Png,
-                PosterFileType.WEBP => SKEncodedImageFormat.Webp,
-                PosterFileType.GIF => SKEncodedImageFormat.Gif,
-                PosterFileType.JPEG => SKEncodedImageFormat.Jpeg,
-                _ => SKEncodedImageFormat.Jpeg
-            };
-
-            var quality = fileType switch
-            {
-                PosterFileType.JPEG => 85,
-                PosterFileType.WEBP => 80,
-                _ => 100
-            };
-
             using var image = SKImage.FromBitmap(bitmap);
-            using var data = image.Encode(format, quality);
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
             
             if (data != null)
             {

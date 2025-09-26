@@ -145,7 +145,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         {
             var height = bitmap.Height;
             var width = bitmap.Width;
-            var maxScanLines = height / 4;
+            var maxScanLines = height / 6;
             
             int top = 0;
             int bottom = height - 1;
@@ -178,7 +178,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         {
             var width = bitmap.Width;
             var height = bitmap.Height;
-            var maxScanColumns = width / 4;
+            var maxScanColumns = width / 6;
             
             int left = 0;
             int right = width - 1;
@@ -210,13 +210,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private bool IsRowMostlyBlack(SKBitmap bitmap, int y, float blackThreshold, float confidence)
         {
             var width = bitmap.Width;
-            var sampleStep = Math.Max(1, width / 100); // Sample more points for better accuracy
+            var sampleStep = Math.Max(1, width / 100);
             int blackPixels = 0;
             int totalSamples = 0;
 
             // Also sample some pixels in the middle to avoid edge artifacts
-            var startX = Math.Max(0, width / 10); // Skip first 10%
-            var endX = Math.Min(width, width - width / 10); // Skip last 10%
+            var startX = Math.Max(0, width / 10);
+            var endX = Math.Min(width, width - width / 10);
 
             for (int x = startX; x < endX; x += sampleStep)
             {
@@ -232,7 +232,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             var actualConfidence = totalSamples > 0 ? (float)blackPixels / totalSamples : 0f;
             var isBlack = actualConfidence >= confidence;
 
-            if (y < 5 || y >= bitmap.Height - 5) // Log first/last few rows for debugging
+            if (y < 5 || y >= bitmap.Height - 5)
             {
                 _logger.LogDebug("Row {Y}: {BlackPixels}/{TotalSamples} ({Confidence:P1}) >= {RequiredConfidence:P1} = {IsBlack}", 
                     y, blackPixels, totalSamples, actualConfidence, confidence, isBlack);
@@ -245,13 +245,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private bool IsColumnMostlyBlack(SKBitmap bitmap, int x, float blackThreshold, float confidence)
         {
             var height = bitmap.Height;
-            var sampleStep = Math.Max(1, height / 100); // Sample more points for better accuracy
+            var sampleStep = Math.Max(1, height / 100);
             int blackPixels = 0;
             int totalSamples = 0;
 
-            // Also sample some pixels in the middle to avoid edge artifacts
-            var startY = Math.Max(0, height / 10); // Skip first 10%
-            var endY = Math.Min(height, height - height / 10); // Skip last 10%
+            var startY = Math.Max(0, height / 10);
+            var endY = Math.Min(height, height - height / 10);
 
             for (int y = startY; y < endY; y += sampleStep)
             {
@@ -267,7 +266,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             var actualConfidence = totalSamples > 0 ? (float)blackPixels / totalSamples : 0f;
             var isBlack = actualConfidence >= confidence;
 
-            if (x < 5 || x >= bitmap.Width - 5) // Log first/last few columns for debugging
+            if (x < 5 || x >= bitmap.Width - 5)
             {
                 _logger.LogDebug("Column {X}: {BlackPixels}/{TotalSamples} ({Confidence:P1}) >= {RequiredConfidence:P1} = {IsBlack}", 
                     x, blackPixels, totalSamples, actualConfidence, confidence, isBlack);

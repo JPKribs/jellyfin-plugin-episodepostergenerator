@@ -53,7 +53,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         /// <summary>
         /// Brightens HDR posters that were extracted (e.g., 7.0 for 7%).
         /// </summary>
-        public float BrightenHDR { get; set; } = 30.0f;
+        public float BrightenHDR { get; set; } = 25.0f;
 
         /// <summary>
         /// Gets or sets how the screenshot is fit into the poster.
@@ -68,7 +68,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         /// <summary>
         /// Gets or sets the poster file type (e.g., JPEG, WEBP, etc.).
         /// </summary>
-        public PosterFileType PosterFileType { get; set; } = PosterFileType.JPEG;
+        public PosterFileType PosterFileType { get; set; } = PosterFileType.WEBP;
 
         /// <summary>
         /// Gets or sets the percentage of height and width perserved as a safe area (e.g., 7.0 for 7%).
@@ -83,12 +83,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         /// <summary>
         /// Gets or sets the black threshold for letterbox detection (0-255).
         /// </summary>
-        public int LetterboxBlackThreshold { get; set; } = 30;
+        public int LetterboxBlackThreshold { get; set; } = 100;
 
         /// <summary>
         /// Gets or sets the confidence threshold for letterbox detection (0.0-100.0).
         /// </summary>
-        public float LetterboxConfidence { get; set; } = 95.0f;
+        public float LetterboxConfidence { get; set; } = 80.0f;
 
         /// <summary>
         /// Gets or sets a value indicating whether to show the episode title.

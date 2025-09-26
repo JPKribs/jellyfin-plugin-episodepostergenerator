@@ -181,11 +181,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         // MARK: EncodeImage
         private byte[]? EncodeImage(SKBitmap bitmap, PosterFileType fileType)
         {
-            var format = GetSkiaFormat(fileType);
-            var quality = GetQualityForFormat(fileType);
+            var format = SKEncodedImageFormat.Png;
 
             using var image = SKImage.FromBitmap(bitmap);
-            using var data = image.Encode(format, quality);
+            using var data = image.Encode(format, 100);
 
             if (data == null)
             {
@@ -194,30 +193,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
 
             return data.ToArray();
-        }
-
-        // MARK: GetSkiaFormat
-        private SKEncodedImageFormat GetSkiaFormat(PosterFileType fileType)
-        {
-            return fileType switch
-            {
-                PosterFileType.PNG => SKEncodedImageFormat.Png,
-                PosterFileType.WEBP => SKEncodedImageFormat.Webp,
-                PosterFileType.GIF => SKEncodedImageFormat.Gif,
-                PosterFileType.JPEG => SKEncodedImageFormat.Jpeg,
-                _ => SKEncodedImageFormat.Jpeg
-            };
-        }
-
-        // MARK: GetQualityForFormat
-        private int GetQualityForFormat(PosterFileType fileType)
-        {
-            return fileType switch
-            {
-                PosterFileType.JPEG => 85,
-                PosterFileType.WEBP => 80,
-                _ => 100
-            };
         }
     }
 }

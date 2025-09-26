@@ -1,74 +1,142 @@
+using System;
+using System.IO;
+using SkiaSharp;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
+using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using MediaBrowser.Controller.Entities.TV;
+using Microsoft.Extensions.Logging;
 
-namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
-
-/// <summary>
-/// Defines the contract for generating poster images for TV episodes.
-/// </summary>
-public interface IPosterGenerator
+namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
     /// <summary>
-    /// Generates a poster image based on the specified input image and configuration.
+    /// Defines the contract for generating poster images from a Canvas/bitmap and episode metadata.
     /// </summary>
-    /// <param name="inputImagePath">The path to the input source image.</param>
-    /// <param name="outputPath">The desired path for the output image.</param>
-    /// <param name="episode">The episode for which the poster is being generated.</param>
-    /// <param name="config">The plugin configuration used to guide the generation process.</param>
-    /// <returns>The path to the generated image, or <c>null</c> if generation failed.</returns>
-    // MARK: Generate
-    string? Generate(string inputImagePath, string outputPath, Episode episode, PluginConfiguration config);
-}
-
-/// <summary>
-/// Provides shared functionality for poster generators, including safe area calculations.
-/// </summary>
-public abstract class BasePosterGenerator
-{
-    /// <summary>
-    /// Calculates the safe area margin from configuration as a percentage of image dimensions.
-    /// </summary>
-    /// <param name="config">Plugin configuration containing the PosterSafeArea setting.</param>
-    /// <returns>Safe area margin as a decimal percentage (e.g., 5.0 becomes 0.05).</returns>
-    // MARK: GetSafeAreaMargin
-    protected static float GetSafeAreaMargin(PluginConfiguration config)
+    public interface IPosterGenerator
     {
-        return config.PosterSafeArea / 100f;
+        /// <summary>
+        /// Generates a poster from a provided canvas and episode metadata.
+        /// </summary>
+        /// <param name="canvas">The pre-rendered canvas/bitmap.</param>
+        /// <param name="episodeMetadata">Metadata for the episode.</param>
+        /// <param name="config">Plugin configuration guiding the generation.</param>
+        /// <param name="outputPath">
+        /// Optional. The path to save the generated poster. 
+        /// If null or empty, a temporary path will be generated using the configured PosterFileType.
+        /// </param>
+        /// <returns>The path to the generated poster, or <c>null</c> if generation failed.</returns>
+        string? Generate(
+            SKBitmap canvas,
+            EpisodeMetadata episodeMetadata,
+            PluginConfiguration config,
+            string? outputPath = null);
     }
 
     /// <summary>
-    /// Calculates the dimensions and position of the safe area within an image using configuration.
+    /// Base class for poster generators providing safe area and single-point encoding logic.
     /// </summary>
-    /// <param name="width">The width of the image.</param>
-    /// <param name="height">The height of the image.</param>
-    /// <param name="config">Plugin configuration containing safe area settings.</param>
-    /// <param name="safeWidth">The resulting width of the safe area.</param>
-    /// <param name="safeHeight">The resulting height of the safe area.</param>
-    /// <param name="safeLeft">The left offset of the safe area.</param>
-    /// <param name="safeTop">The top offset of the safe area.</param>
-    // MARK: ApplySafeAreaConstraints
-    protected static void ApplySafeAreaConstraints(int width, int height, PluginConfiguration config, out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop)
+    public abstract class BasePosterGenerator
     {
-        var safeAreaMargin = GetSafeAreaMargin(config);
-        safeLeft = width * safeAreaMargin;
-        safeTop = height * safeAreaMargin;
-        safeWidth = width * (1 - 2 * safeAreaMargin);
-        safeHeight = height * (1 - 2 * safeAreaMargin);
+        protected static float GetSafeAreaMargin(PluginConfiguration config) => config.PosterSafeArea / 100f;
+
+        protected static void ApplySafeAreaConstraints(
+            int width, int height, PluginConfiguration config,
+            out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop)
+        {
+            var safeAreaMargin = GetSafeAreaMargin(config);
+            safeLeft = width * safeAreaMargin;
+            safeTop = height * safeAreaMargin;
+            safeWidth = width * (1 - 2 * safeAreaMargin);
+            safeHeight = height * (1 - 2 * safeAreaMargin);
+        }
+
+        /// <summary>
+        /// Centralized poster generation and encoding logic.
+        /// </summary>
+        protected string? GenerateBase(
+            SKBitmap canvas,
+            EpisodeMetadata episodeMetadata,
+            PluginConfiguration config,
+            Func<SKBitmap, SKBitmap> drawCustom,
+            string? outputPath = null)
+        {
+            try
+            {
+                // Apply generator-specific drawing/cropping
+                var processedBitmap = drawCustom(canvas);
+
+                // Determine final output path
+                if (string.IsNullOrWhiteSpace(outputPath))
+                {
+                    var extension = config.PosterFileType.ToString().ToLowerInvariant();
+                    outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.{extension}");
+                }
+
+                // Encode final image
+                SKEncodedImageFormat format = config.PosterFileType switch
+                {
+                    PosterFileType.JPEG => SKEncodedImageFormat.Jpeg,
+                    PosterFileType.PNG => SKEncodedImageFormat.Png,
+                    PosterFileType.WEBP => SKEncodedImageFormat.Webp,
+                    PosterFileType.GIF => SKEncodedImageFormat.Gif,
+                    _ => SKEncodedImageFormat.Png
+                };
+
+                using var image = SKImage.FromBitmap(processedBitmap);
+                using var data = image.Encode(format, 95);
+
+                // Ensure directory exists
+                var directory = Path.GetDirectoryName(outputPath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                    Directory.CreateDirectory(directory);
+
+                using var outputStream = File.OpenWrite(outputPath);
+                data.SaveTo(outputStream);
+
+                return outputPath;
+            }
+            catch
+            {
+                return null;
+            }
+        }
     }
 
     /// <summary>
-    /// Determines whether the given coordinates are within the calculated safe area of an image.
+    /// Example concrete poster generator using CroppingService.
     /// </summary>
-    /// <param name="x">The x-coordinate to test.</param>
-    /// <param name="y">The y-coordinate to test.</param>
-    /// <param name="width">The width of the image.</param>
-    /// <param name="height">The height of the image.</param>
-    /// <param name="config">Plugin configuration containing safe area settings.</param>
-    /// <returns><c>true</c> if the point lies within the safe area; otherwise, <c>false</c>.</returns>
-    // MARK: IsWithinSafeArea
-    protected static bool IsWithinSafeArea(float x, float y, int width, int height, PluginConfiguration config)
+    public class CanvasPosterGenerator : BasePosterGenerator, IPosterGenerator
     {
-        ApplySafeAreaConstraints(width, height, config, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
-        return x >= safeLeft && x <= safeLeft + safeWidth && y >= safeTop && y <= safeTop + safeHeight;
+        private readonly CroppingService _croppingService;
+        private readonly ILogger<CanvasPosterGenerator> _logger;
+
+        public CanvasPosterGenerator(CroppingService croppingService, ILogger<CanvasPosterGenerator> logger)
+        {
+            _croppingService = croppingService;
+            _logger = logger;
+        }
+
+        public string? Generate(
+            SKBitmap canvas,
+            EpisodeMetadata episodeMetadata,
+            PluginConfiguration config,
+            string? outputPath = null)
+        {
+            try
+            {
+                return GenerateBase(canvas, episodeMetadata, config, bmp =>
+                {
+                    // Custom drawing logic: crop using CroppingService
+                    var cropped = _croppingService.CropPoster(bmp, episodeMetadata.VideoMetadata, config);
+
+                    // Additional overlays / safe area logic could go here
+                    return cropped;
+                }, outputPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to generate poster for episode {EpisodeName}", episodeMetadata.EpisodeName);
+                return null;
+            }
+        }
     }
 }
