@@ -161,18 +161,37 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         // MARK: CalculateGraphicRect
         protected virtual SKRect CalculateGraphicRect(SKBitmap graphicBitmap, float safeLeft, float safeTop, float safeWidth, float safeHeight, PluginConfiguration config)
         {
-            // Calculate graphic dimensions from percentages
+            // Calculate maximum allowed dimensions from percentages
             var posterWidth = safeWidth / (1 - 2 * GetSafeAreaMargin(config));
             var posterHeight = safeHeight / (1 - 2 * GetSafeAreaMargin(config));
             
-            var graphicWidth = posterWidth * (config.GraphicWidth / 100f);
-            var graphicHeight = posterHeight * (config.GraphicHeight / 100f);
+            var maxWidth = posterWidth * (config.GraphicWidth / 100f);
+            var maxHeight = posterHeight * (config.GraphicHeight / 100f);
+            
+            // Calculate aspect ratio preserving dimensions
+            var originalAspect = (float)graphicBitmap.Width / graphicBitmap.Height;
+            var constraintAspect = maxWidth / maxHeight;
+            
+            float finalWidth, finalHeight;
+            
+            if (originalAspect > constraintAspect)
+            {
+                // Image is wider than constraint - fit to width
+                finalWidth = maxWidth;
+                finalHeight = maxWidth / originalAspect;
+            }
+            else
+            {
+                // Image is taller than constraint - fit to height  
+                finalHeight = maxHeight;
+                finalWidth = maxHeight * originalAspect;
+            }
             
             // Calculate position based on alignment and position
-            var x = CalculateGraphicX(config.GraphicAlignment, safeLeft, safeWidth, graphicWidth);
-            var y = CalculateGraphicY(config.GraphicPosition, safeTop, safeHeight, graphicHeight);
+            var x = CalculateGraphicX(config.GraphicAlignment, safeLeft, safeWidth, finalWidth);
+            var y = CalculateGraphicY(config.GraphicPosition, safeTop, safeHeight, finalHeight);
             
-            return new SKRect(x, y, x + graphicWidth, y + graphicHeight);
+            return new SKRect(x, y, x + finalWidth, y + finalHeight);
         }
 
         // MARK: CalculateGraphicX

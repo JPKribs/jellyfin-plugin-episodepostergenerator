@@ -25,30 +25,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         {
             var safeArea = GetSafeAreaBounds(width, height, config);
 
+            // Always draw Roman numeral centered in full safe area
+            DrawRomanNumeral(skCanvas, episodeMetadata, config, safeArea);
+
+            // Draw title overlapping on top of the Roman numeral if enabled
             if (config.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
             {
-                // Calculate space needed for title at bottom
-                var titleHeight = CalculateTitleHeight(episodeMetadata.EpisodeName, config, height, safeArea);
-                var titleSpacing = height * 0.05f;
-                
-                // Adjust safe area for Roman numeral to leave space for title
-                var numeralArea = new SKRect(
-                    safeArea.Left, 
-                    safeArea.Top, 
-                    safeArea.Right, 
-                    safeArea.Bottom - titleHeight - titleSpacing
-                );
-
-                // Draw Roman numeral in upper area
-                DrawRomanNumeral(skCanvas, episodeMetadata, config, numeralArea);
-
-                // Draw title at bottom
                 DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, config, width, height, safeArea);
-            }
-            else
-            {
-                // No title - Roman numeral uses full safe area
-                DrawRomanNumeral(skCanvas, episodeMetadata, config, safeArea);
             }
         }
 
@@ -126,9 +109,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var lineHeight = fontSize * 1.2f;
             var totalHeight = (lines.Count - 1) * lineHeight + fontSize;
             var centerX = safeArea.MidX;
-            var startY = safeArea.Bottom - totalHeight + fontSize;
+            
+            // Position title at center of safe area, overlapping the Roman numeral
+            var startY = safeArea.MidY - (totalHeight / 2f) + fontSize;
 
-            // Draw each line with shadow
+            // Draw each line with shadow, overlapping the Roman numeral at center
             for (int i = 0; i < lines.Count; i++)
             {
                 var lineY = startY + (i * lineHeight);

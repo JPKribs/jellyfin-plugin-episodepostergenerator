@@ -19,9 +19,9 @@ A Jellyfin plugin that automatically generates custom episode posters using smar
 ### Standard Style
 Classic episode posters with overlay text and episode information.
 
-| Example 1 | Example 2 |
-|-----------|-----------|
-| ![Standard 1](Screenshots/Standard%201.jpg) | ![Standard 2](Screenshots/Standard%202.jpg) |
+| All Text + Graphic | Episode Text | Season Text |
+|-------------------|--------------|-------------|
+| ![Standard All Text+Graphic](Screenshots/Standard/All_Text+Graphic.jpg) | ![Standard Episode Text](Screenshots/Standard/Episode_Text.jpg) | ![Standard Season Text](Screenshots/Standard/Season_Text.jpg) |
 
 **Features:**
 - Episode screenshot as background
@@ -29,13 +29,14 @@ Classic episode posters with overlay text and episode information.
 - Season and episode information
 - Optional episode title display
 - Customizable overlay tint
+- Support for graphic overlays
 
 ### Cutout Style  
 Large episode numbers displayed as transparent cutouts revealing the screenshot beneath.
 
-| Example 1 | Example 2 | Example 3 |
-|-----------|-----------|-----------|
-| ![Cutout 1](Screenshots/Cutout%201.jpg) | ![Cutout 2](Screenshots/Cutout%202.jpg) | ![Cutout 3](Screenshots/Cutout%203.jpg) |
+| Episode Code | Episode Code + Title | Episode Text + Title + Graphic |
+|-------------|---------------------|--------------------------------|
+| ![Cutout Episode Code](Screenshots/Cutout/Episode_Code.jpg) | ![Cutout Episode Code+Title](Screenshots/Cutout/Episode_Code+Title.jpg) | ![Cutout Episode Text+Title+Graphic](Screenshots/Cutout/Episode_Text+Title+Graphic.jpg) |
 
 **Cutout Types:**
 - **Code**: Displays episode in format "S01E03" 
@@ -47,26 +48,14 @@ Large episode numbers displayed as transparent cutouts revealing the screenshot 
 - Multi-line text support for longer episode codes
 - Automatic font scaling
 - Optional contrasting borders for improved visibility
-
-### Numeral Style
-Roman numeral episode numbers with elegant typography.
-
-| Example 1 | Example 2 | Example 3 |
-|-----------|-----------|-----------|
-| ![Numeral 1](Screenshots/Numeral%201.jpg) | ![Numeral 2](Screenshots/Numeral%202.jpg) | ![Numeral 3](Screenshots/Numeral%203.jpg) |
-
-**Features:**
-- Roman numeral conversion (1-3999)
-- Large, centered numeral display
-- Background color overlay
-- Optional episode title
+- Support for graphic overlays
 
 ### Logo Style
 Series logo-focused posters with episode information and clean typography.
 
-| Example 1 | Example 2 | Example 3 |
-|-----------|-----------|-----------|
-| ![Logo 1](Screenshots/Logo%201.jpg) | ![Logo 2](Screenshots/Logo%202.jpg) | ![Logo 3](Screenshots/Logo%203.jpg) |
+| Episode Title + Graphic | Show Title + Episode Title | Show Title + Episode Title + Extra |
+|------------------------|----------------------------|-----------------------------------|
+| ![Logo Episode Title+Graphic](Screenshots/Logo/Episode_Title+Graphic.jpg) | ![Logo Show Title+Episode Title](Screenshots/Logo/Show_Title+Episode_Title.jpg) | ![Logo Show Title+Episode Title+Extra](Screenshots/Logo/Show_Title+Episode_Title+Extra.jpg) |
 
 **Features:**
 - Series logo image as primary visual element
@@ -79,11 +68,27 @@ Series logo-focused posters with episode information and clean typography.
 - Optional episode title display
 - Bottom-aligned text elements with consistent spacing
 - Logo image respects safe area margins for optimal positioning
+- Support for graphic overlays
 
 **Logo Sources:**
 - **Primary**: Series logo image (when available)
 - **Fallback**: Series primary image
 - **Text Fallback**: Series name with optimized font scaling
+
+### Numeral Style
+Roman numeral episode numbers with elegant typography and optional overlapping titles.
+
+| No Text | Text | Text + Graphic |
+|---------|------|---------------|
+| ![Numeral No Text](Screenshots/Numeral/No_Text.jpg) | ![Numeral Text](Screenshots/Numeral/Text.jpg) | ![Numeral Text+Graphic](Screenshots/Numeral/Text+Graphic.jpg) |
+
+**Features:**
+- Roman numeral conversion (1-3999)
+- Large, centered numeral display
+- Background color overlay
+- Optional episode title overlapping at center of numeral
+- Support for graphic overlays
+- Elegant typography with shadow effects
 
 ## Poster Architecture
 
