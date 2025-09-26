@@ -13,13 +13,19 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   features:
-  - -
+  - Allow for Extract Window configuration
+  - Allow for custom Graphics on top of the overlay
+  - Allow clearing the database of previously processed work
   fixes: 
-  - Fix Missing Logo
-  - Maybe Fix Broken Plugin Page
+  - Fix missing Plugin Page
+  - Only track changes to poster configurations not task/provider changes
   technical:
-  - -
+  - Rework to a generic 4 layer structure for extensibility
+  - Use HWA filters instead of always defaulting to SW
+  - VideoToolBox always defaults to SW tone mapping
   other:
-  - -
+  - Standardize all comments in code 
   documentation:
-  - -
+  - Update Read Me to better explain the processing
+  - Renew screenshots on latest version
+  - Add screenshot configuration steps

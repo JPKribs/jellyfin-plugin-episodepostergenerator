@@ -7,16 +7,15 @@ using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using MediaBrowser.Model.Configuration;
 using MediaBrowser.Controller.Configuration;
+using MediaBrowser.Common.Configuration;
 using Microsoft.Extensions.Logging;
 using Jellyfin.Data.Enums;
 using SkiaSharp;
-using MediaBrowser.Common.Configuration;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
     /// <summary>
-    /// Handles video frame extraction using FFmpeg with hardware/software fallback,
-    /// brightness retry logic, seek-time randomization, and HDR brightening.
+    /// Video frame extraction using FFmpeg with hardware/software fallback and brightness optimization.
     /// </summary>
     public class FFmpegService
     {
@@ -27,7 +26,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private readonly IServerConfigurationManager _configurationManager;
 
         private const int MaxRetries = 50;
-        private const double BrightnessThreshold = 0.08; // 8% threshold
+        private const double BrightnessThreshold = 0.08;
 
         public FFmpegService(
             ILogger<FFmpegService> logger,
@@ -63,7 +62,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             var videoDurationSeconds = metadata.VideoMetadata.VideoLengthTicks / (double)TimeSpan.TicksPerSecond;
             if (videoDurationSeconds <= 0) videoDurationSeconds = 3600;
 
-            _logger.LogDebug("Selected {ServiceType} for scene extraction", service.GetType().Name);
+            _logger.LogInformation("Selected {ServiceType} for scene extraction", service.GetType().Name);
 
             string? bestFramePath = null;
             double bestBrightness = 0.0;
@@ -72,11 +71,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             for (int attempt = 0; attempt < MaxRetries; attempt++)
             {
-                var outputPath = Path.Combine(
-                    Path.GetTempPath(),
-                    $"{Guid.NewGuid()}.png");
-
+                var outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.png");
                 int seekTime = GenerateSeekTime(videoDurationSeconds, attempt, config);
+                
                 string? args = service.BuildFFmpegArgs(outputPath, metadata, encodingOptions, seekTime);
                 if (string.IsNullOrWhiteSpace(args))
                 {
@@ -84,31 +81,25 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     return null;
                 }
 
-                var ffmpegPath = string.IsNullOrWhiteSpace(encodingOptions.EncoderAppPath)
-                    ? "ffmpeg"
-                    : encodingOptions.EncoderAppPath;
+                var ffmpegPath = string.IsNullOrWhiteSpace(encodingOptions.EncoderAppPath) ? "ffmpeg" : encodingOptions.EncoderAppPath;
+
+                _logger.LogInformation("FFmpeg Command: {Path} {Args}", ffmpegPath, args);
 
                 bool success = await RunFFmpegAsync(ffmpegPath, args, outputPath, cancellationToken).ConfigureAwait(false);
 
-                // Hardware -> software fallback
                 if (!success && service == _hardwareService)
                 {
                     _logger.LogWarning("Hardware extraction failed on attempt {Attempt}, falling back to software", attempt + 1);
                     service = _softwareService;
 
                     var fallbackOptions = toneMappingWasEnabled 
-                        ? new EncodingOptions
-                        {
-                            EnableTonemapping = false,
-                            EncoderAppPath = encodingOptions.EncoderAppPath,
-                        }
+                        ? new EncodingOptions { EnableTonemapping = false, EncoderAppPath = encodingOptions.EncoderAppPath }
                         : encodingOptions;
-
-                    if (toneMappingWasEnabled) fallbackOptions.EnableTonemapping = false;
 
                     args = service.BuildFFmpegArgs(outputPath, metadata, fallbackOptions, seekTime);
                     if (string.IsNullOrWhiteSpace(args)) continue;
 
+                    _logger.LogInformation("Software Fallback Command: {Path} {Args}", ffmpegPath, args);
                     success = await RunFFmpegAsync(ffmpegPath, args, outputPath, cancellationToken).ConfigureAwait(false);
                 }
 
@@ -150,7 +141,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     if (File.Exists(outputPath)) File.Delete(outputPath);
                 }
 
-                // Early exit for HDR
                 if (isHDR && actualBrightness > 0.03 && attempt > 10)
                 {
                     _logger.LogInformation("Found reasonably bright HDR frame after {Attempts} attempts (Brightness: {Brightness:F3})",
@@ -178,15 +168,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private int GenerateSeekTime(double videoDurationSeconds, int attempt, PluginConfiguration config)
         {
             var random = new Random();
-            
-            // Convert percentages to decimal (20% = 0.2)
             var startPercent = config.ExtractWindowStart / 100.0;
             var endPercent = config.ExtractWindowEnd / 100.0;
             
-            // Ensure valid range
             if (startPercent >= endPercent)
             {
-                _logger.LogWarning("Invalid extraction window: start {Start}% >= end {End}%, using default values of 20% & 80%.", 
+                _logger.LogWarning("Invalid extraction window: start {Start}% >= end {End}%, using default 20%-80%", 
                     config.ExtractWindowStart, config.ExtractWindowEnd);
                 startPercent = 0.2;
                 endPercent = 0.8;
@@ -235,9 +222,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             var hdr = metadata.VideoMetadata.VideoHdrType;
             if (hdr == VideoRangeType.Unknown) return _softwareService;
 
-            return _hardwareService.CanProcess(metadata, encodingOptions)
-                ? _hardwareService
-                : _softwareService;
+            return _hardwareService.CanProcess(metadata, encodingOptions) ? _hardwareService : _softwareService;
         }
 
         // MARK: RunFFmpegAsync
@@ -258,17 +243,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     }
                 };
 
-                _logger.LogDebug("Running FFmpeg: {Path} {Args}", ffmpegPath, arguments);
-
                 process.Start();
-
-                var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-                var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
-
                 await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
-                var output = await outputTask.ConfigureAwait(false);
-                var error = await errorTask.ConfigureAwait(false);
+                var error = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
                 if (process.ExitCode != 0)
                 {
@@ -276,16 +254,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     return false;
                 }
 
-                if (!File.Exists(outputPath))
+                if (!File.Exists(outputPath) || new FileInfo(outputPath).Length == 0)
                 {
-                    _logger.LogWarning("FFmpeg completed but output file does not exist: {OutputPath}", outputPath);
-                    return false;
-                }
-
-                var fileInfo = new FileInfo(outputPath);
-                if (fileInfo.Length == 0)
-                {
-                    _logger.LogWarning("FFmpeg created empty output file: {OutputPath}", outputPath);
+                    _logger.LogWarning("FFmpeg completed but output file is missing or empty: {OutputPath}", outputPath);
                     return false;
                 }
 

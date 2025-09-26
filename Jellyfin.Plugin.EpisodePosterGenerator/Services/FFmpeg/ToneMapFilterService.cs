@@ -7,12 +7,8 @@ using MediaBrowser.Model.Configuration;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
-    /// <summary>
-    /// Builds a safe FFmpeg tone mapping filter depending on HDR type and HW/SW extraction.
-    /// </summary>
     public class ToneMapFilterService
     {
-        /// <summary>Logger for this service</summary>
         private readonly ILogger<ToneMapFilterService> _logger;
 
         // MARK: Constructor
@@ -27,32 +23,70 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             VideoMetadata video,
             HardwareAccelerationType hwAccel)
         {
-            // Skip tone mapping if disabled or HDR type unknown
-            if (!options.EnableTonemapping || video.VideoHdrType == VideoRangeType.Unknown)
+            if (!options.EnableTonemapping || video.VideoHdrType == VideoRangeType.SDR || video.VideoHdrType == VideoRangeType.Unknown)
                 return string.Empty;
 
-            // Skip tone mapping if hardware can already handle it
-            if (hwAccel != HardwareAccelerationType.none &&
-                hwAccel != HardwareAccelerationType.videotoolbox)
+            return hwAccel switch
             {
-                return string.Empty;
-            }
+                HardwareAccelerationType.videotoolbox 
+                    => GetSoftwareToneMapFilter(options),
+                
+                HardwareAccelerationType.qsv when options.EnableVppTonemapping 
+                    => GetVppToneMapFilter(options),
+                
+                HardwareAccelerationType.nvenc or HardwareAccelerationType.amf 
+                    => GetOpenCLToneMapFilter(options),
+                
+                HardwareAccelerationType.vaapi 
+                    => GetVaapiToneMapFilter(options),
+                
+                HardwareAccelerationType.v4l2m2m or HardwareAccelerationType.rkmpp or HardwareAccelerationType.none or _
+                    => GetSoftwareToneMapFilter(options)
+            };
+        }
 
-            // Choose algorithm string
-            var algorithm = options.TonemappingAlgorithm switch
+        // MARK: GetVppToneMapFilter
+        private static string GetVppToneMapFilter(EncodingOptions options)
+        {
+            var algorithm = GetToneMappingAlgorithm(options);
+            return $"scale_qsv=format=nv12,tonemap_qsv=t={algorithm}";
+        }
+
+        // MARK: GetOpenCLToneMapFilter
+        private static string GetOpenCLToneMapFilter(EncodingOptions options)
+        {
+            var algorithm = GetToneMappingAlgorithm(options);
+            return $"hwupload,tonemap_opencl=t={algorithm},hwdownload,format=nv12";
+        }
+
+        // MARK: GetVaapiToneMapFilter
+        private static string GetVaapiToneMapFilter(EncodingOptions options)
+        {
+            var algorithm = GetToneMappingAlgorithm(options);
+            return $"hwupload,scale_vaapi=format=nv12,tonemap_vaapi=t={algorithm},hwdownload";
+        }
+
+        // MARK: GetSoftwareToneMapFilter
+        private static string GetSoftwareToneMapFilter(EncodingOptions options)
+        {
+            var algorithm = GetToneMappingAlgorithm(options);
+            double npl = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
+            
+            // Return clean filter string without -vf prefix and without extra quotes
+            return $"zscale=transfer=linear:primaries=bt2020:matrix=bt2020nc:range=pc,tonemap=tonemap={algorithm}:peak={npl}:desat=0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:range=pc,format=yuv420p";
+        }
+
+        // MARK: GetToneMappingAlgorithm
+        private static string GetToneMappingAlgorithm(EncodingOptions options)
+        {
+            return options.TonemappingAlgorithm switch
             {
                 TonemappingAlgorithm.hable => "hable",
                 TonemappingAlgorithm.reinhard => "reinhard",
-                TonemappingAlgorithm.mobius => "mobius",
+                TonemappingAlgorithm.mobius => "mobius", 
                 TonemappingAlgorithm.bt2390 => "bt2390",
                 _ => "hable"
             };
-
-            // Set nominal peak luminance
-            double npl = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
-
-            // Return FFmpeg filter string
-            return $"-vf \"zscale=t=linear:npl={npl},tonemap={algorithm},format=yuv420p\"";
         }
     }
 }

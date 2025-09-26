@@ -25,24 +25,26 @@ public class ConfigurationHashService
     {
         ArgumentNullException.ThrowIfNull(config);
 
-        // Create configuration subset excluding EnableProvider and EnableTask
+        // Create configuration subset excluding system settings (EnableProvider, EnableTask)
         var hashConfig = new
         {
+            config.ExtractPoster,
+            config.EnableLetterboxDetection,
+            config.LetterboxBlackThreshold,
+            config.LetterboxConfidence,
+            config.ExtractWindowStart,
+            config.ExtractWindowEnd,
             config.PosterStyle,
             config.CutoutType,
             config.CutoutBorder,
             config.LogoPosition,
             config.LogoAlignment,
             config.LogoHeight,
-            config.ExtractPoster,
             config.BrightenHDR,
             config.PosterFill,
             config.PosterDimensionRatio,
             config.PosterFileType,
             config.PosterSafeArea,
-            config.EnableLetterboxDetection,
-            config.LetterboxBlackThreshold,
-            config.LetterboxConfidence,
             config.ShowEpisode,
             config.EpisodeFontFamily,
             config.EpisodeFontStyle,
@@ -53,7 +55,12 @@ public class ConfigurationHashService
             config.TitleFontStyle,
             config.TitleFontSize,
             config.TitleFontColor,
-            config.OverlayColor
+            config.OverlayColor,
+            config.GraphicPath,
+            config.GraphicWidth,
+            config.GraphicHeight,
+            config.GraphicPosition,
+            config.GraphicAlignment
         };
 
         var json = JsonSerializer.Serialize(hashConfig, JsonOptions);

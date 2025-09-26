@@ -10,12 +10,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
-    /// <summary>
-    /// FFmpeg service for hardware-accelerated frame extraction and optional HDR tone mapping.
-    /// </summary>
     public class HardwareFFmpegService : IFFmpegService
     {
-        /// <summary>Logger for this service</summary>
         private readonly ILogger<HardwareFFmpegService> _logger;
 
         // MARK: Constructor
@@ -37,22 +33,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             if (video?.EpisodeFilePath == null) return null;
 
             var inputPath = video.EpisodeFilePath;
-            
-            // Use provided seek time - if null, caller should handle this
-            if (!seekSeconds.HasValue)
-            {
-                _logger.LogWarning("No seek time provided to HardwareFFmpegService.BuildFFmpegArgs");
-                return null;
-            }
+            var durationSeconds = video.VideoLengthTicks / (double)TimeSpan.TicksPerSecond;
+            if (durationSeconds <= 0) durationSeconds = 3600;
 
-            var actualSeekSeconds = seekSeconds.Value;
+            var actualSeekSeconds = seekSeconds ?? new Random().Next((int)(durationSeconds * 0.2), (int)(durationSeconds * 0.8));
 
-            // Hardware acceleration arguments
             var hwAccelArgs = encodingOptions.HardwareAccelerationType.ToFFmpegArg();
 
             string toneMapFilter = string.Empty;
 
-            // Apply tone mapping if HDR and enabled
             if (!skipToneMapping && encodingOptions.EnableTonemapping && video.VideoHdrType != VideoRangeType.SDR)
             {
                 toneMapFilter = ToneMapFilterService.GetToneMapFilter(
@@ -62,19 +51,19 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 ) ?? string.Empty;
             }
 
-            // Build FFmpeg command line
+            // Fixed: Build command properly without extra quotes around filter
             var args = $"-y {hwAccelArgs} -ss {actualSeekSeconds} -i \"{inputPath}\"";
+            
             if (!string.IsNullOrWhiteSpace(toneMapFilter))
-                args += $" {toneMapFilter}";
+            {
+                // Remove the -vf prefix since we add it here
+                var filterValue = toneMapFilter.StartsWith("-vf ", StringComparison.OrdinalIgnoreCase) ? toneMapFilter.Substring(4) : toneMapFilter;
+                args += $" -vf {filterValue}";
+            }
+            
             args += $" -frames:v 1 -q:v 2 \"{outputPath}\"";
 
             return args;
-        }
-
-        // MARK: BuildFFmpegArgs (legacy overload for backward compatibility)
-        public string? BuildFFmpegArgs(string outputPath, EpisodeMetadata metadata, EncodingOptions encodingOptions)
-        {
-            return BuildFFmpegArgs(outputPath, metadata, encodingOptions, null);
         }
 
         // MARK: CanProcess
@@ -85,14 +74,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             if (hdr == VideoRangeType.Unknown) return false;
 
-            // HDR without proper tonemapping support cannot be processed
             if (hdr != VideoRangeType.SDR &&
                 encodingOptions.EnableTonemapping &&
                 !encodingOptions.EnableVideoToolboxTonemapping &&
                 !encodingOptions.EnableVppTonemapping)
                 return false;
 
-            // Check if codec is supported for hardware decoding
             return encodingOptions.HardwareDecodingCodecs
                 .Any(c => string.Equals(c, video.VideoCodec.ToString(), StringComparison.OrdinalIgnoreCase));
         }

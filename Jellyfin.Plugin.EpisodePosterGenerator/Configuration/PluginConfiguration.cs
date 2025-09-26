@@ -28,12 +28,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         /// <summary>
         /// Gets or sets the black threshold for letterbox detection (0-255).
         /// </summary>
-        public int LetterboxBlackThreshold { get; set; } = 100;
+        public int LetterboxBlackThreshold { get; set; } = 25;
 
         /// <summary>
         /// Gets or sets the confidence threshold for letterbox detection (0.0-100.0).
         /// </summary>
-        public float LetterboxConfidence { get; set; } = 80.0f;
+        public float LetterboxConfidence { get; set; } = 85.0f;
 
         /// <summary>
         /// Gets or sets the start percentage for the extraction window (0.0-100.0).
