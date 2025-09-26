@@ -43,17 +43,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 return null;
             }
 
+            var videoMeta = metadata.VideoMetadata;
+            SKBitmap? canvasBitmap = null;
+            string? ffmpegOutputPath = null;
+
             try
             {
-                var videoMeta = metadata.VideoMetadata;
-                _logger.LogDebug("Generating canvas for {Width}x{Height} video", videoMeta.VideoWidth, videoMeta.VideoHeight);
-
-                SKBitmap canvasBitmap;
-                string? ffmpegOutputPath = null;
-
+                // Phase 1: Extract/Create Canvas
                 if (config.ExtractPoster)
                 {
-                    // Step 1: Extract frame (dark, uncropped)
+                    // Step 1: Extract bright frame (now includes brightness retry logic)
                     ffmpegOutputPath = await _ffmpegService.ExtractSceneAsync(
                         metadata,
                         config,
@@ -75,7 +74,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                     canvasBitmap = bitmap.Copy();
 
-                    // Step 2: Apply cropping on dark image (better letterbox detection)
+                    // Step 2: Apply cropping (letterbox/pillarbox detection)
                     var croppedBitmap = _croppingService.CropPoster(canvasBitmap, metadata.VideoMetadata, config);
                     if (croppedBitmap != canvasBitmap)
                     {
@@ -83,33 +82,53 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                         canvasBitmap = croppedBitmap;
                     }
 
-                    // Step 3: Check brightness and apply brightening if needed
+                    // Step 3: Apply HDR brightening if configured (always apply if > 0, no brightness check)
                     if (config.BrightenHDR > 0)
                     {
-                        if (_brightnessService.IsFrameBrightEnough(canvasBitmap))
-                        {
-                            _logger.LogDebug("Frame is already bright enough, skipping HDR brightening");
-                        }
-                        else
-                        {
-                            _logger.LogDebug("Applying HDR brightening: +{Brightness}%", config.BrightenHDR);
-                            _brightnessService.BrightenBitmap(canvasBitmap, config.BrightenHDR);
-                        }
+                        _logger.LogDebug("Applying HDR brightening: +{Brightness}%", config.BrightenHDR);
+                        _brightnessService.BrightenBitmap(canvasBitmap, config.BrightenHDR);
                     }
                 }
                 else
                 {
-                    // Create transparent canvas
+                    // Create transparent canvas when not extracting poster
                     canvasBitmap = CreateTransparentCanvas(
                         videoMeta.VideoWidth,
                         videoMeta.VideoHeight,
                         config.PosterFileType
                     ) is byte[] data
-                        ? SKBitmap.Decode(data) ?? new SKBitmap(videoMeta.VideoWidth, videoMeta.VideoHeight)
-                        : new SKBitmap(videoMeta.VideoWidth, videoMeta.VideoHeight);
+                        ? SKBitmap.Decode(data) ?? CreateFallbackCanvas(videoMeta.VideoWidth, videoMeta.VideoHeight)
+                        : CreateFallbackCanvas(videoMeta.VideoWidth, videoMeta.VideoHeight);
                 }
 
-                // Cleanup FFmpeg temporary file
+                // Phase 2: Apply poster style rendering
+                /*var styledBitmap = await _posterGeneratorService.GeneratePosterAsync(canvasBitmap, metadata, config);
+                if (styledBitmap == null)
+                {
+                    _logger.LogError("Failed to generate styled poster");
+                    return null;
+                }
+
+                if (styledBitmap != canvasBitmap)
+                {
+                    canvasBitmap?.Dispose();
+                    canvasBitmap = styledBitmap;
+                }*/
+
+                // Phase 3: Encode final image
+                return EncodeImage(canvasBitmap, config.PosterFileType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating poster for {SeriesName} - {EpisodeName}", 
+                    metadata.SeriesName, metadata.EpisodeName);
+                return null;
+            }
+            finally
+            {
+                // Cleanup
+                canvasBitmap?.Dispose();
+                
                 if (!string.IsNullOrEmpty(ffmpegOutputPath) && File.Exists(ffmpegOutputPath))
                 {
                     try
@@ -118,18 +137,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to delete temporary FFmpeg output file: {Path}", ffmpegOutputPath);
+                        _logger.LogWarning(ex, "Failed to cleanup temporary file: {FilePath}", ffmpegOutputPath);
                     }
                 }
+            }
+        }
 
-                // Step 4: Encode and return final canvas
-                return EncodeImage(canvasBitmap, config.PosterFileType);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to generate canvas for episode: {EpisodeName}", metadata.EpisodeName);
-                return null;
-            }
+        // MARK: CreateFallbackCanvas
+        private SKBitmap CreateFallbackCanvas(int width, int height)
+        {
+            _logger.LogDebug("Creating fallback canvas {Width}x{Height}", width, height);
+            return new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
         }
 
         // MARK: CreateTransparentCanvas

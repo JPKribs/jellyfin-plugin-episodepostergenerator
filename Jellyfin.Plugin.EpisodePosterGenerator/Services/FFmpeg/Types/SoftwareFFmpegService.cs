@@ -14,7 +14,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
     /// </summary>
     public class SoftwareFFmpegService : IFFmpegService
     {
-        /// <summary>Logger for this service</summary>
         private readonly ILogger<SoftwareFFmpegService> _logger;
 
         // MARK: Constructor
@@ -24,7 +23,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // MARK: BuildFFmpegArgs
-        public string? BuildFFmpegArgs(string outputPath, EpisodeMetadata metadata, EncodingOptions encodingOptions)
+        public string? BuildFFmpegArgs(
+            string outputPath,
+            EpisodeMetadata metadata,
+            EncodingOptions encodingOptions,
+            int? seekSeconds = 10,
+            bool skipToneMapping = false)
         {
             var video = metadata.VideoMetadata;
             if (video?.EpisodeFilePath == null)
@@ -34,20 +38,23 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
 
             var input = video.EpisodeFilePath;
-            var seekSeconds = 10; // fallback default timestamp
 
             string toneMapFilter = string.Empty;
 
             try
             {
-                // Only apply tone mapping if HDR and enabled
-                if (encodingOptions.EnableTonemapping && video.VideoHdrType != VideoRangeType.SDR)
+                // Only apply tone mapping if HDR, enabled, and not explicitly skipped
+                if (!skipToneMapping && encodingOptions.EnableTonemapping && video.VideoHdrType != VideoRangeType.SDR)
                 {
                     toneMapFilter = ToneMapFilterService.GetToneMapFilter(
                         encodingOptions,
                         video,
                         HardwareAccelerationType.none // software path
                     ) ?? string.Empty;
+                }
+                else if (skipToneMapping)
+                {
+                    _logger.LogInformation("Tone mapping skipped due to fallback/extraction issues.");
                 }
             }
             catch (Exception ex)

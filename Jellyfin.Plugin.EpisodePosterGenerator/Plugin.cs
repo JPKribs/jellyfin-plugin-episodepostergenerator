@@ -63,6 +63,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
                 _trackingDatabase);
 
             // MARK: Initialize FFmpeg services
+            _brightnessService = new BrightnessService(
+                loggerFactory.CreateLogger<BrightnessService>());
             _hardwareFFmpegService = new HardwareFFmpegService(
                 loggerFactory.CreateLogger<HardwareFFmpegService>());
             _softwareFFmpegService = new SoftwareFFmpegService(
@@ -71,12 +73,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
                 loggerFactory.CreateLogger<FFmpegService>(),
                 configurationManager,
                 _hardwareFFmpegService,
-                _softwareFFmpegService);
+                _softwareFFmpegService,
+                _brightnessService);
 
             // MARK: Initialize cropping service
-            _brightnessService = new BrightnessService(
-                loggerFactory.CreateLogger<BrightnessService>());
-    
             _croppingService = new CroppingService(
                 loggerFactory.CreateLogger<CroppingService>());
 

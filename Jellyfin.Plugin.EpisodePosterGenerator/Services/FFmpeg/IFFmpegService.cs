@@ -29,6 +29,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         /// Optionally build FFmpeg command arguments without executing.
         /// Useful for hardware services that want the controller to run FFmpeg.
         /// </summary>
-        string? BuildFFmpegArgs(string outputPath, EpisodeMetadata metadata, EncodingOptions encodingOptions);
-    }
+        string? BuildFFmpegArgs(
+                string outputPath,
+                EpisodeMetadata metadata,
+                EncodingOptions encodingOptions,
+                int? seekSeconds = null,
+                bool skipToneMapping = false
+            );
+        }
 }

@@ -24,18 +24,24 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             _logger = logger;
         }
 
-        // MARK: BuildFFmpegArgs
-        public string? BuildFFmpegArgs(string outputPath, EpisodeMetadata metadata, EncodingOptions encodingOptions)
+        // MARK: BuildFFmpegArgs (with seekSeconds parameter)
+        public string? BuildFFmpegArgs(
+                string outputPath,
+                EpisodeMetadata metadata,
+                EncodingOptions encodingOptions,
+                int? seekSeconds = null,
+                bool skipToneMapping = false
+            )
         {
             var video = metadata.VideoMetadata;
             if (video?.EpisodeFilePath == null) return null;
 
             var inputPath = video.EpisodeFilePath;
             var durationSeconds = video.VideoLengthTicks / (double)TimeSpan.TicksPerSecond;
-            if (durationSeconds <= 0) durationSeconds = 60;
+            if (durationSeconds <= 0) durationSeconds = 3600;
 
-            // Pick a random frame in the 20%-80% range of the video
-            var seekSeconds = new Random().Next((int)(durationSeconds * 0.2), (int)(durationSeconds * 0.8));
+            // Use provided seek time or generate random time in middle 60%
+            var actualSeekSeconds = seekSeconds ?? new Random().Next((int)(durationSeconds * 0.2), (int)(durationSeconds * 0.8));
 
             // Hardware acceleration arguments
             var hwAccelArgs = encodingOptions.HardwareAccelerationType.ToFFmpegArg();
@@ -43,7 +49,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             string toneMapFilter = string.Empty;
 
             // Apply tone mapping if HDR and enabled
-            if (encodingOptions.EnableTonemapping && video.VideoHdrType != VideoRangeType.SDR)
+            if (!skipToneMapping && encodingOptions.EnableTonemapping && video.VideoHdrType != VideoRangeType.SDR)
             {
                 toneMapFilter = ToneMapFilterService.GetToneMapFilter(
                     encodingOptions,
@@ -53,12 +59,18 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
 
             // Build FFmpeg command line
-            var args = $"-y {hwAccelArgs} -ss {seekSeconds} -i \"{inputPath}\"";
+            var args = $"-y {hwAccelArgs} -ss {actualSeekSeconds} -i \"{inputPath}\"";
             if (!string.IsNullOrWhiteSpace(toneMapFilter))
                 args += $" {toneMapFilter}";
             args += $" -frames:v 1 -q:v 2 \"{outputPath}\"";
 
             return args;
+        }
+
+        // MARK: BuildFFmpegArgs (legacy overload for backward compatibility)
+        public string? BuildFFmpegArgs(string outputPath, EpisodeMetadata metadata, EncodingOptions encodingOptions)
+        {
+            return BuildFFmpegArgs(outputPath, metadata, encodingOptions, null);
         }
 
         // MARK: CanProcess
