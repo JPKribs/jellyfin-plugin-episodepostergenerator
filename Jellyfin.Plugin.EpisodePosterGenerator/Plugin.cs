@@ -130,7 +130,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         {
             yield return new PluginPageInfo
             {
-                Name = "Episode Poster Generator",
+                // This MUST be "Configuration" in Jellyfin 10.10+ for the settings button to appear
+                Name = "Configuration",
                 EmbeddedResourcePath = $"{typeof(Plugin).Namespace}.Configuration.configPage.html",
                 MenuSection = "metadata",
                 DisplayName = "Episode Poster Generator"
@@ -142,7 +143,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         {
             var assembly = GetType().Assembly;
             var resourceNames = assembly.GetManifestResourceNames();
-            _logger.LogError("Available resources: {Resources}", string.Join(", ", resourceNames));
+            _logger.LogInformation("Available resources: {Resources}", string.Join(", ", resourceNames));
 
             return assembly.GetManifestResourceStream($"{typeof(Plugin).Namespace}.Logo.png")!;
         }
