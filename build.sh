@@ -159,33 +159,6 @@ main() {
     
     log "SUCCESS" "Build completed: $dll_path"
     
-    # Verify embedded resources in DLL
-    log "INFO" "Verifying embedded resources in built DLL"
-    local resource_count
-    if command -v dotnet >/dev/null 2>&1; then
-        # Use reflection to count embedded resources
-        resource_count=$(dotnet run --project - <<'EOF' 2>/dev/null || echo "0"
-using System;
-using System.Reflection;
-using System.Linq;
-
-var assembly = Assembly.LoadFrom(args[0]);
-var resources = assembly.GetManifestResourceNames();
-Console.WriteLine(resources.Length);
-foreach (var resource in resources.OrderBy(r => r))
-{
-    Console.WriteLine($"  {resource}");
-}
-EOF
-)
-        
-        if [[ "$resource_count" =~ ^[0-9]+$ ]] && [[ "$resource_count" -gt 0 ]]; then
-            log "SUCCESS" "Found $resource_count embedded resources in DLL"
-        else
-            log "WARN" "Could not verify embedded resources (reflection check failed)"
-        fi
-    fi
-    
     # Create ZIP package
     local zip_name="jellyfin-plugin-episodepostergenerator-$VERSION.zip"
     local zip_path="$OUTPUT_DIR/$zip_name"
