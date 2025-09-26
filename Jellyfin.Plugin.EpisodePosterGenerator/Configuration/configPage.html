@@ -154,374 +154,132 @@
 
                     <div class="inputContainer">
                         <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkLetterboxDetection" data-config="LetterboxDetection" />
+                            <input is="emby-checkbox" type="checkbox" id="chkEnableLetterboxDetection" data-config="EnableLetterboxDetection" />
                             <span>Enable Letterbox Detection</span>
                         </label>
                         <div class="fieldDescription">Automatically detect and crop letterbox borders.</div>
                     </div>
 
-                    <div class="inputContainer" data-depends-on="chkLetterboxDetection">
-                        <label for="txtCroppingThreshold">Cropping Threshold:</label>
-                        <input is="emby-input" type="number" id="txtCroppingThreshold" min="0" max="255" data-config="CroppingThreshold" data-type="number" />
+                    <div class="inputContainer" data-depends-on="chkEnableLetterboxDetection">
+                        <label for="txtLetterboxBlackThreshold">Black Threshold:</label>
+                        <input is="emby-input" type="number" id="txtLetterboxBlackThreshold" min="0" max="255" data-config="LetterboxBlackThreshold" data-type="number" />
                         <div class="fieldDescription">Brightness threshold for black detection (0-255).</div>
                     </div>
 
-                    <div class="inputContainer" data-depends-on="chkLetterboxDetection">
-                        <label for="txtCroppingSensitivity">Cropping Sensitivity:</label>
-                        <input is="emby-input" type="number" id="txtCroppingSensitivity" min="1" max="100" data-config="CroppingSensitivity" data-type="number" />
-                        <div class="fieldDescription">Sensitivity for letterbox detection (1-100).</div>
+                    <div class="inputContainer" data-depends-on="chkEnableLetterboxDetection">
+                        <label for="txtLetterboxConfidence">Confidence Threshold (%):</label>
+                        <input is="emby-input" type="number" id="txtLetterboxConfidence" min="0" max="100" step="0.1" data-config="LetterboxConfidence" data-type="number" />
+                        <div class="fieldDescription">Confidence threshold for letterbox detection (0-100%).</div>
                     </div>
 
-                    <!-- Video Settings -->
+                    <!-- Episode Display -->
                     <div class="sectionTitleContainer">
-                        <h2 class="sectionTitle">Video</h2>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtVideoTimestamp">Video Timestamp (seconds):</label>
-                        <input is="emby-input" type="number" id="txtVideoTimestamp" min="0" data-config="VideoTimestamp" data-type="number" />
-                        <div class="fieldDescription">Timestamp in seconds to extract the poster from (0 for automatic).</div>
-                    </div>
-
-                    <!-- Text Settings -->
-                    <div class="sectionTitleContainer">
-                        <h2 class="sectionTitle">Text</h2>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkShowSeriesLogo" data-config="ShowSeriesLogo" />
-                            <span>Show Series Logo</span>
-                        </label>
-                        <div class="fieldDescription">Display the series logo on the poster.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkShowEpisodeTitle" data-config="ShowEpisodeTitle" />
-                            <span>Show Episode Title</span>
-                        </label>
-                        <div class="fieldDescription">Display the episode title on the poster.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkShowEpisodeNumber" data-config="ShowEpisodeNumber" />
-                            <span>Show Episode Number</span>
-                        </label>
-                        <div class="fieldDescription">Display the episode number on the poster.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkShowSeason" data-config="ShowSeason" />
-                            <span>Show Season</span>
-                        </label>
-                        <div class="fieldDescription">Display season information on the poster.</div>
+                        <h2 class="sectionTitle">Episode Display</h2>
                     </div>
 
                     <div class="inputContainer">
                         <label class="checkboxContainer">
                             <input is="emby-checkbox" type="checkbox" id="chkShowEpisode" data-config="ShowEpisode" />
-                            <span>Show Episode</span>
+                            <span>Show Episode Number/Season</span>
                         </label>
-                        <div class="fieldDescription">Display episode information on the poster.</div>
+                        <div class="fieldDescription">Display episode and season information on the poster.</div>
                     </div>
 
-                    <!-- Title Font Settings -->
-                    <div class="sectionTitleContainer">
-                        <h2 class="sectionTitle">Title Font</h2>
+                    <div class="inputContainer" data-depends-on="chkShowEpisode">
+                        <label for="txtEpisodeFontFamily">Episode Font Family:</label>
+                        <input is="emby-input" type="text" id="txtEpisodeFontFamily" data-config="EpisodeFontFamily" />
+                        <div class="fieldDescription">Font family for episode number/season text.</div>
                     </div>
 
-                    <div class="inputContainer">
-                        <label for="txtTitleFontFamily">Font Family:</label>
-                        <input is="emby-input" type="text" id="txtTitleFontFamily" data-config="TitleFontFamily" />
-                        <div class="fieldDescription">Font family for episode title text.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtTitleFontSize">Font Size:</label>
-                        <input is="emby-input" type="number" id="txtTitleFontSize" min="8" max="200" data-config="TitleFontSize" data-type="number" />
-                        <div class="fieldDescription">Font size for episode title text.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtTitleColor">Title Color:</label>
-                        <div class="color-control-group">
-                            <input type="color" id="colorTitleColor" class="color-picker" />
-                            <input type="range" id="alphaTitleColor" class="alpha-slider" min="0" max="255" value="255" />
-                            <span class="alpha-label">255</span>
-                            <input is="emby-input" type="text" id="txtTitleColor" placeholder="#FFFFFFFF" data-config="TitleColor" class="hex-input" />
-                        </div>
-                        <div class="fieldDescription">ARGB hex color code for episode title text.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtTitleAlpha">Title Alpha:</label>
-                        <input is="emby-input" type="number" id="txtTitleAlpha" min="0" max="255" data-config="TitleAlpha" data-type="number" />
-                        <div class="fieldDescription">Alpha transparency for title text (0-255).</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtTitleBorderSize">Title Border Size:</label>
-                        <input is="emby-input" type="number" id="txtTitleBorderSize" min="0" max="20" data-config="TitleBorderSize" data-type="number" />
-                        <div class="fieldDescription">Border size for title text.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtTitleBorderColor">Title Border Color:</label>
-                        <div class="color-control-group">
-                            <input type="color" id="colorTitleBorderColor" class="color-picker" />
-                            <input type="range" id="alphaTitleBorderColor" class="alpha-slider" min="0" max="255" value="255" />
-                            <span class="alpha-label">255</span>
-                            <input is="emby-input" type="text" id="txtTitleBorderColor" placeholder="#000000FF" data-config="TitleBorderColor" class="hex-input" />
-                        </div>
-                        <div class="fieldDescription">ARGB hex color code for title border.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtTitleBorderAlpha">Title Border Alpha:</label>
-                        <input is="emby-input" type="number" id="txtTitleBorderAlpha" min="0" max="255" data-config="TitleBorderAlpha" data-type="number" />
-                        <div class="fieldDescription">Alpha transparency for title border (0-255).</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtTitleShadowSize">Title Shadow Size:</label>
-                        <input is="emby-input" type="number" id="txtTitleShadowSize" min="0" max="20" data-config="TitleShadowSize" data-type="number" />
-                        <div class="fieldDescription">Shadow size for title text.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtTitleShadowColor">Title Shadow Color:</label>
-                        <div class="color-control-group">
-                            <input type="color" id="colorTitleShadowColor" class="color-picker" />
-                            <input type="range" id="alphaTitleShadowColor" class="alpha-slider" min="0" max="255" value="128" />
-                            <span class="alpha-label">128</span>
-                            <input is="emby-input" type="text" id="txtTitleShadowColor" placeholder="#80000000" data-config="TitleShadowColor" class="hex-input" />
-                        </div>
-                        <div class="fieldDescription">ARGB hex color code for title shadow.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtTitleShadowAlpha">Title Shadow Alpha:</label>
-                        <input is="emby-input" type="number" id="txtTitleShadowAlpha" min="0" max="255" data-config="TitleShadowAlpha" data-type="number" />
-                        <div class="fieldDescription">Alpha transparency for title shadow (0-255).</div>
-                    </div>
-
-                    <!-- Number Font Settings -->
-                    <div class="sectionTitleContainer">
-                        <h2 class="sectionTitle">Number Font</h2>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtNumberFontFamily">Font Family:</label>
-                        <input is="emby-input" type="text" id="txtNumberFontFamily" data-config="NumberFontFamily" />
-                        <div class="fieldDescription">Font family for episode numbers.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtNumberFontSize">Font Size:</label>
-                        <input is="emby-input" type="number" id="txtNumberFontSize" min="8" max="200" data-config="NumberFontSize" data-type="number" />
-                        <div class="fieldDescription">Font size for episode numbers.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtNumberColor">Number Color:</label>
-                        <div class="color-control-group">
-                            <input type="color" id="colorNumberColor" class="color-picker" />
-                            <input type="range" id="alphaNumberColor" class="alpha-slider" min="0" max="255" value="255" />
-                            <span class="alpha-label">255</span>
-                            <input is="emby-input" type="text" id="txtNumberColor" placeholder="#FFFFFFFF" data-config="NumberColor" class="hex-input" />
-                        </div>
-                        <div class="fieldDescription">ARGB hex color code for episode numbers.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtNumberAlpha">Number Alpha:</label>
-                        <input is="emby-input" type="number" id="txtNumberAlpha" min="0" max="255" data-config="NumberAlpha" data-type="number" />
-                        <div class="fieldDescription">Alpha transparency for numbers (0-255).</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtNumberBorderSize">Number Border Size:</label>
-                        <input is="emby-input" type="number" id="txtNumberBorderSize" min="0" max="20" data-config="NumberBorderSize" data-type="number" />
-                        <div class="fieldDescription">Border size for numbers.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtNumberBorderColor">Number Border Color:</label>
-                        <div class="color-control-group">
-                            <input type="color" id="colorNumberBorderColor" class="color-picker" />
-                            <input type="range" id="alphaNumberBorderColor" class="alpha-slider" min="0" max="255" value="255" />
-                            <span class="alpha-label">255</span>
-                            <input is="emby-input" type="text" id="txtNumberBorderColor" placeholder="#000000FF" data-config="NumberBorderColor" class="hex-input" />
-                        </div>
-                        <div class="fieldDescription">ARGB hex color code for number border.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtNumberBorderAlpha">Number Border Alpha:</label>
-                        <input is="emby-input" type="number" id="txtNumberBorderAlpha" min="0" max="255" data-config="NumberBorderAlpha" data-type="number" />
-                        <div class="fieldDescription">Alpha transparency for number border (0-255).</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtNumberShadowSize">Number Shadow Size:</label>
-                        <input is="emby-input" type="number" id="txtNumberShadowSize" min="0" max="20" data-config="NumberShadowSize" data-type="number" />
-                        <div class="fieldDescription">Shadow size for numbers.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtNumberShadowColor">Number Shadow Color:</label>
-                        <div class="color-control-group">
-                            <input type="color" id="colorNumberShadowColor" class="color-picker" />
-                            <input type="range" id="alphaNumberShadowColor" class="alpha-slider" min="0" max="255" value="128" />
-                            <span class="alpha-label">128</span>
-                            <input is="emby-input" type="text" id="txtNumberShadowColor" placeholder="#80000000" data-config="NumberShadowColor" class="hex-input" />
-                        </div>
-                        <div class="fieldDescription">ARGB hex color code for number shadow.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtNumberShadowAlpha">Number Shadow Alpha:</label>
-                        <input is="emby-input" type="number" id="txtNumberShadowAlpha" min="0" max="255" data-config="NumberShadowAlpha" data-type="number" />
-                        <div class="fieldDescription">Alpha transparency for number shadow (0-255).</div>
-                    </div>
-
-                    <!-- Background Settings -->
-                    <div class="sectionTitleContainer">
-                        <h2 class="sectionTitle">Background</h2>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="selectBackgroundType">Background Type:</label>
-                        <select is="emby-select" id="selectBackgroundType" data-config="BackgroundType">
-                            <option value="None">None</option>
-                            <option value="Solid">Solid Color</option>
-                            <option value="Blur">Blurred Image</option>
-                            <option value="Darken">Darkened Image</option>
+                    <div class="inputContainer" data-depends-on="chkShowEpisode">
+                        <label for="selectEpisodeFontStyle">Episode Font Style:</label>
+                        <select is="emby-select" id="selectEpisodeFontStyle" data-config="EpisodeFontStyle">
+                            <option value="Normal">Normal</option>
+                            <option value="Bold">Bold</option>
+                            <option value="Italic">Italic</option>
+                            <option value="BoldItalic">Bold Italic</option>
                         </select>
-                        <div class="fieldDescription">Type of background to apply.</div>
+                        <div class="fieldDescription">Font style for episode number/season text.</div>
                     </div>
 
-                    <div class="inputContainer">
-                        <label for="txtBackgroundColor">Background Color:</label>
+                    <div class="inputContainer" data-depends-on="chkShowEpisode">
+                        <label for="txtEpisodeFontSize">Episode Font Size (%):</label>
+                        <input is="emby-input" type="number" id="txtEpisodeFontSize" min="1" max="50" step="0.1" data-config="EpisodeFontSize" data-type="number" />
+                        <div class="fieldDescription">Font size as percentage of poster height.</div>
+                    </div>
+
+                    <div class="inputContainer" data-depends-on="chkShowEpisode">
+                        <label for="txtEpisodeFontColor">Episode Font Color:</label>
                         <div class="color-control-group">
-                            <input type="color" id="colorBackgroundColor" class="color-picker" />
-                            <input type="range" id="alphaBackgroundColor" class="alpha-slider" min="0" max="255" value="128" />
-                            <span class="alpha-label">128</span>
-                            <input is="emby-input" type="text" id="txtBackgroundColor" placeholder="#80000000" data-config="BackgroundColor" class="hex-input" />
-                        </div>
-                        <div class="fieldDescription">ARGB hex color code for background.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtBackgroundAlpha">Background Alpha:</label>
-                        <input is="emby-input" type="number" id="txtBackgroundAlpha" min="0" max="255" data-config="BackgroundAlpha" data-type="number" />
-                        <div class="fieldDescription">Alpha transparency for background (0-255).</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtBackgroundBlurRadius">Background Blur Radius:</label>
-                        <input is="emby-input" type="number" id="txtBackgroundBlurRadius" min="0" max="50" data-config="BackgroundBlurRadius" data-type="number" />
-                        <div class="fieldDescription">Blur radius for background image.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtBackgroundDarkenAmount">Background Darken Amount:</label>
-                        <input is="emby-input" type="number" id="txtBackgroundDarkenAmount" min="0" max="100" data-config="BackgroundDarkenAmount" data-type="number" />
-                        <div class="fieldDescription">Amount to darken background image (0-100%).</div>
-                    </div>
-
-                    <!-- Border Settings -->
-                    <div class="sectionTitleContainer">
-                        <h2 class="sectionTitle">Border</h2>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="selectBorderType">Border Type:</label>
-                        <select is="emby-select" id="selectBorderType" data-config="BorderType">
-                            <option value="None">None</option>
-                            <option value="Solid">Solid</option>
-                            <option value="Rounded">Rounded</option>
-                        </select>
-                        <div class="fieldDescription">Type of border to apply.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtBorderSize">Border Size:</label>
-                        <input is="emby-input" type="number" id="txtBorderSize" min="0" max="50" data-config="BorderSize" data-type="number" />
-                        <div class="fieldDescription">Size of the border in pixels.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtBorderColor">Border Color:</label>
-                        <div class="color-control-group">
-                            <input type="color" id="colorBorderColor" class="color-picker" />
-                            <input type="range" id="alphaBorderColor" class="alpha-slider" min="0" max="255" value="255" />
+                            <input type="color" id="colorEpisodeFontColor" class="color-picker" />
+                            <input type="range" id="alphaEpisodeFontColor" class="alpha-slider" min="0" max="255" value="255" />
                             <span class="alpha-label">255</span>
-                            <input is="emby-input" type="text" id="txtBorderColor" placeholder="#FFFFFFFF" data-config="BorderColor" class="hex-input" />
+                            <input is="emby-input" type="text" id="txtEpisodeFontColor" placeholder="#FFFFFFFF" data-config="EpisodeFontColor" class="hex-input" />
                         </div>
-                        <div class="fieldDescription">ARGB hex color code for border.</div>
+                        <div class="fieldDescription">ARGB hex color code for episode number/season text.</div>
                     </div>
 
-                    <div class="inputContainer">
-                        <label for="txtBorderAlpha">Border Alpha:</label>
-                        <input is="emby-input" type="number" id="txtBorderAlpha" min="0" max="255" data-config="BorderAlpha" data-type="number" />
-                        <div class="fieldDescription">Alpha transparency for border (0-255).</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtBorderRadius">Border Radius:</label>
-                        <input is="emby-input" type="number" id="txtBorderRadius" min="0" max="50" data-config="BorderRadius" data-type="number" />
-                        <div class="fieldDescription">Radius for rounded borders in pixels.</div>
-                    </div>
-
-                    <!-- Performance Settings -->
+                    <!-- Title Display -->
                     <div class="sectionTitleContainer">
-                        <h2 class="sectionTitle">Performance</h2>
+                        <h2 class="sectionTitle">Title Display</h2>
                     </div>
 
                     <div class="inputContainer">
                         <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkEnableHardwareAcceleration" data-config="EnableHardwareAcceleration" />
-                            <span>Enable Hardware Acceleration</span>
+                            <input is="emby-checkbox" type="checkbox" id="chkShowTitle" data-config="ShowTitle" />
+                            <span>Show Episode Title</span>
                         </label>
-                        <div class="fieldDescription">Enable hardware acceleration for video processing.</div>
+                        <div class="fieldDescription">Display the episode title on the poster.</div>
                     </div>
 
-                    <div class="inputContainer" data-depends-on="chkEnableHardwareAcceleration">
-                        <label for="selectHardwareAccelerationType">Hardware Acceleration Type:</label>
-                        <select is="emby-select" id="selectHardwareAccelerationType" data-config="HardwareAccelerationType">
-                            <option value="Auto">Auto</option>
-                            <option value="NVENC">NVENC</option>
-                            <option value="QSV">Intel QSV</option>
-                            <option value="VAAPI">VAAPI</option>
-                            <option value="VideoToolbox">VideoToolbox</option>
+                    <div class="inputContainer" data-depends-on="chkShowTitle">
+                        <label for="txtTitleFontFamily">Title Font Family:</label>
+                        <input is="emby-input" type="text" id="txtTitleFontFamily" data-config="TitleFontFamily" />
+                        <div class="fieldDescription">Font family for episode title text.</div>
+                    </div>
+
+                    <div class="inputContainer" data-depends-on="chkShowTitle">
+                        <label for="selectTitleFontStyle">Title Font Style:</label>
+                        <select is="emby-select" id="selectTitleFontStyle" data-config="TitleFontStyle">
+                            <option value="Normal">Normal</option>
+                            <option value="Bold">Bold</option>
+                            <option value="Italic">Italic</option>
+                            <option value="BoldItalic">Bold Italic</option>
                         </select>
-                        <div class="fieldDescription">Type of hardware acceleration to use.</div>
+                        <div class="fieldDescription">Font style for episode title text.</div>
+                    </div>
+
+                    <div class="inputContainer" data-depends-on="chkShowTitle">
+                        <label for="txtTitleFontSize">Title Font Size (%):</label>
+                        <input is="emby-input" type="number" id="txtTitleFontSize" min="1" max="50" step="0.1" data-config="TitleFontSize" data-type="number" />
+                        <div class="fieldDescription">Font size as percentage of poster height.</div>
+                    </div>
+
+                    <div class="inputContainer" data-depends-on="chkShowTitle">
+                        <label for="txtTitleFontColor">Title Font Color:</label>
+                        <div class="color-control-group">
+                            <input type="color" id="colorTitleFontColor" class="color-picker" />
+                            <input type="range" id="alphaTitleFontColor" class="alpha-slider" min="0" max="255" value="255" />
+                            <span class="alpha-label">255</span>
+                            <input is="emby-input" type="text" id="txtTitleFontColor" placeholder="#FFFFFFFF" data-config="TitleFontColor" class="hex-input" />
+                        </div>
+                        <div class="fieldDescription">ARGB hex color code for episode title text.</div>
+                    </div>
+
+                    <!-- Overlay -->
+                    <div class="sectionTitleContainer">
+                        <h2 class="sectionTitle">Overlay</h2>
                     </div>
 
                     <div class="inputContainer">
-                        <label for="selectQualityLevel">Quality Level:</label>
-                        <select is="emby-select" id="selectQualityLevel" data-config="QualityLevel">
-                            <option value="Low">Low</option>
-                            <option value="Medium">Medium</option>
-                            <option value="High">High</option>
-                        </select>
-                        <div class="fieldDescription">Quality level for poster generation.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtMaxConcurrentOperations">Max Concurrent Operations:</label>
-                        <input is="emby-input" type="number" id="txtMaxConcurrentOperations" min="1" max="10" data-config="MaxConcurrentOperations" data-type="number" />
-                        <div class="fieldDescription">Maximum number of concurrent poster generation operations.</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label for="txtTimeoutSeconds">Timeout (seconds):</label>
-                        <input is="emby-input" type="number" id="txtTimeoutSeconds" min="30" max="600" data-config="TimeoutSeconds" data-type="number" />
-                        <div class="fieldDescription">Timeout for poster generation operations.</div>
+                        <label for="txtOverlayColor">Overlay Color:</label>
+                        <div class="color-control-group">
+                            <input type="color" id="colorOverlayColor" class="color-picker" />
+                            <input type="range" id="alphaOverlayColor" class="alpha-slider" min="0" max="255" value="102" />
+                            <span class="alpha-label">102</span>
+                            <input is="emby-input" type="text" id="txtOverlayColor" placeholder="#66000000" data-config="OverlayColor" class="hex-input" />
+                        </div>
+                        <div class="fieldDescription">ARGB hex for background overlay color and transparency.</div>
                     </div>
 
                     <!-- Database Management -->

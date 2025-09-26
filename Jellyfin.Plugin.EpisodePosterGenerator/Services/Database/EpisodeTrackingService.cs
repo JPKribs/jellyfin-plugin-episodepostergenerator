@@ -42,29 +42,26 @@ public class EpisodeTrackingService
         _configHashService = configHashService;
     }
 
-    // MARK: ShouldProcessEpisode
-    public async Task<bool> ShouldProcessEpisode(Episode episode, PluginConfiguration config)
+    // MARK: ShouldProcessEpisodeAsync
+    public async Task<bool> ShouldProcessEpisodeAsync(Episode episode, PluginConfiguration config)
     {
         if (episode?.Id == null || string.IsNullOrEmpty(episode.Path))
         {
             return false;
         }
 
-        // Check if episode has been processed before
         var record = await _database.GetProcessedEpisodeAsync(episode.Id).ConfigureAwait(false);
         if (record == null)
         {
-            return true; // Never processed, needs processing
+            return true;
         }
 
-        // Check if video file has changed
         if (HasVideoFileChanged(episode, record))
         {
             _logger.LogDebug("Video file changed for episode {EpisodeId}, requires reprocessing", episode.Id);
             return true;
         }
 
-        // Check if configuration has changed
         var currentConfigHash = _configHashService.GetCurrentHash(config);
         if (record.ConfigurationHash != currentConfigHash)
         {
@@ -72,14 +69,13 @@ public class EpisodeTrackingService
             return true;
         }
 
-        // Check if image was manually modified after processing
         if (IsImageModifiedAfterProcessing(episode, record))
         {
             _logger.LogDebug("Image manually modified for episode {EpisodeId}, skipping automatic reprocessing", episode.Id);
-            return false; // Skip to preserve manual changes
+            return false;
         }
 
-        return false; // No changes detected
+        return false;
     }
 
     // MARK: MarkEpisodeProcessedAsync
@@ -129,7 +125,7 @@ public class EpisodeTrackingService
     {
         if (!File.Exists(episode.Path))
         {
-            return true; // File missing, needs reprocessing
+            return true;
         }
 
         var fileInfo = new FileInfo(episode.Path);
@@ -147,13 +143,12 @@ public class EpisodeTrackingService
             var imagePath = episode.GetImagePath(ImageType.Primary, 0);
             if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
             {
-                return true; // Image deleted, requires reprocessing
+                return true;
             }
 
             var imageFileInfo = new FileInfo(imagePath);
             var imageLastModified = imageFileInfo.LastWriteTime;
 
-            // If image was modified after processing, it may have been manually changed
             if (imageLastModified > record.LastProcessed)
             {
                 return true;
@@ -163,7 +158,6 @@ public class EpisodeTrackingService
         }
         catch (Exception ex)
         {
-            // Conservative fallback - reprocess when modification check fails
             _logger.LogWarning(ex, "Failed to check image modification time for episode {EpisodeId}, will reprocess", episode.Id);
             return true;
         }

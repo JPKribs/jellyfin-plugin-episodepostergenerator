@@ -131,7 +131,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             yield return new PluginPageInfo
             {
                 Name = "Episode Poster Generator",
-                EmbeddedResourcePath = $"{typeof(Plugin).Namespace}.Configuration.configPage.html"
+                EmbeddedResourcePath = $"{typeof(Plugin).Namespace}.Configuration.configPage.html",
+                MenuSection = "metadata",
+                DisplayName = "Episode Poster Generator"
             };
         }
 

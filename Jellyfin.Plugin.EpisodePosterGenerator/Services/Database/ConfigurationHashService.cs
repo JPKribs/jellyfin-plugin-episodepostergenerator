@@ -11,11 +11,19 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services;
 /// </summary>
 public class ConfigurationHashService
 {
+    /// <summary>
+    /// Cached JSON serializer options for consistent hash generation
+    /// </summary>
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false
+    };
+
     // MARK: ComputeHash
     public string ComputeHash(PluginConfiguration config)
     {
-        if (config == null)
-            throw new ArgumentNullException(nameof(config));
+        ArgumentNullException.ThrowIfNull(config);
 
         // Create configuration subset excluding EnableProvider and EnableTask
         var hashConfig = new
@@ -32,60 +40,24 @@ public class ConfigurationHashService
             config.PosterDimensionRatio,
             config.PosterFileType,
             config.PosterSafeArea,
-            config.LetterboxDetection,
-            config.CroppingThreshold,
-            config.CroppingSensitivity,
-            config.VideoTimestamp,
-            config.ShowSeriesLogo,
-            config.ShowEpisodeTitle,
-            config.ShowEpisodeNumber,
-            config.ShowSeason,
+            config.EnableLetterboxDetection,
+            config.LetterboxBlackThreshold,
+            config.LetterboxConfidence,
             config.ShowEpisode,
+            config.EpisodeFontFamily,
+            config.EpisodeFontStyle,
+            config.EpisodeFontSize,
+            config.EpisodeFontColor,
+            config.ShowTitle,
             config.TitleFontFamily,
+            config.TitleFontStyle,
             config.TitleFontSize,
-            config.TitleColor,
-            config.TitleAlpha,
-            config.TitleBorderSize,
-            config.TitleBorderColor,
-            config.TitleBorderAlpha,
-            config.TitleShadowSize,
-            config.TitleShadowColor,
-            config.TitleShadowAlpha,
-            config.NumberFontFamily,
-            config.NumberFontSize,
-            config.NumberColor,
-            config.NumberAlpha,
-            config.NumberBorderSize,
-            config.NumberBorderColor,
-            config.NumberBorderAlpha,
-            config.NumberShadowSize,
-            config.NumberShadowColor,
-            config.NumberShadowAlpha,
-            config.BackgroundType,
-            config.BackgroundColor,
-            config.BackgroundAlpha,
-            config.BackgroundBlurRadius,
-            config.BackgroundDarkenAmount,
-            config.BorderType,
-            config.BorderSize,
-            config.BorderColor,
-            config.BorderAlpha,
-            config.BorderRadius,
-            config.EnableHardwareAcceleration,
-            config.HardwareAccelerationType,
-            config.QualityLevel,
-            config.MaxConcurrentOperations,
-            config.TimeoutSeconds
+            config.TitleFontColor,
+            config.OverlayColor
         };
 
-        var json = JsonSerializer.Serialize(hashConfig, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
-        });
-
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json));
+        var json = JsonSerializer.Serialize(hashConfig, JsonOptions);
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(json));
         return Convert.ToHexString(hashBytes);
     }
 

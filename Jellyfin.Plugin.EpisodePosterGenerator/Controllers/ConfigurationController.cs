@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using MediaBrowser.Controller;
 using Microsoft.AspNetCore.Authorization;
