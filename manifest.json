@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.10.22",
+        "changelog": "**Features:**\r\n\r\n  - Allow for Extract Window configuration\r\n  - Allow for custom Graphics on top of the overlay\r\n  - Allow clearing the database of previously processed work\r\n\r\n**Fixes:** \r\n\r\n  - Fix missing Plugin Page\r\n  - Only track changes to poster configurations not task/provider changes\r\n\r\n**Technical:**\r\n\r\n  - Rework to a generic 4 layer structure for extensibility\r\n  - Use HWA filters instead of always defaulting to SW\r\n  - VideoToolBox always defaults to SW tone mapping\r\n\r\n**Other:**\r\n\r\n  - Standardize all comments in code \r\n\r\n**Documentation:**\r\n\r\n  - Update Read Me to better explain the processing\r\n  - Renew screenshots on latest version\r\n  - Add screenshot configuration steps",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.22/jellyfin-plugin-episodepostergenerator-10.10.22.zip",
+        "checksum": "b9eeccbdd96a5fec4385dd783aee9a1f",
+        "timestamp": "2025-09-26T21:30:39Z"
+      },
+      {
         "version": "10.10.21",
         "changelog": "**Fixes**\r\n\r\n* Fix Missing Logo\r\n* Maybe Fix Broken Plugin Page",
         "targetAbi": "10.10.7.0",
