@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.10.21",
+        "changelog": "**Fixes**\r\n\r\n* Fix Missing Logo\r\n* Maybe Fix Broken Plugin Page",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.21/jellyfin-plugin-episodepostergenerator-10.10.21.zip",
+        "checksum": "20fef18f722705723fa4c97e6afcfdb1",
+        "timestamp": "2025-09-26T06:54:04Z"
+      },
+      {
         "version": "10.10.20",
         "changelog": "**Features**\r\n* HWA Tone Mapping\r\n* Fallback to SW if HWA fails\r\n**Fixes**\r\n* Maybe Fix Missing Logo\r\n* Maybe Fix Broken Plugin Page\r\n**Technical**\r\n* Rebuilt from the ground up\r\n* Split FFmpeg with a shared parent\r\n* Migrate to single function services\r\n**Other**\r\n* Additional cleanup\r\n**Documentation**\r\n* Reduce comments and documentation",
         "targetAbi": "10.10.7.0",
