@@ -6,6 +6,7 @@ using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities.TV;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
+using Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
 using Microsoft.Extensions.Logging;
 using MediaBrowser.Common.Configuration;
 
@@ -16,19 +17,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
     /// </summary>
     public class PosterService
     {
-        /// <summary>
-        /// Logger for poster generation operations
-        /// </summary>
         private readonly ILogger<PosterService> _logger;
-
-        /// <summary>
-        /// Canvas service for creating poster canvases
-        /// </summary>
         private readonly CanvasService _canvasService;
-
-        /// <summary>
-        /// Server Configuraiton Manager
-        /// </summary>
         private readonly IServerConfigurationManager _configurationManager;
 
         // MARK: Constructor
@@ -56,8 +46,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             try
             {
-                _logger.LogInformation("Starting poster generation for episode: {SeriesName} - {EpisodeName}", 
-                    episode.Series?.Name ?? "Unknown Series", 
+                _logger.LogInformation("Starting poster generation for episode: {SeriesName} - {EpisodeName}",
+                    episode.Series?.Name ?? "Unknown Series",
                     episode.Name ?? "Unknown Episode");
 
                 // Extract complete metadata from the episode
@@ -68,19 +58,42 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                 // Generate canvas using CanvasService
                 var canvasData = await _canvasService.GenerateCanvasAsync(episodeMetadata, config).ConfigureAwait(false);
-                
                 if (canvasData == null || canvasData.Length == 0)
                 {
                     _logger.LogWarning("Failed to generate canvas for episode: {EpisodeName}", episode.Name);
                     return null;
                 }
 
-                // Save canvas to temporary file
-                var tempFilePath = GetTemporaryPosterPath(episode.Id, config.PosterFileType);
-                await File.WriteAllBytesAsync(tempFilePath, canvasData).ConfigureAwait(false);
+                // Decode SKBitmap from byte array
+                using var bitmap = SkiaSharp.SKBitmap.Decode(canvasData);
+                if (bitmap == null)
+                {
+                    _logger.LogWarning("Failed to decode bitmap for episode: {EpisodeName}", episode.Name);
+                    return null;
+                }
 
-                _logger.LogInformation("Poster generated and saved to: {FilePath}", tempFilePath);
-                return tempFilePath;
+                // MARK: Select Poster Generator
+                IPosterGenerator generator = config.PosterStyle switch
+                {
+                    PosterStyle.Logo => new LogoPosterGenerator(),
+                    PosterStyle.Numeral => new NumeralPosterGenerator(),
+                    PosterStyle.Standard => new StandardPosterGenerator(),
+                    _ => new StandardPosterGenerator() // fallback
+                };
+
+                // Determine temp path
+                var tempFilePath = GetTemporaryPosterPath(episode.Id, config.PosterFileType);
+
+                // Generate poster
+                var resultPath = generator.Generate(bitmap, episodeMetadata, config, tempFilePath);
+                if (resultPath == null)
+                {
+                    _logger.LogWarning("Poster generator failed for episode: {EpisodeName}", episode.Name);
+                    return null;
+                }
+
+                _logger.LogInformation("Poster generated and saved to: {FilePath}", resultPath);
+                return resultPath;
             }
             catch (Exception ex)
             {

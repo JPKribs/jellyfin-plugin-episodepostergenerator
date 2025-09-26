@@ -9,20 +9,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
 
 /// <summary>
 /// Generates standard-style episode posters with layered rendering approach.
-/// Creates posters with episode screenshot background, optional overlay tint, and bottom-aligned text elements.
-/// Text elements are stacked from bottom to top: episode info, separator line, and episode title.
+/// Renders background screenshot, optional overlay tint, and bottom-aligned text elements.
+/// Text elements stack from bottom to top: episode info, separator line, episode title.
 /// </summary>
 public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
 {
-    /// <summary>
-    /// Generates a standard-style poster image with layered rendering and bottom-aligned text elements.
-    /// Renders in order: image layer, overlay layer, then text layer with proper spacing.
-    /// </summary>
-    /// <param name="canvas">Source bitmap to render on.</param>
-    /// <param name="episodeMetadata">Episode metadata containing season/episode numbers and title.</param>
-    /// <param name="config">Plugin configuration with styling and font settings.</param>
-    /// <param name="outputPath">Path where the generated poster will be saved.</param>
-    /// <returns>Path to the generated poster file, or null if generation fails.</returns>
+    // MARK: - Public Interface
     public string? Generate(SKBitmap canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, string? outputPath = null)
     {
         try
@@ -30,11 +22,12 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
             using var surface = SKSurface.Create(new SKImageInfo(canvas.Width, canvas.Height));
             var skCanvas = surface.Canvas;
 
-            // Render layers in order: image, overlay, text
+            // MARK: Render Layers
             DrawImageLayer(skCanvas, canvas);
             DrawOverlayLayer(skCanvas, canvas.Width, canvas.Height, config);
             DrawTextLayer(skCanvas, episodeMetadata, config, canvas.Width, canvas.Height);
 
+            // MARK: Encode & Save
             using var image = surface.Snapshot();
             using var data = image.Encode(SKEncodedImageFormat.Jpeg, 95);
 
@@ -52,12 +45,14 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
         }
     }
 
+    // MARK: - Layer 1: Background Image
     private void DrawImageLayer(SKCanvas canvas, SKBitmap bitmap)
     {
         canvas.Clear();
         canvas.DrawBitmap(bitmap, 0, 0);
     }
 
+    // MARK: - Layer 2: Optional Overlay
     private void DrawOverlayLayer(SKCanvas canvas, int width, int height, PluginConfiguration config)
     {
         if (string.IsNullOrEmpty(config.OverlayColor))
@@ -74,6 +69,7 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
         canvas.DrawRect(SKRect.Create(width, height), overlayPaint);
     }
 
+    // MARK: - Layer 3: Bottom-aligned Text
     private void DrawTextLayer(SKCanvas canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int canvasWidth, int canvasHeight)
     {
         var seasonNumber = episodeMetadata.SeasonNumber ?? 0;
@@ -83,11 +79,11 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
         var safeAreaMargin = GetSafeAreaMargin(config);
         var bottomSafeAreaBoundary = canvasHeight - (canvasHeight * safeAreaMargin);
 
+        float spacingHeight = canvasHeight * 0.02f;
+        float currentBottomY = bottomSafeAreaBoundary;
+
         if (config.ShowTitle && config.ShowEpisode)
         {
-            var spacingHeight = canvasHeight * 0.02f;
-            var currentBottomY = bottomSafeAreaBoundary;
-
             var titleHeight = DrawEpisodeTitle(canvas, episodeTitle, config, canvasWidth, canvasHeight, currentBottomY);
             currentBottomY -= titleHeight + spacingHeight;
 
@@ -98,17 +94,18 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
         }
         else if (config.ShowTitle)
         {
-            DrawEpisodeTitle(canvas, episodeTitle, config, canvasWidth, canvasHeight, bottomSafeAreaBoundary);
+            DrawEpisodeTitle(canvas, episodeTitle, config, canvasWidth, canvasHeight, currentBottomY);
         }
         else if (config.ShowEpisode)
         {
-            DrawEpisodeInfo(canvas, seasonNumber, episodeNumber, config, canvasWidth, canvasHeight, bottomSafeAreaBoundary);
+            DrawEpisodeInfo(canvas, seasonNumber, episodeNumber, config, canvasWidth, canvasHeight, currentBottomY);
         }
     }
 
+    // MARK: Episode Title Rendering
     private float DrawEpisodeTitle(SKCanvas canvas, string title, PluginConfiguration config, int canvasWidth, int canvasHeight, float bottomY)
     {
-        var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight, (100f * GetSafeAreaMargin(config)));
+        var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight, 100f * GetSafeAreaMargin(config));
         var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
 
         using var titlePaint = new SKPaint
@@ -148,6 +145,7 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
         return totalHeight;
     }
 
+    // MARK: Separator Line Rendering
     private float DrawSeparatorLine(PluginConfiguration config, SKCanvas canvas, int canvasWidth, float y)
     {
         var margin = canvasWidth * GetSafeAreaMargin(config);
@@ -177,6 +175,7 @@ public class StandardPosterGenerator : BasePosterGenerator, IPosterGenerator
         return 4f;
     }
 
+    // MARK: Episode Info (Season • Episode)
     private void DrawEpisodeInfo(SKCanvas canvas, int seasonNumber, int episodeNumber, PluginConfiguration config, int canvasWidth, int canvasHeight, float bottomY)
     {
         var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, canvasHeight);

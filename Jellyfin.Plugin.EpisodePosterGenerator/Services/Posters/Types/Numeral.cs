@@ -12,10 +12,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
 /// </summary>
 public class NumeralPosterGenerator : BasePosterGenerator, IPosterGenerator
 {
+    // MARK: - Public Interface
     public string? Generate(SKBitmap canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, string? outputPath)
     {
         try
         {
+            // MARK: Temp Output Path
             if (string.IsNullOrEmpty(outputPath))
             {
                 outputPath = Path.Combine(
@@ -31,55 +33,23 @@ public class NumeralPosterGenerator : BasePosterGenerator, IPosterGenerator
             var skCanvas = surface.Canvas;
             skCanvas.Clear(SKColors.Transparent);
 
-            // Draw the input bitmap as base layer
+            // MARK: Layer 1 - Base Bitmap
             using var basePaint = new SKPaint { IsAntialias = true };
             skCanvas.DrawBitmap(canvas, 0, 0, basePaint);
 
-            // Apply overlay if configured
-            var overlayColor = ColorUtils.ParseHexColor(config.OverlayColor);
-            if (overlayColor.Alpha > 0)
-            {
-                using var overlayPaint = new SKPaint { Color = overlayColor, Style = SKPaintStyle.Fill };
-                skCanvas.DrawRect(SKRect.Create(width, height), overlayPaint);
-            }
+            // MARK: Layer 2 - Overlay
+            DrawOverlayLayer(skCanvas, width, height, config);
 
-            // Calculate safe area
-            ApplySafeAreaConstraints(width, height, config, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
+            // MARK: Layer 3 - Roman Numeral
+            DrawRomanNumeral(skCanvas, episodeMetadata, config, width, height);
 
-            // Determine numeral area (full safe area)
-            var numeralArea = new SKRect(safeLeft, safeTop, safeLeft + safeWidth, safeTop + safeHeight);
-
-            // Convert episode number to Roman numeral
-            var numeralText = NumberUtils.NumberToRomanNumeral(episodeMetadata.EpisodeNumberStart ?? 0);
-
-            // Create typeface
-            var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
-
-            // Calculate optimal font size
-            float fontSize = FontUtils.CalculateOptimalFontSize(numeralText, typeface, numeralArea.Width, numeralArea.Height);
-
-            using var numeralPaint = new SKPaint
-            {
-                Color = ColorUtils.ParseHexColor(config.EpisodeFontColor),
-                IsAntialias = true,
-                TextSize = fontSize,
-                Typeface = typeface,
-                TextAlign = SKTextAlign.Center
-            };
-
-            // Center Roman numeral in numeral area
-            float centerX = numeralArea.MidX;
-            var bounds = FontUtils.MeasureTextDimensions(numeralText, typeface, fontSize);
-            float numeralY = numeralArea.MidY + (bounds.Height / 2f);
-            skCanvas.DrawText(numeralText, centerX, numeralY, numeralPaint);
-
-            // Draw episode title if enabled
+            // MARK: Layer 4 - Title
             if (config.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
             {
                 TextUtils.DrawTitle(skCanvas, episodeMetadata.EpisodeName, Position.Center, Alignment.Center, config, width, height);
             }
 
-            // Encode and save final image
+            // MARK: Encode and Save
             using var finalImage = surface.Snapshot();
             using var data = finalImage.Encode(config.PosterFileType switch
             {
@@ -104,5 +74,43 @@ public class NumeralPosterGenerator : BasePosterGenerator, IPosterGenerator
             Console.WriteLine($"Numeral poster generation failed: {ex.Message}\n{ex.StackTrace}");
             return null;
         }
+    }
+
+    // MARK: - Overlay
+    private void DrawOverlayLayer(SKCanvas canvas, int width, int height, PluginConfiguration config)
+    {
+        var overlayColor = ColorUtils.ParseHexColor(config.OverlayColor);
+        if (overlayColor.Alpha > 0)
+        {
+            using var paint = new SKPaint { Color = overlayColor, Style = SKPaintStyle.Fill };
+            canvas.DrawRect(SKRect.Create(width, height), paint);
+        }
+    }
+
+    // MARK: - Roman Numeral
+    private void DrawRomanNumeral(SKCanvas canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+    {
+        ApplySafeAreaConstraints(width, height, config, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
+
+        var numeralText = NumberUtils.NumberToRomanNumeral(episodeMetadata.EpisodeNumberStart ?? 0);
+        var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
+
+        float fontSize = FontUtils.CalculateOptimalFontSize(numeralText, typeface, safeWidth, safeHeight);
+
+        using var numeralPaint = new SKPaint
+        {
+            Color = ColorUtils.ParseHexColor(config.EpisodeFontColor),
+            IsAntialias = true,
+            TextSize = fontSize,
+            Typeface = typeface,
+            TextAlign = SKTextAlign.Center
+        };
+
+        // Center text in safe area
+        float centerX = safeLeft + safeWidth / 2f;
+        var bounds = FontUtils.MeasureTextDimensions(numeralText, typeface, fontSize);
+        float centerY = safeTop + safeHeight / 2f + (bounds.Height / 2f);
+
+        canvas.DrawText(numeralText, centerX, centerY, numeralPaint);
     }
 }
