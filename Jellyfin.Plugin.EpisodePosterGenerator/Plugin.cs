@@ -54,13 +54,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _logger = logger;
             _loggerFactory = loggerFactory;
 
+            // MARK: Initialize configuration hash service
+            var configHashService = new ConfigurationHashService();
+
             // MARK: Initialize tracking services
             _trackingDatabase = new EpisodeTrackingDatabase(
                 loggerFactory.CreateLogger<EpisodeTrackingDatabase>(),
                 applicationPaths);
             _trackingService = new EpisodeTrackingService(
                 loggerFactory.CreateLogger<EpisodeTrackingService>(),
-                _trackingDatabase);
+                _trackingDatabase,
+                configHashService);
 
             // MARK: Initialize FFmpeg services
             _brightnessService = new BrightnessService(

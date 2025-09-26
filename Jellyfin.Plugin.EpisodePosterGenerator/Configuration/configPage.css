@@ -53,3 +53,30 @@
     padding-left: 1em;
     border-left: 2px solid rgba(85, 85, 85, 0.3);
 }
+
+.button-cancel {
+    background-color: #d32f2f !important;
+    color: white !important;
+}
+
+.button-cancel:hover {
+    background-color: #b71c1c !important;
+}
+
+.reset-warning {
+    background: rgba(211, 47, 47, 0.1);
+    border: 1px solid rgba(211, 47, 47, 0.3);
+    border-radius: 4px;
+    padding: 12px;
+    margin: 8px 0;
+    color: #ffcdd2;
+}
+
+.reset-success {
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-radius: 4px;
+    padding: 12px;
+    margin: 8px 0;
+    color: #c8e6c9;
+}

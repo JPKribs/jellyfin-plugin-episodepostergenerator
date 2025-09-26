@@ -65,6 +65,40 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
             }
         }
 
+        // MARK: ResetHistory
+        [HttpPost("ResetHistory")]
+        public async Task<IActionResult> ResetHistory()
+        {
+            try
+            {
+                var plugin = Plugin.Instance;
+                if (plugin == null)
+                {
+                    _logger.LogError("Plugin instance was null in ResetHistory.");
+                    return StatusCode(StatusCodes.Status500InternalServerError, "Plugin not initialized.");
+                }
+
+                // Get count before clearing for response
+                var clearedCount = await plugin.TrackingService.GetProcessedCountAsync().ConfigureAwait(false);
+                
+                // Clear all processed episodes
+                await plugin.TrackingService.ClearAllProcessedEpisodesAsync().ConfigureAwait(false);
+                
+                _logger.LogInformation("Processing history reset - cleared {Count} episodes", clearedCount);
+                
+                return Ok(new { 
+                    success = true, 
+                    clearedCount = clearedCount,
+                    message = "Processing history cleared successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to reset processing history");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to reset processing history");
+            }
+        }
+
         // MARK: CopyConfigurationProperties
         private void CopyConfigurationProperties(PluginConfiguration source, PluginConfiguration target)
         {

@@ -1,4 +1,6 @@
 var EpisodePosterGeneratorConfig = {
+
+    // MARK: pluginId
     pluginId: 'b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e',
 
     // MARK: updateVisibility
@@ -92,6 +94,92 @@ var EpisodePosterGeneratorConfig = {
         ApiClient.updatePluginConfiguration(this.pluginId, config).then(function (result) {
             Dashboard.processPluginConfigurationUpdateResult(result);
         });
+    },
+
+    // MARK: resetHistory
+    resetHistory: function() {
+        // Create confirmation dialog
+        const confirmationHtml = `
+            <div class="reset-warning">
+                <h3>⚠️ Warning</h3>
+                <p>This will permanently delete all episode processing history.</p>
+                <p>After resetting, all episodes will be reprocessed on the next run, which may take considerable time for large libraries.</p>
+                <p><strong>Are you sure you want to continue?</strong></p>
+            </div>
+        `;
+        
+        const dialog = Dashboard.confirm(confirmationHtml, 'Reset Processing History', function(confirmed) {
+            if (confirmed) {
+                EpisodePosterGeneratorConfig.performReset();
+            }
+        });
+        
+        // Style the dialog buttons
+        if (dialog) {
+            setTimeout(() => {
+                const confirmBtn = dialog.querySelector('.btnConfirm');
+                const cancelBtn = dialog.querySelector('.btnCancel');
+                
+                if (confirmBtn) {
+                    confirmBtn.textContent = 'Reset History';
+                    confirmBtn.style.backgroundColor = '#d32f2f';
+                    confirmBtn.style.color = 'white';
+                }
+                
+                if (cancelBtn) {
+                    cancelBtn.textContent = 'Cancel';
+                }
+            }, 100);
+        }
+    },
+
+    // MARK: performReset
+    performReset: function() {
+        Dashboard.showLoadingMsg();
+        
+        fetch('/Plugins/EpisodePosterGenerator/ResetHistory', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Emby-Token': ApiClient.accessToken()
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Failed to reset history');
+        })
+        .then(data => {
+            Dashboard.hideLoadingMsg();
+            
+            // Show success message
+            const successHtml = `
+                <div class="reset-success">
+                    <h3>✓ Success</h3>
+                    <p>Processing history has been cleared successfully.</p>
+                    <p>Processed episodes: ${data.clearedCount || 0}</p>
+                </div>
+            `;
+            
+            Dashboard.alert(successHtml, 'History Reset Complete');
+        })
+        .catch(error => {
+            Dashboard.hideLoadingMsg();
+            console.error('Reset history error:', error);
+            Dashboard.alert('Failed to reset processing history. Please check the server logs.', 'Error');
+        });
+    },
+
+    // MARK: bindResetHistoryEvent
+    bindResetHistoryEvent: function() {
+        const resetBtn = document.getElementById('btnResetHistory');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                EpisodePosterGeneratorConfig.resetHistory();
+            });
+        }
     },
 
     // MARK: initializeColorControls
@@ -191,37 +279,29 @@ var EpisodePosterGeneratorConfig = {
 
 // Event Listeners
 document.getElementById('EpisodePosterGeneratorConfigPage').addEventListener('pageshow', function () {
-EpisodePosterGeneratorConfig.loadConfig();
+    EpisodePosterGeneratorConfig.loadConfig();
+    EpisodePosterGeneratorConfig.bindResetHistoryEvent();
 });
 
 document.getElementById('EpisodePosterGeneratorConfigForm').addEventListener('submit', function (e) {
-e.preventDefault();
-EpisodePosterGeneratorConfig.saveConfig();
+    e.preventDefault();
+    EpisodePosterGeneratorConfig.saveConfig();
 });
 
 // Add listeners for visibility changes
 document.getElementById('selectPosterStyle').addEventListener('change', function () {
-EpisodePosterGeneratorConfig.updateVisibility();
+    EpisodePosterGeneratorConfig.updateVisibility();
 });
 
 document.getElementById('chkShowTitle').addEventListener('change', function () {
-EpisodePosterGeneratorConfig.updateVisibility();
-});
-
-// Add listeners for visibility changes
-document.getElementById('selectPosterStyle').addEventListener('change', function () {
-EpisodePosterGeneratorConfig.updateVisibility();
-});
-
-document.getElementById('chkShowTitle').addEventListener('change', function () {
-EpisodePosterGeneratorConfig.updateVisibility();
+    EpisodePosterGeneratorConfig.updateVisibility();
 });
 
 // Add listeners for letterbox detection dependencies
 document.getElementById('chkExtractPoster').addEventListener('change', function () {
-EpisodePosterGeneratorConfig.updateVisibility();
+    EpisodePosterGeneratorConfig.updateVisibility();
 });
 
 document.getElementById('chkEnableLetterboxDetection').addEventListener('change', function () {
-EpisodePosterGeneratorConfig.updateVisibility();
+    EpisodePosterGeneratorConfig.updateVisibility();
 });
