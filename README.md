@@ -55,7 +55,7 @@ Series logo-focused posters with episode information and clean typography.
 
 | Episode Title + Graphic | Show Title + Episode Title | Show Title + Episode Title + Extra |
 |------------------------|----------------------------|-----------------------------------|
-| ![Titel + Graphic](Screenshots/Logo/Episode_Title+Graphic.jpg) | ![All Titles](Screenshots/Logo/Show_Title+Episode_Title.jpg) | ![All Titles / No Extraction](Screenshots/Logo/Show_Title+Episode_Title+Extraction_Off) |
+| ![Titel + Graphic](Screenshots/Logo/Episode_Title+Graphic.jpg) | ![All Titles](Screenshots/Logo/Show_Title+Episode_Title.jpg) | ![All Titles / No Extraction](Screenshots/Logo/Show_Title+Episode_Title+Extraction_Off.jpg) |
 
 **Features:**
 - Series logo image as primary visual element
