@@ -145,7 +145,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         {
             var height = bitmap.Height;
             var width = bitmap.Width;
-            var maxScanLines = Math.Min(height / 2, 200); // Don't scan more than half of image or 200 lines
+            var maxScanLines = height / 4;
             
             int top = 0;
             int bottom = height - 1;
@@ -178,7 +178,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         {
             var width = bitmap.Width;
             var height = bitmap.Height;
-            var maxScanColumns = Math.Min(width / 2, 200); // Don't scan more than half of image or 200 columns
+            var maxScanColumns = width / 4;
             
             int left = 0;
             int right = width - 1;
