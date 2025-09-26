@@ -130,7 +130,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         {
             yield return new PluginPageInfo
             {
-                // This MUST be "Configuration" in Jellyfin 10.10+ for the settings button to appear
                 Name = "Configuration",
                 EmbeddedResourcePath = $"{typeof(Plugin).Namespace}.Configuration.configPage.html",
                 MenuSection = "metadata",
@@ -145,7 +144,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             var resourceNames = assembly.GetManifestResourceNames();
             _logger.LogInformation("Available resources: {Resources}", string.Join(", ", resourceNames));
 
-            return assembly.GetManifestResourceStream($"{typeof(Plugin).Namespace}.Logo.png")!;
+            var stream = assembly.GetManifestResourceStream($"{typeof(Plugin).Namespace}.Logo.png");
+            if (stream == null)
+                _logger.LogError("Logo.png resource not found!");
+
+            return stream!;
         }
 
         // MARK: Dispose

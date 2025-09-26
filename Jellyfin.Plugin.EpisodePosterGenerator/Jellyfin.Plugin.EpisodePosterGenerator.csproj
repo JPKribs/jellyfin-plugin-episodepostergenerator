@@ -16,19 +16,11 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
   </ItemGroup>
 
-<ItemGroup>
-    <EmbeddedResource Include="Configuration\configPage.html">
-        <LogicalName>Jellyfin.Plugin.EpisodePosterGenerator.Configuration.configPage.html</LogicalName>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Configuration\configPage.js">
-        <LogicalName>Jellyfin.Plugin.EpisodePosterGenerator.Configuration.configPage.js</LogicalName>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Configuration\configPage.css">
-        <LogicalName>Jellyfin.Plugin.EpisodePosterGenerator.Configuration.configPage.css</LogicalName>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Logo.png">
-        <LogicalName>Jellyfin.Plugin.EpisodePosterGenerator.Logo.png</LogicalName>
-    </EmbeddedResource>
-</ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration/configPage.css" />
+    <EmbeddedResource Include="Configuration/configPage.html" />
+    <EmbeddedResource Include="Configuration/configPage.js" />
+    <EmbeddedResource Include="Logo.png" />
+  </ItemGroup>
 
 </Project>
