@@ -129,7 +129,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
                 // Graphics layer respects safe area constraints
                 ApplySafeAreaConstraints(width, height, config, out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop);
-                var graphicRect = CalculateGraphicRect(graphicBitmap, safeLeft, safeTop, safeWidth, safeHeight);
+                var graphicRect = CalculateGraphicRect(graphicBitmap, safeLeft, safeTop, safeWidth, safeHeight, config);
 
                 using var graphicPaint = new SKPaint 
                 { 
@@ -159,27 +159,44 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         protected abstract void LogError(Exception ex, string? episodeName);
 
         // MARK: CalculateGraphicRect
-        protected virtual SKRect CalculateGraphicRect(SKBitmap graphicBitmap, float safeLeft, float safeTop, float safeWidth, float safeHeight)
+        protected virtual SKRect CalculateGraphicRect(SKBitmap graphicBitmap, float safeLeft, float safeTop, float safeWidth, float safeHeight, PluginConfiguration config)
         {
-            float maxSize = Math.Min(safeWidth, safeHeight) * 0.25f;
-            float aspectRatio = (float)graphicBitmap.Width / graphicBitmap.Height;
+            // Calculate graphic dimensions from percentages
+            var posterWidth = safeWidth / (1 - 2 * GetSafeAreaMargin(config));
+            var posterHeight = safeHeight / (1 - 2 * GetSafeAreaMargin(config));
             
-            float graphicWidth, graphicHeight;
-            if (aspectRatio > 1)
-            {
-                graphicWidth = Math.Min(maxSize, safeWidth * 0.3f);
-                graphicHeight = graphicWidth / aspectRatio;
-            }
-            else
-            {
-                graphicHeight = Math.Min(maxSize, safeHeight * 0.3f);
-                graphicWidth = graphicHeight * aspectRatio;
-            }
-
-            float x = safeLeft + (safeWidth - graphicWidth) / 2f;
-            float y = safeTop + (safeHeight - graphicHeight) / 2f;
-
+            var graphicWidth = posterWidth * (config.GraphicWidth / 100f);
+            var graphicHeight = posterHeight * (config.GraphicHeight / 100f);
+            
+            // Calculate position based on alignment and position
+            var x = CalculateGraphicX(config.GraphicAlignment, safeLeft, safeWidth, graphicWidth);
+            var y = CalculateGraphicY(config.GraphicPosition, safeTop, safeHeight, graphicHeight);
+            
             return new SKRect(x, y, x + graphicWidth, y + graphicHeight);
+        }
+
+        // MARK: CalculateGraphicX
+        private float CalculateGraphicX(Alignment alignment, float safeLeft, float safeWidth, float graphicWidth)
+        {
+            return alignment switch
+            {
+                Alignment.Left => safeLeft,
+                Alignment.Center => safeLeft + (safeWidth - graphicWidth) / 2f,
+                Alignment.Right => safeLeft + safeWidth - graphicWidth,
+                _ => safeLeft + (safeWidth - graphicWidth) / 2f
+            };
+        }
+
+        // MARK: CalculateGraphicY
+        private float CalculateGraphicY(Position position, float safeTop, float safeHeight, float graphicHeight)
+        {
+            return position switch
+            {
+                Position.Top => safeTop,
+                Position.Center => safeTop + (safeHeight - graphicHeight) / 2f,
+                Position.Bottom => safeTop + safeHeight - graphicHeight,
+                _ => safeTop + (safeHeight - graphicHeight) / 2f
+            };
         }
 
         // MARK: SavePoster

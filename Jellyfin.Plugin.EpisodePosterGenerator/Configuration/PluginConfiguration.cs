@@ -159,5 +159,25 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         /// File path to a static graphic to use for all posters.
         /// </summary>
         public string GraphicPath { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the graphic width as percentage of poster width (1-100%).
+        /// </summary>
+        public float GraphicWidth { get; set; } = 25.0f;
+
+        /// <summary>
+        /// Gets or sets the graphic height as percentage of poster height (1-100%).
+        /// </summary>
+        public float GraphicHeight { get; set; } = 25.0f;
+
+        /// <summary>
+        /// Gets or sets the vertical position of the static graphic on the poster.
+        /// </summary>
+        public Position GraphicPosition { get; set; } = Position.Center;
+
+        /// <summary>
+        /// Gets or sets the horizontal alignment of the static graphic on the poster.
+        /// </summary>
+        public Alignment GraphicAlignment { get; set; } = Alignment.Center;
     }
 }

@@ -85,6 +85,52 @@ Series logo-focused posters with episode information and clean typography.
 - **Fallback**: Series primary image
 - **Text Fallback**: Series name with optimized font scaling
 
+## Poster Architecture
+
+The Episode Poster Generator uses a standardized 4-layer rendering pipeline to create consistent, high-quality posters across all styles:
+
+### Layer 1: Canvas (Base Layer)
+The foundation layer that provides the visual background for the poster.
+
+**Options:**
+- **Video Frame Extraction**: Automatically extracts a representative frame from the episode video file using smart brightness detection and configurable extraction windows
+- **Transparent Background**: Creates a solid color or transparent canvas when video extraction is disabled
+
+**Processing:**
+- HDR brightening for HDR content
+- Letterbox/pillarbox detection and cropping
+- Aspect ratio adjustments and fill strategies
+
+### Layer 2: Overlay (Color Tinting)
+A semi-transparent color layer applied over the canvas to enhance text readability and create visual cohesion.
+
+**Features:**
+- Configurable ARGB hex colors with alpha transparency
+- Applied uniformly across the entire poster surface
+- Essential for ensuring text remains readable against varying background images
+
+### Layer 3: Graphics (Static Images)
+Optional static graphic overlays positioned above the canvas but below text elements.
+
+**Capabilities:**
+- User-configurable file path for custom graphics
+- Automatic sizing and positioning within safe area boundaries
+- Supports PNG, JPG, and WEBP formats
+- Maintains aspect ratio while fitting within poster constraints
+
+### Layer 4: Typography (Text and Logos)
+The top layer containing all text elements, episode information, and series logos.
+
+**Elements:**
+- Episode numbers and season information
+- Episode titles with automatic text wrapping
+- Series logos with configurable positioning
+- Style-specific typography (Roman numerals, cutout text, etc.)
+- Drop shadows and contrasting borders for enhanced readability
+
+### Rendering Pipeline
+Each poster style (Standard, Cutout, Numeral, Logo) follows this exact 4-layer sequence, ensuring consistent output quality and predictable layering behavior. The modular approach allows for easy customization and troubleshooting while maintaining visual coherence across different poster types.
+
 ## Installation
 
 ### Step 1: Add Plugin Repository

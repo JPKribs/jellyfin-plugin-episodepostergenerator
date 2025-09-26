@@ -47,22 +47,24 @@
                         <div class="fieldDescription">Extract the poster image from the episode.</div>
                     </div>
 
-                    <div class="inputContainer nested-settings" data-depends-on="chkExtractPoster">
-                        <label for="txtExtractWindowStart">Extraction Start (%):</label>
-                        <input is="emby-input" type="number" id="txtExtractWindowStart" min="0" max="100" step="1" data-config="ExtractWindowStart" data-type="number" />
-                        <div class="fieldDescription">Skip the first X% of the episode to avoid opening credits and intro sequences (0-100%).</div>
-                    </div>
+                    <div class="nested-settings" data-depends-on="chkExtractPoster">
+                        <div class="inputContainer">
+                            <label for="txtExtractWindowStart">Extraction Start (%):</label>
+                            <input is="emby-input" type="number" id="txtExtractWindowStart" min="0" max="100" step="1" data-config="ExtractWindowStart" data-type="number" />
+                            <div class="fieldDescription">Skip the first X% of the episode to avoid opening credits and intro sequences (0-100%).</div>
+                        </div>
 
-                    <div class="inputContainer nested-settings" data-depends-on="chkExtractPoster">
-                        <label for="txtExtractWindowEnd">Extraction End (%):</label>
-                        <input is="emby-input" type="number" id="txtExtractWindowEnd" min="0" max="100" step="1" data-config="ExtractWindowEnd" data-type="number" />
-                        <div class="fieldDescription">Stop extracting at X% of the episode to avoid end credits and outro sequences (0-100%).</div>
-                    </div>
+                        <div class="inputContainer">
+                            <label for="txtExtractWindowEnd">Extraction End (%):</label>
+                            <input is="emby-input" type="number" id="txtExtractWindowEnd" min="0" max="100" step="1" data-config="ExtractWindowEnd" data-type="number" />
+                            <div class="fieldDescription">Stop extracting at X% of the episode to avoid end credits and outro sequences (0-100%).</div>
+                        </div>
 
-                    <div class="inputContainer nested-settings" data-depends-on="chkExtractPoster">
-                        <label for="txtBrightenHDR">Brighten HDR (%):</label>
-                        <input is="emby-input" type="number" id="txtBrightenHDR" min="0" max="100" data-config="BrightenHDR" data-type="number" />
-                        <div class="fieldDescription">Brightness adjustment for HDR content as percentage (0-100%).</div>
+                        <div class="inputContainer">
+                            <label for="txtBrightenHDR">Brighten HDR (%):</label>
+                            <input is="emby-input" type="number" id="txtBrightenHDR" min="0" max="100" data-config="BrightenHDR" data-type="number" />
+                            <div class="fieldDescription">Brightness adjustment for HDR content as percentage (0-100%).</div>
+                        </div>
                     </div>
                 
                     <div class="inputContainer" id="letterboxDetectionContainer" data-depends-on="chkExtractPoster">
@@ -73,16 +75,18 @@
                         <div class="fieldDescription">Automatically detect and crop black letterbox borders from poster images.</div>
                     </div>
 
-                    <div class="inputContainer nested-settings" data-depends-on="chkExtractPoster,chkEnableLetterboxDetection">
-                        <label for="txtLetterboxBlackThreshold">Black Threshold:</label>
-                        <input is="emby-input" type="number" id="txtLetterboxBlackThreshold" min="0" max="255" data-config="LetterboxBlackThreshold" data-type="number" />
-                        <div class="fieldDescription">Pixel brightness threshold for black detection (0-255). Lower values detect darker pixels as letterbox.</div>
-                    </div>
+                    <div class="nested-settings" data-depends-on="chkExtractPoster,chkEnableLetterboxDetection">
+                        <div class="inputContainer"></div>
+                            <label for="txtLetterboxBlackThreshold">Black Threshold:</label>
+                            <input is="emby-input" type="number" id="txtLetterboxBlackThreshold" min="0" max="255" data-config="LetterboxBlackThreshold" data-type="number" />
+                            <div class="fieldDescription">Pixel brightness threshold for black detection (0-255). Lower values detect darker pixels as letterbox.</div>
+                        </div>
 
-                    <div class="inputContainer nested-settings" data-depends-on="chkExtractPoster,chkEnableLetterboxDetection">
-                        <label for="txtLetterboxConfidence">Detection Confidence (%):</label>
-                        <input is="emby-input" type="number" id="txtLetterboxConfidence" min="50" max="100" step="1" data-config="LetterboxConfidence" data-type="number" />
-                        <div class="fieldDescription">Percentage of pixels that must be black to consider it letterboxing (50-100%).</div>
+                        <div class="inputContainer">
+                            <label for="txtLetterboxConfidence">Detection Confidence (%):</label>
+                            <input is="emby-input" type="number" id="txtLetterboxConfidence" min="50" max="100" step="1" data-config="LetterboxConfidence" data-type="number" />
+                            <div class="fieldDescription">Percentage of pixels that must be black to consider it letterboxing (50-100%).</div>
+                        </div>
                     </div>
 
                     <div class="inputContainer">
@@ -351,13 +355,47 @@
 
                     <!-- Static Graphic -->
                     <div class="sectionTitleContainer">
-                        <h2 class="sectionTitle">Graphics</h2>
+                        <h2 class="sectionTitle">Static Graphic</h2>
                     </div>
 
                     <div class="inputContainer">
-                        <label for="txtGraphicPath">File Path:</label>
+                        <label for="txtGraphicPath">Graphic File Path:</label>
                         <input is="emby-input" type="text" id="txtGraphicPath" placeholder="/path/to/graphic.png" data-config="GraphicPath" />
-                        <div class="fieldDescription">File path to a static graphic overlay applied to all posters. The graphic is positioned above the base poster image & overlay but below all text elements. Supports PNG, JPG, and WEBP formats. Leave empty to disable. Use absolute file paths accessible by the Jellyfin server.</div>
+                        <div class="fieldDescription">Optional file path to a static graphic overlay applied to all posters. The graphic is positioned above the background image but below all text elements. Supports PNG, JPG, and WEBP formats. Leave empty to disable. Use absolute file paths accessible by the Jellyfin server.</div>
+                    </div>
+
+                    <div class="cutout-logo-group" id="graphicOptions" data-depends-on-value="txtGraphicPath">
+                        <div class="inputContainer">
+                            <label for="selectGraphicPosition">Graphic Position:</label>
+                            <select is="emby-select" id="selectGraphicPosition" data-config="GraphicPosition">
+                                <option value="Top">Top</option>
+                                <option value="Center">Center</option>
+                                <option value="Bottom">Bottom</option>
+                            </select>
+                            <div class="fieldDescription">Vertical position of the static graphic on the poster.</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label for="selectGraphicAlignment">Graphic Alignment:</label>
+                            <select is="emby-select" id="selectGraphicAlignment" data-config="GraphicAlignment">
+                                <option value="Left">Left</option>
+                                <option value="Center">Center</option>
+                                <option value="Right">Right</option>
+                            </select>
+                            <div class="fieldDescription">Horizontal alignment of the static graphic on the poster.</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label for="txtGraphicWidth">Graphic Width (%):</label>
+                            <input is="emby-input" type="number" id="txtGraphicWidth" min="1.0" max="100.0" data-config="GraphicWidth" data-type="number" />
+                            <div class="fieldDescription">Graphic width as a percentage of the poster width (1-100%).</div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label for="txtGraphicHeight">Graphic Height (%):</label>
+                            <input is="emby-input" type="number" id="txtGraphicHeight" min="1.0" max="100.0" data-config="GraphicHeight" data-type="number" />
+                            <div class="fieldDescription">Graphic height as a percentage of the poster height (1-100%).</div>
+                        </div>
                     </div>
 
                     <!-- Database Management -->
@@ -373,6 +411,10 @@
                     </div>
         
                     <!-- Save Button -->
+                    <div class="sectionTitleContainer">
+                        <h2 class="sectionTitle"></h2>
+                    </div>
+
                     <div class="inputContainer">
                         <button is="emby-button" type="submit" data-theme="b" class="raised button-submit block">
                             <span>Save</span>

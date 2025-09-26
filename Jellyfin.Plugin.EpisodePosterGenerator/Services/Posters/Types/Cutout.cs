@@ -31,17 +31,24 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             if (overlayColor.Alpha == 0)
                 return;
 
-            // Create overlay with cutout text
+            // Create a bitmap for the overlay with cutouts
+            using var overlayBitmap = new SKBitmap(width, height);
+            using var overlayCanvas = new SKCanvas(overlayBitmap);
+            
+            // Fill with overlay color
             using var overlayPaint = new SKPaint
             {
                 Color = overlayColor,
-                Style = SKPaintStyle.Fill,
-                BlendMode = SKBlendMode.Src
+                Style = SKPaintStyle.Fill
             };
-            skCanvas.DrawRect(SKRect.Create(width, height), overlayPaint);
+            overlayCanvas.DrawRect(SKRect.Create(width, height), overlayPaint);
 
-            // Cut out the episode text from the overlay
-            DrawCutoutText(skCanvas, episodeMetadata, config, width, height, overlayColor);
+            // Create cutout text (this will remove parts of the overlay)
+            DrawCutoutText(overlayCanvas, episodeMetadata, config, width, height, overlayColor);
+
+            // Draw the overlay with cutouts onto the main canvas
+            using var finalPaint = new SKPaint { IsAntialias = true };
+            skCanvas.DrawBitmap(overlayBitmap, 0, 0, finalPaint);
         }
 
         // MARK: RenderTypography
@@ -119,8 +126,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             // Draw cutout text (transparent)
             using var cutoutPaint = new SKPaint
             {
-                Color = SKColors.Transparent,
-                BlendMode = SKBlendMode.Clear,
+                BlendMode = SKBlendMode.DstOut,
                 IsAntialias = true,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Center,
