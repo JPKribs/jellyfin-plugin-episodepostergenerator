@@ -67,8 +67,6 @@ validate_resources() {
     local missing_files=()
     local config_files=(
         "$PROJECT_DIR/Configuration/configPage.html"
-        "$PROJECT_DIR/Configuration/configPage.js"
-        "$PROJECT_DIR/Configuration/configPage.css"
         "$PROJECT_DIR/Logo.png"
     )
     
