@@ -24,7 +24,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             _logger = logger;
         }
 
-        // MARK: BuildFFmpegArgs (with seekSeconds parameter)
+        // MARK: BuildFFmpegArgs
         public string? BuildFFmpegArgs(
                 string outputPath,
                 EpisodeMetadata metadata,
@@ -37,11 +37,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             if (video?.EpisodeFilePath == null) return null;
 
             var inputPath = video.EpisodeFilePath;
-            var durationSeconds = video.VideoLengthTicks / (double)TimeSpan.TicksPerSecond;
-            if (durationSeconds <= 0) durationSeconds = 3600;
+            
+            // Use provided seek time - if null, caller should handle this
+            if (!seekSeconds.HasValue)
+            {
+                _logger.LogWarning("No seek time provided to HardwareFFmpegService.BuildFFmpegArgs");
+                return null;
+            }
 
-            // Use provided seek time or generate random time in middle 60%
-            var actualSeekSeconds = seekSeconds ?? new Random().Next((int)(durationSeconds * 0.2), (int)(durationSeconds * 0.8));
+            var actualSeekSeconds = seekSeconds.Value;
 
             // Hardware acceleration arguments
             var hwAccelArgs = encodingOptions.HardwareAccelerationType.ToFFmpegArg();

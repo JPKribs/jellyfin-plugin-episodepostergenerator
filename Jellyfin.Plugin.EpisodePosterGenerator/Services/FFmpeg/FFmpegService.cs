@@ -76,7 +76,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     Path.GetTempPath(),
                     $"{Guid.NewGuid()}.png");
 
-                int seekTime = GenerateSeekTime(videoDurationSeconds, attempt);
+                int seekTime = GenerateSeekTime(videoDurationSeconds, attempt, config);
                 string? args = service.BuildFFmpegArgs(outputPath, metadata, encodingOptions, seekTime);
                 if (string.IsNullOrWhiteSpace(args))
                 {
@@ -175,27 +175,26 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // MARK: GenerateSeekTime
-        private int GenerateSeekTime(double videoDurationSeconds, int attempt)
+        private int GenerateSeekTime(double videoDurationSeconds, int attempt, PluginConfiguration config)
         {
             var random = new Random();
-
-            if (attempt < 20)
+            
+            // Convert percentages to decimal (20% = 0.2)
+            var startPercent = config.ExtractWindowStart / 100.0;
+            var endPercent = config.ExtractWindowEnd / 100.0;
+            
+            // Ensure valid range
+            if (startPercent >= endPercent)
             {
-                var startTime = videoDurationSeconds * 0.2;
-                var endTime = videoDurationSeconds * 0.8;
-                return (int)(random.NextDouble() * (endTime - startTime) + startTime);
+                _logger.LogWarning("Invalid extraction window: start {Start}% >= end {End}%, using default values of 20% & 80%.", 
+                    config.ExtractWindowStart, config.ExtractWindowEnd);
+                startPercent = 0.2;
+                endPercent = 0.8;
             }
-
-            if (attempt < 40)
-            {
-                var startTime = videoDurationSeconds * 0.1;
-                var endTime = videoDurationSeconds * 0.9;
-                return (int)(random.NextDouble() * (endTime - startTime) + startTime);
-            }
-
-            var minTime = videoDurationSeconds * 0.05;
-            var maxTime = videoDurationSeconds * 0.95;
-            return (int)(random.NextDouble() * (maxTime - minTime) + minTime);
+            
+            var startTime = videoDurationSeconds * startPercent;
+            var endTime = videoDurationSeconds * endPercent;
+            return (int)(random.NextDouble() * (endTime - startTime) + startTime);
         }
 
         // MARK: GetFrameBrightness

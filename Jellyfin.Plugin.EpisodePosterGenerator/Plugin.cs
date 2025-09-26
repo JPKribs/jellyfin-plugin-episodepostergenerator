@@ -21,7 +21,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IDisposable
     {
         public override string Name => "Episode Poster Generator";
-
+        public override Guid Id => Guid.Parse("b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e");
+        public override string Description => "Automatically generates episode poster cards with titles overlaid on representative frames from video files.";
         public static Plugin? Instance { get; private set; }
 
         // MARK: Dependencies
@@ -95,7 +96,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _posterService = new PosterService(
                 loggerFactory.CreateLogger<PosterService>(),
                 _canvasService,
-                configurationManager);
+                configurationManager,
+                loggerFactory);
 
             // MARK: Initialize database asynchronously
             _ = Task.Run(async () =>
@@ -122,7 +124,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public CroppingService CroppingService => _croppingService;
         public FFmpegService FFmpegService => _ffmpegService;
         public HardwareFFmpegService HardwareFFmpegService => _hardwareFFmpegService;
-        public SoftwareFFmpegService SoftwareFFmpegService => _softwareFFmpegService;
+        public SoftwareFFmpegService SoftwareFFmpegService =>
+        _softwareFFmpegService;
         public PosterService PosterService => _posterService;
 
         // MARK: GetPages
@@ -130,9 +133,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         {
             yield return new PluginPageInfo
             {
-                Name = "Configuration",
+                Name = "EpisodePosterGenerator",
                 EmbeddedResourcePath = $"{typeof(Plugin).Namespace}.Configuration.configPage.html",
-                MenuSection = "metadata",
+                MenuSection = "plugin",
                 DisplayName = "Episode Poster Generator"
             };
         }
@@ -141,12 +144,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public Stream GetImage()
         {
             var assembly = GetType().Assembly;
-            var resourceNames = assembly.GetManifestResourceNames();
-            _logger.LogInformation("Available resources: {Resources}", string.Join(", ", resourceNames));
-
             var stream = assembly.GetManifestResourceStream($"{typeof(Plugin).Namespace}.Logo.png");
-            if (stream == null)
-                _logger.LogError("Logo.png resource not found!");
 
             return stream!;
         }

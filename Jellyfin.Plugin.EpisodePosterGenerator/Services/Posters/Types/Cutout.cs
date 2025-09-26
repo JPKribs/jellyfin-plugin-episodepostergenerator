@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
@@ -9,13 +8,12 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
     /// <summary>
-    /// Generates a cutout-style poster from a pre-rendered canvas and episode metadata.
-    /// Handles safe areas and overlay options defined in PluginConfiguration.
+    /// Generates cutout-style posters with transparent text revealing the canvas beneath.
+    /// Uses 4-layer rendering: Canvas → Overlay (with cutouts) → Graphics → Typography
     /// </summary>
-    public class CutoutPosterGenerator : BasePosterGenerator, IPosterGenerator
+    public class CutoutPosterGenerator : BasePosterGenerator
     {
         private readonly ILogger<CutoutPosterGenerator> _logger;
-
         private static readonly char[] WordSeparators = { ' ', '-' };
 
         public CutoutPosterGenerator(ILogger<CutoutPosterGenerator> logger)
@@ -23,63 +21,86 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             _logger = logger;
         }
 
-        public string? Generate(SKBitmap canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, string? outputPath)
+        // MARK: RenderOverlay
+        protected override void RenderOverlay(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
         {
-            try
+            if (string.IsNullOrEmpty(config.OverlayColor))
+                return;
+
+            var overlayColor = ColorUtils.ParseHexColor(config.OverlayColor);
+            if (overlayColor.Alpha == 0)
+                return;
+
+            // Create overlay with cutout text
+            using var overlayPaint = new SKPaint
             {
-                return GenerateBase(canvas, episodeMetadata, config, bmp =>
-                {
-                    int width = bmp.Width;
-                    int height = bmp.Height;
+                Color = overlayColor,
+                Style = SKPaintStyle.Fill,
+                BlendMode = SKBlendMode.Src
+            };
+            skCanvas.DrawRect(SKRect.Create(width, height), overlayPaint);
 
-                    using var surface = SKSurface.Create(new SKImageInfo(width, height));
-                    var skCanvas = surface.Canvas;
-                    skCanvas.Clear(SKColors.Transparent);
-
-                    // Draw overlay
-                    using var overlayPaint = new SKPaint
-                    {
-                        Color = ColorUtils.ParseHexColor(config.OverlayColor),
-                        Style = SKPaintStyle.Fill,
-                        BlendMode = SKBlendMode.Src
-                    };
-                    skCanvas.DrawRect(SKRect.Create(width, height), overlayPaint);
-
-                    // Draw cutout text
-                    DrawCutoutText(skCanvas, episodeMetadata, config, width, height, overlayPaint.Color);
-
-                    // Draw original bitmap underneath
-                    using var originalPaint = new SKPaint { BlendMode = SKBlendMode.DstOver };
-                    skCanvas.DrawBitmap(bmp, 0, 0, originalPaint);
-
-                    // Snapshot and return
-                    using var finalImage = surface.Snapshot();
-                    return SKBitmap.FromImage(finalImage);
-                }, outputPath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to generate cutout poster for {EpisodeName}", episodeMetadata.EpisodeName);
-                return null;
-            }
+            // Cut out the episode text from the overlay
+            DrawCutoutText(skCanvas, episodeMetadata, config, width, height, overlayColor);
         }
 
+        // MARK: RenderTypography
+        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        {
+            // Cutout style can optionally show title text if enabled
+            if (!config.ShowTitle || string.IsNullOrEmpty(episodeMetadata.EpisodeName))
+                return;
+
+            var safeArea = GetSafeAreaBounds(width, height, config);
+            
+            // Position title at bottom of safe area
+            var titleY = safeArea.Bottom - (safeArea.Height * 0.1f);
+            
+            using var titlePaint = new SKPaint
+            {
+                Color = ColorUtils.ParseHexColor(config.TitleFontColor),
+                TextSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height),
+                IsAntialias = true,
+                Typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle)),
+                TextAlign = SKTextAlign.Center
+            };
+
+            using var shadowPaint = new SKPaint
+            {
+                Color = SKColors.Black.WithAlpha(180),
+                TextSize = titlePaint.TextSize,
+                IsAntialias = true,
+                Typeface = titlePaint.Typeface,
+                TextAlign = SKTextAlign.Center
+            };
+
+            var centerX = safeArea.MidX;
+            skCanvas.DrawText(episodeMetadata.EpisodeName, centerX + 2, titleY + 2, shadowPaint);
+            skCanvas.DrawText(episodeMetadata.EpisodeName, centerX, titleY, titlePaint);
+        }
+
+        // MARK: LogError
+        protected override void LogError(Exception ex, string? episodeName)
+        {
+            _logger.LogError(ex, "Failed to generate cutout poster for {EpisodeName}", episodeName);
+        }
+
+        // MARK: DrawCutoutText
         private void DrawCutoutText(SKCanvas canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int canvasWidth, int canvasHeight, SKColor overlayColor)
         {
-            ApplySafeAreaConstraints(canvasWidth, canvasHeight, config, out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop);
+            var safeArea = GetSafeAreaBounds(canvasWidth, canvasHeight, config);
 
             string episodeText = EpisodeCodeUtil.FormatEpisodeText(config.CutoutType,
                 episodeMetadata.SeasonNumber ?? 0,
                 episodeMetadata.EpisodeNumberStart ?? 0);
             var words = episodeText.Split(WordSeparators, StringSplitOptions.RemoveEmptyEntries);
 
-            var cutoutArea = CalculateCutoutArea(canvasWidth, canvasHeight, config.ShowTitle, config, safeLeft, safeTop, safeWidth, safeHeight);
-
+            var cutoutArea = CalculateCutoutArea(safeArea, config.ShowTitle, config, canvasHeight);
             var fontStyle = FontUtils.GetFontStyle(config.EpisodeFontStyle);
             using var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, fontStyle);
-
             float fontSize = CalculateOptimalCutoutFontSize(words, typeface, cutoutArea);
 
+            // Draw border if enabled
             if (config.CutoutBorder)
             {
                 using var borderPaint = new SKPaint
@@ -95,6 +116,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 DrawCutoutTextCentered(canvas, words, borderPaint, cutoutArea);
             }
 
+            // Draw cutout text (transparent)
             using var cutoutPaint = new SKPaint
             {
                 Color = SKColors.Transparent,
@@ -107,6 +129,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             DrawCutoutTextCentered(canvas, words, cutoutPaint, cutoutArea);
         }
 
+        // MARK: GetContrastingBorderColor
         private SKColor GetContrastingBorderColor(SKColor overlayColor)
         {
             float r = overlayColor.Red / 255f;
@@ -121,22 +144,23 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             return luminance > 0.5f ? SKColors.Black : luminance < 0.2f ? SKColors.White : new SKColor(64, 64, 64);
         }
 
-        private SKRect CalculateCutoutArea(float canvasWidth, float canvasHeight, bool hasTitle, PluginConfiguration config,
-            float safeLeft, float safeTop, float safeWidth, float safeHeight)
+        // MARK: CalculateCutoutArea
+        private SKRect CalculateCutoutArea(SKRect safeArea, bool hasTitle, PluginConfiguration config, float canvasHeight)
         {
             if (!hasTitle)
-                return new SKRect(safeLeft, safeTop, safeLeft + safeWidth, safeTop + safeHeight);
+                return safeArea;
 
-            float titleFontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight, 100f * GetSafeAreaMargin(config));
-            float titleLineHeight = titleFontSize * 1.2f;
-            float titleTotalHeight = titleLineHeight * 2;
-            float titleSpaceFromBottom = (canvasHeight * GetSafeAreaMargin(config)) + titleTotalHeight;
+            // Reserve space for title at bottom
+            float titleFontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight);
+            float titleSpace = titleFontSize * 2f; // Space for title + padding
             float cutoutBuffer = canvasHeight * 0.05f;
 
-            float availableHeight = Math.Max(canvasHeight - safeTop - titleSpaceFromBottom - cutoutBuffer, canvasHeight * 0.3f);
-            return new SKRect(safeLeft, safeTop, safeLeft + safeWidth, safeTop + availableHeight);
+            float availableHeight = Math.Max(safeArea.Height - titleSpace - cutoutBuffer, safeArea.Height * 0.6f);
+            
+            return new SKRect(safeArea.Left, safeArea.Top, safeArea.Right, safeArea.Top + availableHeight);
         }
 
+        // MARK: CalculateOptimalCutoutFontSize
         private float CalculateOptimalCutoutFontSize(string[] words, SKTypeface typeface, SKRect availableArea)
         {
             float maxWidth = availableArea.Width;
@@ -168,6 +192,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             return optimal;
         }
 
+        // MARK: DoAllWordsFit
         private bool DoAllWordsFit(string[] words, SKTypeface typeface, float fontSize, float maxWidth, float maxHeight, float lineSpacing)
         {
             float maxWordWidth = 0;
@@ -182,6 +207,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             return maxWordWidth <= maxWidth && totalHeight <= maxHeight;
         }
 
+        // MARK: DrawCutoutTextCentered
         private void DrawCutoutTextCentered(SKCanvas canvas, string[] words, SKPaint paint, SKRect area)
         {
             float centerX = area.MidX;
@@ -206,15 +232,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                     startY += lineHeight;
                 }
             }
-        }
-    }
-
-    internal static class SKImageExtensions
-    {
-        public static SKBitmap ToBitmap(this SKImage image)
-        {
-            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-            return SKBitmap.Decode(data);
         }
     }
 }

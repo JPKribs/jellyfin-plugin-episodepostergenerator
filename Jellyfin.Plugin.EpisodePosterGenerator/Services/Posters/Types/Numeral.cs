@@ -1,116 +1,160 @@
 using System;
-using System.IO;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
 using SkiaSharp;
+using Microsoft.Extensions.Logging;
 
-namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
-
-/// <summary>
-/// Generates episode posters featuring Roman numerals for episode numbers with optional overlay and title display.
-/// </summary>
-public class NumeralPosterGenerator : BasePosterGenerator, IPosterGenerator
+namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
-    // MARK: - Public Interface
-    public string? Generate(SKBitmap canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, string? outputPath)
+    /// <summary>
+    /// Generates episode posters featuring Roman numerals for episode numbers.
+    /// Uses 4-layer rendering: Canvas → Overlay → Graphics → Typography (Roman numerals + optional title)
+    /// </summary>
+    public class NumeralPosterGenerator : BasePosterGenerator
     {
-        try
+        private readonly ILogger<NumeralPosterGenerator> _logger;
+
+        public NumeralPosterGenerator(ILogger<NumeralPosterGenerator> logger)
         {
-            // MARK: Temp Output Path
-            if (string.IsNullOrEmpty(outputPath))
-            {
-                outputPath = Path.Combine(
-                    Path.GetTempPath(),
-                    $"{Guid.NewGuid()}.{config.PosterFileType.ToString().ToLowerInvariant()}");
-            }
+            _logger = logger;
+        }
 
-            int width = canvas.Width;
-            int height = canvas.Height;
+        // MARK: RenderTypography
+        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        {
+            var safeArea = GetSafeAreaBounds(width, height, config);
 
-            var info = new SKImageInfo(width, height, SKImageInfo.PlatformColorType, SKAlphaType.Premul);
-            using var surface = SKSurface.Create(info);
-            var skCanvas = surface.Canvas;
-            skCanvas.Clear(SKColors.Transparent);
-
-            // MARK: Layer 1 - Base Bitmap
-            using var basePaint = new SKPaint { IsAntialias = true };
-            skCanvas.DrawBitmap(canvas, 0, 0, basePaint);
-
-            // MARK: Layer 2 - Overlay
-            DrawOverlayLayer(skCanvas, width, height, config);
-
-            // MARK: Layer 3 - Roman Numeral
-            DrawRomanNumeral(skCanvas, episodeMetadata, config, width, height);
-
-            // MARK: Layer 4 - Title
             if (config.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
             {
-                TextUtils.DrawTitle(skCanvas, episodeMetadata.EpisodeName, Position.Center, Alignment.Center, config, width, height);
+                // Calculate space needed for title at bottom
+                var titleHeight = CalculateTitleHeight(episodeMetadata.EpisodeName, config, height, safeArea);
+                var titleSpacing = height * 0.05f;
+                
+                // Adjust safe area for Roman numeral to leave space for title
+                var numeralArea = new SKRect(
+                    safeArea.Left, 
+                    safeArea.Top, 
+                    safeArea.Right, 
+                    safeArea.Bottom - titleHeight - titleSpacing
+                );
+
+                // Draw Roman numeral in upper area
+                DrawRomanNumeral(skCanvas, episodeMetadata, config, numeralArea);
+
+                // Draw title at bottom
+                DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, config, width, height, safeArea);
             }
-
-            // MARK: Encode and Save
-            using var finalImage = surface.Snapshot();
-            using var data = finalImage.Encode(config.PosterFileType switch
+            else
             {
-                PosterFileType.JPEG => SKEncodedImageFormat.Jpeg,
-                PosterFileType.PNG => SKEncodedImageFormat.Png,
-                PosterFileType.WEBP => SKEncodedImageFormat.Webp,
-                PosterFileType.GIF => SKEncodedImageFormat.Gif,
-                _ => SKEncodedImageFormat.Jpeg
-            }, 95);
-
-            var directory = Path.GetDirectoryName(outputPath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                Directory.CreateDirectory(directory);
-
-            using var outputStream = File.OpenWrite(outputPath);
-            data.SaveTo(outputStream);
-
-            return outputPath;
+                // No title - Roman numeral uses full safe area
+                DrawRomanNumeral(skCanvas, episodeMetadata, config, safeArea);
+            }
         }
-        catch (Exception ex)
+
+        // MARK: LogError
+        protected override void LogError(Exception ex, string? episodeName)
         {
-            Console.WriteLine($"Numeral poster generation failed: {ex.Message}\n{ex.StackTrace}");
-            return null;
+            _logger.LogError(ex, "Failed to generate numeral poster for {EpisodeName}", episodeName);
         }
-    }
 
-    // MARK: - Overlay
-    private void DrawOverlayLayer(SKCanvas canvas, int width, int height, PluginConfiguration config)
-    {
-        var overlayColor = ColorUtils.ParseHexColor(config.OverlayColor);
-        if (overlayColor.Alpha > 0)
+        // MARK: DrawRomanNumeral
+        private void DrawRomanNumeral(SKCanvas canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, SKRect area)
         {
-            using var paint = new SKPaint { Color = overlayColor, Style = SKPaintStyle.Fill };
-            canvas.DrawRect(SKRect.Create(width, height), paint);
+            var numeralText = NumberUtils.NumberToRomanNumeral(episodeMetadata.EpisodeNumberStart ?? 0);
+            var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
+
+            float fontSize = FontUtils.CalculateOptimalFontSize(numeralText, typeface, area.Width, area.Height);
+
+            using var numeralPaint = new SKPaint
+            {
+                Color = ColorUtils.ParseHexColor(config.EpisodeFontColor),
+                IsAntialias = true,
+                TextSize = fontSize,
+                Typeface = typeface,
+                TextAlign = SKTextAlign.Center
+            };
+
+            using var shadowPaint = new SKPaint
+            {
+                Color = SKColors.Black.WithAlpha(180),
+                IsAntialias = true,
+                TextSize = fontSize,
+                Typeface = typeface,
+                TextAlign = SKTextAlign.Center
+            };
+
+            // Center text in available area
+            float centerX = area.MidX;
+            var bounds = FontUtils.MeasureTextDimensions(numeralText, typeface, fontSize);
+            float centerY = area.MidY + (bounds.Height / 2f);
+
+            // Draw shadow
+            canvas.DrawText(numeralText, centerX + 2, centerY + 2, shadowPaint);
+            // Draw main text
+            canvas.DrawText(numeralText, centerX, centerY, numeralPaint);
         }
-    }
 
-    // MARK: - Roman Numeral
-    private void DrawRomanNumeral(SKCanvas canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
-    {
-        ApplySafeAreaConstraints(width, height, config, out var safeWidth, out var safeHeight, out var safeLeft, out var safeTop);
-
-        var numeralText = NumberUtils.NumberToRomanNumeral(episodeMetadata.EpisodeNumberStart ?? 0);
-        var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
-
-        float fontSize = FontUtils.CalculateOptimalFontSize(numeralText, typeface, safeWidth, safeHeight);
-
-        using var numeralPaint = new SKPaint
+        // MARK: DrawEpisodeTitle
+        private void DrawEpisodeTitle(SKCanvas canvas, string title, PluginConfiguration config, int width, int height, SKRect safeArea)
         {
-            Color = ColorUtils.ParseHexColor(config.EpisodeFontColor),
-            IsAntialias = true,
-            TextSize = fontSize,
-            Typeface = typeface,
-            TextAlign = SKTextAlign.Center
-        };
+            var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
+            var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
 
-        // Center text in safe area
-        float centerX = safeLeft + safeWidth / 2f;
-        var bounds = FontUtils.MeasureTextDimensions(numeralText, typeface, fontSize);
-        float centerY = safeTop + safeHeight / 2f + (bounds.Height / 2f);
+            using var titlePaint = new SKPaint
+            {
+                Color = ColorUtils.ParseHexColor(config.TitleFontColor),
+                TextSize = fontSize,
+                IsAntialias = true,
+                Typeface = typeface,
+                TextAlign = SKTextAlign.Center
+            };
 
-        canvas.DrawText(numeralText, centerX, centerY, numeralPaint);
+            using var shadowPaint = new SKPaint
+            {
+                Color = SKColors.Black.WithAlpha(180),
+                TextSize = fontSize,
+                IsAntialias = true,
+                Typeface = typeface,
+                TextAlign = SKTextAlign.Center
+            };
+
+            // Fit text to safe area width
+            var availableWidth = safeArea.Width * 0.9f;
+            var lines = TextUtils.FitTextToWidth(title, titlePaint, availableWidth);
+
+            var lineHeight = fontSize * 1.2f;
+            var totalHeight = (lines.Count - 1) * lineHeight + fontSize;
+            var centerX = safeArea.MidX;
+            var startY = safeArea.Bottom - totalHeight + fontSize;
+
+            // Draw each line with shadow
+            for (int i = 0; i < lines.Count; i++)
+            {
+                var lineY = startY + (i * lineHeight);
+                canvas.DrawText(lines[i], centerX + 2, lineY + 2, shadowPaint);
+                canvas.DrawText(lines[i], centerX, lineY, titlePaint);
+            }
+        }
+
+        // MARK: CalculateTitleHeight
+        private float CalculateTitleHeight(string title, PluginConfiguration config, int height, SKRect safeArea)
+        {
+            var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
+            var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
+
+            using var paint = new SKPaint
+            {
+                TextSize = fontSize,
+                Typeface = typeface,
+                TextAlign = SKTextAlign.Center
+            };
+
+            var availableWidth = safeArea.Width * 0.9f;
+            var lines = TextUtils.FitTextToWidth(title, paint, availableWidth);
+            var lineHeight = fontSize * 1.2f;
+            
+            return (lines.Count - 1) * lineHeight + fontSize;
+        }
     }
 }

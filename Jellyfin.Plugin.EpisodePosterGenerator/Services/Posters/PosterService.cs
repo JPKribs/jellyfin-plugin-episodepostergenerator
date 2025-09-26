@@ -20,13 +20,19 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private readonly ILogger<PosterService> _logger;
         private readonly CanvasService _canvasService;
         private readonly IServerConfigurationManager _configurationManager;
+        private readonly ILoggerFactory _loggerFactory;
 
         // MARK: Constructor
-        public PosterService(ILogger<PosterService> logger, CanvasService canvasService, IServerConfigurationManager configurationManager)
+        public PosterService(
+            ILogger<PosterService> logger, 
+            CanvasService canvasService, 
+            IServerConfigurationManager configurationManager,
+            ILoggerFactory loggerFactory)
         {
             _logger = logger;
             _canvasService = canvasService;
             _configurationManager = configurationManager;
+            _loggerFactory = loggerFactory;
         }
 
         // MARK: Generate
@@ -72,10 +78,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 // MARK: Select Poster Generator
                 IPosterGenerator generator = config.PosterStyle switch
                 {
-                    PosterStyle.Logo => new LogoPosterGenerator(),
-                    PosterStyle.Numeral => new NumeralPosterGenerator(),
-                    PosterStyle.Standard => new StandardPosterGenerator(),
-                    _ => new StandardPosterGenerator() // fallback
+                    PosterStyle.Logo => new LogoPosterGenerator(_loggerFactory.CreateLogger<LogoPosterGenerator>()),
+                    PosterStyle.Numeral => new NumeralPosterGenerator(_loggerFactory.CreateLogger<NumeralPosterGenerator>()),
+                    PosterStyle.Cutout => new CutoutPosterGenerator(_loggerFactory.CreateLogger<CutoutPosterGenerator>()),
+                    PosterStyle.Standard => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>()),
+                    _ => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>()) // fallback
                 };
 
                 // Determine temp path

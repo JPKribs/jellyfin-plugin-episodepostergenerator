@@ -16,6 +16,36 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public bool EnableTask { get; set; } = true;
 
         /// <summary>
+        /// Extracts the poster from the Episode.
+        /// </summary>
+        public bool ExtractPoster { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether letterbox detection and cropping is enabled.
+        /// </summary>
+        public bool EnableLetterboxDetection { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the black threshold for letterbox detection (0-255).
+        /// </summary>
+        public int LetterboxBlackThreshold { get; set; } = 100;
+
+        /// <summary>
+        /// Gets or sets the confidence threshold for letterbox detection (0.0-100.0).
+        /// </summary>
+        public float LetterboxConfidence { get; set; } = 80.0f;
+
+        /// <summary>
+        /// Gets or sets the start percentage for the extraction window (0.0-100.0).
+        /// </summary>
+        public float ExtractWindowStart { get; set; } = 20.0f;
+
+        /// <summary>
+        /// Gets or sets the end percentage for the extraction window (0.0-100.0).
+        /// </summary>
+        public float ExtractWindowEnd { get; set; } = 80.0f;
+
+        /// <summary>
         /// Gets or sets the style of the generated poster.
         /// </summary>
         public PosterStyle PosterStyle { get; set; } = PosterStyle.Standard;
@@ -46,11 +76,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public float LogoHeight { get; set; } = 30.0f;
 
         /// <summary>
-        /// Extracts the poster from the Episode.
-        /// </summary>
-        public bool ExtractPoster { get; set; } = true;
-
-        /// <summary>
         /// Brightens HDR posters that were extracted (e.g., 7.0 for 7%).
         /// </summary>
         public float BrightenHDR { get; set; } = 25.0f;
@@ -74,21 +99,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         /// Gets or sets the percentage of height and width perserved as a safe area (e.g., 7.0 for 7%).
         /// </summary>
         public float PosterSafeArea { get; set; } = 5.0f;
-
-        /// <summary>
-        /// Gets or sets a value indicating whether letterbox detection and cropping is enabled.
-        /// </summary>
-        public bool EnableLetterboxDetection { get; set; } = true;
-
-        /// <summary>
-        /// Gets or sets the black threshold for letterbox detection (0-255).
-        /// </summary>
-        public int LetterboxBlackThreshold { get; set; } = 100;
-
-        /// <summary>
-        /// Gets or sets the confidence threshold for letterbox detection (0.0-100.0).
-        /// </summary>
-        public float LetterboxConfidence { get; set; } = 80.0f;
 
         /// <summary>
         /// Gets or sets a value indicating whether to show the episode title.
@@ -124,7 +134,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         /// Gets or sets the font family for episode titles.
         /// </summary>
         public string TitleFontFamily { get; set; } = "Arial";
-    
+
         /// <summary>
         /// Gets or sets the font style for episode titles (Normal, Bold, Italic, BoldItalic).
         /// </summary>
@@ -144,5 +154,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         /// Gets or sets the ARGB hex color for background overlay / tinting.
         /// </summary>
         public string OverlayColor { get; set; } = "#66000000";
+
+        /// <summary>
+        /// File path to a static graphic to use for all posters.
+        /// </summary>
+        public string GraphicPath { get; set; } = string.Empty;
     }
 }
