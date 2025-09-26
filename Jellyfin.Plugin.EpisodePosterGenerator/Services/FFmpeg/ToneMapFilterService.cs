@@ -1,5 +1,6 @@
 using System;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
+using Jellyfin.Plugin.EpisodePosterGenerator.Extensions;
 using Jellyfin.Data.Enums;
 using Microsoft.Extensions.Logging;
 using MediaBrowser.Model.Entities;
@@ -23,7 +24,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             VideoMetadata video,
             HardwareAccelerationType hwAccel)
         {
-            if (!options.EnableTonemapping || video.VideoHdrType == VideoRangeType.SDR || video.VideoHdrType == VideoRangeType.Unknown)
+            if (!options.EnableTonemapping || !video.VideoHdrType.IsHDR())
                 return string.Empty;
 
             return hwAccel switch
@@ -49,21 +50,23 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private static string GetVppToneMapFilter(EncodingOptions options)
         {
             var algorithm = GetToneMappingAlgorithm(options);
-            return $"scale_qsv=format=nv12,tonemap_qsv=t={algorithm}";
+            return $"scale_qsv=format=nv12,vpp_qsv=tonemap=1:tonemap_mode={algorithm}";
         }
 
         // MARK: GetOpenCLToneMapFilter
         private static string GetOpenCLToneMapFilter(EncodingOptions options)
         {
             var algorithm = GetToneMappingAlgorithm(options);
-            return $"hwupload,tonemap_opencl=t={algorithm},hwdownload,format=nv12";
+            var peak = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
+            return $"hwupload,tonemap_opencl=tonemap={algorithm}:peak={peak}:desat=0,hwdownload,format=nv12";
         }
 
         // MARK: GetVaapiToneMapFilter
         private static string GetVaapiToneMapFilter(EncodingOptions options)
         {
             var algorithm = GetToneMappingAlgorithm(options);
-            return $"hwupload,scale_vaapi=format=nv12,tonemap_vaapi=t={algorithm},hwdownload";
+            var peak = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
+            return $"scale_vaapi=format=p010,tonemap_vaapi=tonemap={algorithm}:peak={peak}:desat=0,scale_vaapi=format=nv12";
         }
 
         // MARK: GetSoftwareToneMapFilter

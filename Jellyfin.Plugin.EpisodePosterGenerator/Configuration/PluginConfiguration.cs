@@ -161,6 +161,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         public string OverlayColor { get; set; } = "#66000000";
 
         /// <summary>
+        /// Gets or sets the gradient direction for overlay effects.
+        /// </summary>
+        public OverlayGradient OverlayGradient { get; set; } = OverlayGradient.None;
+
+        /// <summary>
+        /// Gets or sets the secondary ARGB hex color used for gradient overlays.
+        /// Only applies when OverlayGradient is not None.
+        /// </summary>
+        public string OverlaySecondaryColor { get; set; } = "#66000000";
+
+        /// <summary>
         /// File path to a static graphic to use for all posters.
         /// </summary>
         public string GraphicPath { get; set; } = string.Empty;

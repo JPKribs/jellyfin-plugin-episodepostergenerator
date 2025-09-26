@@ -361,6 +361,31 @@
                         <div class="fieldDescription">ARGB hex for background overlay color and transparency (e.g., #66000000 for semi-transparent black).</div>
                     </div>
 
+                    <div class="inputContainer">
+                        <label for="selectOverlayGradient">Overlay Gradient:</label>
+                        <select is="emby-select" id="selectOverlayGradient" data-config="OverlayGradient">
+                            <option value="None">None</option>
+                            <option value="LeftToRight">Left to Right</option>
+                            <option value="BottomToTop">Bottom to Top</option>
+                            <option value="TopLeftCornerToBottomRightCorner">Top Left Corner to Bottom Right Corner</option>
+                            <option value="TopRightCornerToBottomLeftCorner">Top Right Corner to Bottom Left Corner</option>
+                        </select>
+                        <div class="fieldDescription">Direction of gradient overlay effect. When enabled, creates a gradient from the primary overlay color to the secondary color.</div>
+                    </div>
+
+                    <div class="nested-settings" data-depends-on-gradient="selectOverlayGradient">
+                        <div class="inputContainer">
+                            <label for="txtOverlaySecondaryColor">Secondary Overlay Color:</label>
+                            <div class="color-control-group">
+                                <input type="color" id="colorOverlaySecondaryColor" class="color-picker" />
+                                <input type="range" id="alphaOverlaySecondaryColor" class="alpha-slider" min="0" max="255" value="102" />
+                                <span class="alpha-label">102</span>
+                                <input is="emby-input" type="text" id="txtOverlaySecondaryColor" placeholder="#66000000" data-config="OverlaySecondaryColor" class="hex-input" />
+                            </div>
+                            <div class="fieldDescription">ARGB hex for secondary gradient color. This is the end color for gradient overlays.</div>
+                        </div>
+                    </div>
+
                     <!-- Static Graphic -->
                     <div class="sectionTitleContainer">
                         <h2 class="sectionTitle">Static Graphic</h2>
@@ -553,6 +578,13 @@
                     });
                     
                     element.style.display = allDependenciesMet ? 'block' : 'none';
+                });
+
+                document.querySelectorAll('[data-depends-on-gradient]').forEach(element => {
+                    const gradientSelectId = element.getAttribute('data-depends-on-gradient');
+                    const gradientSelect = document.getElementById(gradientSelectId);
+                    const isVisible = gradientSelect && gradientSelect.value !== 'None';
+                    element.style.display = isVisible ? 'block' : 'none';
                 });
 
                 // For Cutout and Numeral styles, ensure ShowEpisode is always true
@@ -795,6 +827,10 @@
         document.getElementById('EpisodePosterGeneratorConfigForm').addEventListener('submit', function (e) {
             e.preventDefault();
             EpisodePosterGeneratorConfig.saveConfig();
+        });
+
+        document.getElementById('selectOverlayGradient').addEventListener('change', function () {
+            EpisodePosterGeneratorConfig.updateVisibility();
         });
 
         // Add listeners for visibility changes

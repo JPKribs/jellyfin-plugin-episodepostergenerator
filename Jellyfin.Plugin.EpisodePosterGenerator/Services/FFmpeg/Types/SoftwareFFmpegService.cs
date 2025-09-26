@@ -3,15 +3,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
+using Jellyfin.Plugin.EpisodePosterGenerator.Extensions;
 using MediaBrowser.Model.Configuration;
 using MediaBrowser.Model.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
-    /// <summary>
-    /// Software fallback FFmpeg service; builds FFmpeg args for frame extraction and optionally tone mapping.
-    /// </summary>
     public class SoftwareFFmpegService : IFFmpegService
     {
         private readonly ILogger<SoftwareFFmpegService> _logger;
@@ -27,7 +25,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             string outputPath,
             EpisodeMetadata metadata,
             EncodingOptions encodingOptions,
-            int? seekSeconds = 10,
+            int? seekSeconds = null,
             bool skipToneMapping = false)
         {
             var video = metadata.VideoMetadata;
@@ -37,42 +35,48 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 return null;
             }
 
-            var input = video.EpisodeFilePath;
+            var inputPath = video.EpisodeFilePath;
+            var durationSeconds = video.VideoLengthTicks / (double)TimeSpan.TicksPerSecond;
+            if (durationSeconds <= 0) durationSeconds = 3600;
 
-            string toneMapFilter = string.Empty;
+            var actualSeekSeconds = seekSeconds ?? new Random().Next((int)(durationSeconds * 0.2), (int)(durationSeconds * 0.8));
+            var isHDR = video.VideoHdrType.IsHDR();
 
-            try
+            var args = $"-y -ss {actualSeekSeconds} -i \"{inputPath}\"";
+
+            if (!skipToneMapping && encodingOptions.EnableTonemapping && isHDR)
             {
-                // Only apply tone mapping if HDR, enabled, and not explicitly skipped
-                if (!skipToneMapping && encodingOptions.EnableTonemapping && video.VideoHdrType != VideoRangeType.SDR)
+                try
                 {
-                    toneMapFilter = ToneMapFilterService.GetToneMapFilter(
+                    // Use ToneMapFilterService for software path
+                    var toneMapFilter = ToneMapFilterService.GetToneMapFilter(
                         encodingOptions,
                         video,
-                        HardwareAccelerationType.none // software path
-                    ) ?? string.Empty;
+                        HardwareAccelerationType.none
+                    );
+
+                    if (!string.IsNullOrEmpty(toneMapFilter))
+                    {
+                        args += $" -vf {toneMapFilter}";
+                        _logger.LogDebug("Applied software tone mapping filter for HDR content");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Software tone mapping filter was empty for HDR content");
+                    }
                 }
-                else if (skipToneMapping)
+                catch (Exception ex)
                 {
-                    _logger.LogInformation("Tone mapping skipped due to fallback/extraction issues.");
+                    _logger.LogWarning(ex, "Software tone mapping filter generation failed; proceeding without tone mapping");
                 }
             }
-            catch (Exception ex)
+            else if (skipToneMapping && isHDR)
             {
-                _logger.LogWarning(ex, "Tone mapping filter generation failed; falling back to simple extraction");
-                toneMapFilter = string.Empty;
+                _logger.LogDebug("Tone mapping skipped for HDR content as requested");
             }
-
-            // Build FFmpeg arguments
-            var args = $"-y -ss {seekSeconds} -i \"{input}\"";
-
-            if (!string.IsNullOrWhiteSpace(toneMapFilter))
+            else if (!isHDR)
             {
-                args += $" {toneMapFilter}";
-            }
-            else
-            {
-                _logger.LogDebug("No tone mapping applied for SoftwareFFmpegService");
+                _logger.LogDebug("No tone mapping needed for SDR content");
             }
 
             args += $" -frames:v 1 -q:v 2 \"{outputPath}\"";
@@ -83,7 +87,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         // MARK: CanProcess
         public bool CanProcess(EpisodeMetadata metadata, EncodingOptions encodingOptions)
         {
-            // Software decoding can handle everything
             return true;
         }
 

@@ -102,16 +102,70 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             if (string.IsNullOrEmpty(config.OverlayColor))
                 return;
 
-            var overlayColor = ColorUtils.ParseHexColor(config.OverlayColor);
-            if (overlayColor.Alpha == 0)
+            var primaryColor = ColorUtils.ParseHexColor(config.OverlayColor);
+            if (primaryColor.Alpha == 0)
                 return;
 
-            using var overlayPaint = new SKPaint
+            var rect = SKRect.Create(width, height);
+
+            if (config.OverlayGradient == OverlayGradient.None)
             {
-                Color = overlayColor,
-                Style = SKPaintStyle.Fill
+                // Solid color overlay
+                using var overlayPaint = new SKPaint
+                {
+                    Color = primaryColor,
+                    Style = SKPaintStyle.Fill
+                };
+                skCanvas.DrawRect(rect, overlayPaint);
+            }
+            else
+            {
+                // Gradient overlay
+                var secondaryColor = ColorUtils.ParseHexColor(config.OverlaySecondaryColor);
+                if (secondaryColor.Alpha == 0) secondaryColor = primaryColor;
+
+                var gradient = CreateOverlayGradient(config.OverlayGradient, rect, primaryColor, secondaryColor);
+                if (gradient != null)
+                {
+                    using var overlayPaint = new SKPaint
+                    {
+                        Shader = gradient,
+                        Style = SKPaintStyle.Fill
+                    };
+                    skCanvas.DrawRect(rect, overlayPaint);
+                }
+            }
+        }
+
+        // MARK: CreateOverlayGradient
+        protected virtual SKShader? CreateOverlayGradient(OverlayGradient gradientType, SKRect rect, SKColor primaryColor, SKColor secondaryColor)
+        {
+            var colors = new[] { primaryColor, secondaryColor };
+            
+            return gradientType switch
+            {
+                OverlayGradient.LeftToRight => SKShader.CreateLinearGradient(
+                    new SKPoint(rect.Left, rect.MidY),
+                    new SKPoint(rect.Right, rect.MidY),
+                    colors, null, SKShaderTileMode.Clamp),
+                    
+                OverlayGradient.BottomToTop => SKShader.CreateLinearGradient(
+                    new SKPoint(rect.MidX, rect.Bottom),
+                    new SKPoint(rect.MidX, rect.Top),
+                    colors, null, SKShaderTileMode.Clamp),
+                    
+                OverlayGradient.TopLeftCornerToBottomRightCorner => SKShader.CreateLinearGradient(
+                    new SKPoint(rect.Left, rect.Top),
+                    new SKPoint(rect.Right, rect.Bottom),
+                    colors, null, SKShaderTileMode.Clamp),
+                    
+                OverlayGradient.TopRightCornerToBottomLeftCorner => SKShader.CreateLinearGradient(
+                    new SKPoint(rect.Right, rect.Top),
+                    new SKPoint(rect.Left, rect.Bottom),
+                    colors, null, SKShaderTileMode.Clamp),
+                    
+                _ => null
             };
-            skCanvas.DrawRect(SKRect.Create(width, height), overlayPaint);
         }
 
         // MARK: RenderGraphics
