@@ -136,6 +136,10 @@ The top layer containing all text elements, episode information, and series logo
 ### Rendering Pipeline
 Each poster style (Standard, Cutout, Numeral, Logo) follows this exact 4-layer sequence, ensuring consistent output quality and predictable layering behavior. The modular approach allows for easy customization and troubleshooting while maintaining visual coherence across different poster types.
 
+## Settings
+
+[Explanation of settings can be found here!](README.md)
+
 ## Installation
 
 ### Step 1: Add Plugin Repository
