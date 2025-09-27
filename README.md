@@ -138,7 +138,7 @@ Each poster style (Standard, Cutout, Numeral, Logo) follows this exact 4-layer s
 
 ## Settings
 
-[Explanation of settings can be found here!](README.md)
+[Explanation of settings can be found here!](SETTINGS.md)
 
 ## Installation
 
