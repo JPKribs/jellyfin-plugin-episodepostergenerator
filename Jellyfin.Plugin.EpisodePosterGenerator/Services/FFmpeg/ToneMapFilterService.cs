@@ -51,37 +51,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return "vpp_qsv=tonemap=1,scale_qsv=format=nv12";
         }
 
-        // MARK: GetNvencToneMapFilter
-        private static string GetNvencToneMapFilter(EncodingOptions options)
-        {
-            var algorithm = GetToneMappingAlgorithm(options);
-            var peak = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
-
-            return "format=p010,hwupload," +
-                   $"tonemap_opencl=tonemap={algorithm}:format=nv12:" +
-                   $"primaries=bt709:transfer=bt709:matrix=bt709:" +
-                   $"peak={peak}:desat=0," +
-                   "hwdownload,format=nv12";
-        }
-
-        // MARK: GetOpenCLToneMapFilter
-        private static string GetOpenCLToneMapFilter(EncodingOptions options)
-        {
-            var algorithm = GetToneMappingAlgorithm(options);
-            var peak = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
-
-            return $"hwmap,tonemap_opencl=tonemap={algorithm}:format=nv12:" +
-                $"primaries=bt709:transfer=bt709:matrix=bt709:" +
-                $"peak={peak}:desat=0:threshold=0.8," +
-                "hwmap=derive_device=qsv:reverse=1";
-        }
-
-        // MARK: GetVaapiToneMapFilter
-        private static string GetVaapiToneMapFilter(EncodingOptions options)
-        {
-            return "tonemap_vaapi=format=nv12:primaries=bt709:transfer=bt709";
-        }
-
         // MARK: GetSoftwareToneMapFilter
         private static string GetSoftwareToneMapFilter(EncodingOptions options)
         {
