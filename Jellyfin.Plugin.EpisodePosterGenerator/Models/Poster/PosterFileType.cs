@@ -7,8 +7,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
     {
         JPEG,
         PNG,
-        WEBP,
-        GIF
+        WEBP
     }
 
     /// <summary>
@@ -24,7 +23,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
                 PosterFileType.JPEG => ".jpg",
                 PosterFileType.PNG => ".png",
                 PosterFileType.WEBP => ".webp",
-                PosterFileType.GIF => ".gif",
                 _ => ".jpg"
             };
         }
@@ -37,7 +35,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
                 PosterFileType.JPEG => "image/jpeg",
                 PosterFileType.PNG => "image/png",
                 PosterFileType.WEBP => "image/webp",
-                PosterFileType.GIF => "image/gif",
                 _ => "image/jpeg"
             };
         }
@@ -55,7 +52,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
                 "jpg" or "jpeg" => PosterFileType.JPEG,
                 "png" => PosterFileType.PNG,
                 "webp" => PosterFileType.WEBP,
-                "gif" => PosterFileType.GIF,
                 _ => PosterFileType.JPEG
             };
         }
@@ -71,7 +67,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
                 "image/jpeg" => PosterFileType.JPEG,
                 "image/png" => PosterFileType.PNG,
                 "image/webp" => PosterFileType.WEBP,
-                "image/gif" => PosterFileType.GIF,
                 _ => PosterFileType.JPEG
             };
         }
@@ -93,7 +88,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             {
                 PosterFileType.PNG => true,
                 PosterFileType.WEBP => true,
-                PosterFileType.GIF => true,
                 _ => false
             };
         }

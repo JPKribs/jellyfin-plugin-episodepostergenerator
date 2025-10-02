@@ -292,7 +292,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 PosterFileType.JPEG => SKEncodedImageFormat.Jpeg,
                 PosterFileType.PNG => SKEncodedImageFormat.Png,
                 PosterFileType.WEBP => SKEncodedImageFormat.Webp,
-                PosterFileType.GIF => SKEncodedImageFormat.Gif,
                 _ => SKEncodedImageFormat.Png
             };
 

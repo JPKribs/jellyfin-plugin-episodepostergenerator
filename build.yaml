@@ -20,6 +20,6 @@ changelog:
   technical:
   - Encode using CPU since MJPEG is fairly limited and results in common failures
   other:
-  - -
+  - Removal or SVG and GIF types as they cause layering issues
   documentation:
   - Better logging to track graphic issues 
