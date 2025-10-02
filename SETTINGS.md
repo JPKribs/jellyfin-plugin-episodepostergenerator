@@ -117,13 +117,12 @@ This document provides a comprehensive guide to all configuration settings avail
 
 ### File Type
 **Type:** Dropdown  
-**Options:** JPEG, PNG, WEBP, GIF  
+**Options:** JPEG, PNG, WEBP
 **Default:** WEBP  
 **Effect:** Determines the file format for generated poster images. Each format has different characteristics:
 - **JPEG:** Good compression, widely supported, no transparency
 - **PNG:** Lossless quality, transparency support, larger files
 - **WEBP:** Excellent compression, modern format, good quality
-- **GIF:** Limited colors, animation support, rarely used for posters
 
 ## Episode Information
 
