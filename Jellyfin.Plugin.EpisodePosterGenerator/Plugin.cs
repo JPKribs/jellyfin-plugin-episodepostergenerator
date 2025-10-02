@@ -25,20 +25,18 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public override string Description => "Automatically generates episode poster cards with titles overlaid on representative frames from video files.";
         public static Plugin? Instance { get; private set; }
 
-        // MARK: Dependencies
         private readonly ILogger<Plugin> _logger;
         private readonly ILoggerFactory _loggerFactory;
-
         private readonly EpisodeTrackingService _trackingService;
         private readonly EpisodeTrackingDatabase _trackingDatabase;
         private readonly FFmpegService _ffmpegService;
+        private readonly HardwareValidationService _hardwareValidationService;
         private readonly HardwareFFmpegService _hardwareFFmpegService;
         private readonly SoftwareFFmpegService _softwareFFmpegService;
         private readonly CanvasService _canvasService;
         private readonly BrightnessService _brightnessService;
         private readonly CroppingService _croppingService;
         private readonly PosterService _posterService;
-
         private bool _disposed;
 
         // MARK: Constructor
@@ -51,14 +49,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             : base(applicationPaths, xmlSerializer)
         {
             Instance = this;
-
             _logger = logger;
             _loggerFactory = loggerFactory;
 
-            // MARK: Initialize configuration hash service
             var configHashService = new ConfigurationHashService();
 
-            // MARK: Initialize tracking services
             _trackingDatabase = new EpisodeTrackingDatabase(
                 loggerFactory.CreateLogger<EpisodeTrackingDatabase>(),
                 applicationPaths);
@@ -67,11 +62,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
                 _trackingDatabase,
                 configHashService);
 
-            // MARK: Initialize FFmpeg services
             _brightnessService = new BrightnessService(
                 loggerFactory.CreateLogger<BrightnessService>());
+            _hardwareValidationService = new HardwareValidationService(
+                loggerFactory.CreateLogger<HardwareValidationService>());
             _hardwareFFmpegService = new HardwareFFmpegService(
-                loggerFactory.CreateLogger<HardwareFFmpegService>());
+                loggerFactory.CreateLogger<HardwareFFmpegService>(),
+                _hardwareValidationService);
             _softwareFFmpegService = new SoftwareFFmpegService(
                 loggerFactory.CreateLogger<SoftwareFFmpegService>());
             _ffmpegService = new FFmpegService(
@@ -79,27 +76,24 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
                 configurationManager,
                 _hardwareFFmpegService,
                 _softwareFFmpegService,
-                _brightnessService);
+                _brightnessService,
+                _hardwareValidationService);
 
-            // MARK: Initialize cropping service
             _croppingService = new CroppingService(
                 loggerFactory.CreateLogger<CroppingService>());
 
-            // MARK: Initialize canvas service with cropping support
             _canvasService = new CanvasService(
                 loggerFactory.CreateLogger<CanvasService>(),
                 _ffmpegService,
                 _croppingService,
                 _brightnessService);
 
-            // MARK: Initialize poster service
             _posterService = new PosterService(
                 loggerFactory.CreateLogger<PosterService>(),
                 _canvasService,
                 configurationManager,
                 loggerFactory);
 
-            // MARK: Initialize database asynchronously
             _ = Task.Run(async () =>
             {
                 try
@@ -116,16 +110,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _logger.LogInformation("Episode Poster Generator plugin initialized");
         }
 
-        // MARK: Public property accessors
         public ILoggerFactory LoggerFactory => _loggerFactory;
         public EpisodeTrackingService TrackingService => _trackingService;
         public EpisodeTrackingDatabase TrackingDatabase => _trackingDatabase;
         public CanvasService CanvasService => _canvasService;
         public CroppingService CroppingService => _croppingService;
         public FFmpegService FFmpegService => _ffmpegService;
+        public HardwareValidationService HardwareValidationService => _hardwareValidationService;
         public HardwareFFmpegService HardwareFFmpegService => _hardwareFFmpegService;
-        public SoftwareFFmpegService SoftwareFFmpegService =>
-        _softwareFFmpegService;
+        public SoftwareFFmpegService SoftwareFFmpegService => _softwareFFmpegService;
         public PosterService PosterService => _posterService;
 
         // MARK: GetPages
@@ -145,7 +138,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         {
             var assembly = GetType().Assembly;
             var stream = assembly.GetManifestResourceStream($"{typeof(Plugin).Namespace}.Logo.png");
-
             return stream!;
         }
 
@@ -156,12 +148,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             GC.SuppressFinalize(this);
         }
 
-        // MARK: Dispose(bool)
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed && disposing)
             {
                 _trackingDatabase?.Dispose();
+                _hardwareValidationService?.Dispose();
                 _disposed = true;
             }
         }

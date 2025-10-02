@@ -17,27 +17,31 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
     public class FFmpegService
     {
+        private const int MaxRetries = 30;
+        private const double BrightnessThreshold = 0.05;
+
         private readonly ILogger<FFmpegService> _logger;
-        private readonly HardwareFFmpegService _hardwareService;
-        private readonly SoftwareFFmpegService _softwareService;
-        private readonly BrightnessService _brightnessService;
         private readonly IServerConfigurationManager _configurationManager;
+        private readonly IFFmpegService _hardwareService;
+        private readonly IFFmpegService _softwareService;
+        private readonly BrightnessService _brightnessService;
+        private readonly HardwareValidationService _validationService;
 
-        private const int MaxRetries = 50;
-        private const double BrightnessThreshold = 0.08;
-
+        // MARK: Constructor
         public FFmpegService(
             ILogger<FFmpegService> logger,
             IServerConfigurationManager configurationManager,
             HardwareFFmpegService hardwareService,
             SoftwareFFmpegService softwareService,
-            BrightnessService brightnessService)
+            BrightnessService brightnessService,
+            HardwareValidationService validationService)
         {
             _logger = logger;
             _configurationManager = configurationManager;
             _hardwareService = hardwareService;
             _softwareService = softwareService;
             _brightnessService = brightnessService;
+            _validationService = validationService;
         }
 
         // MARK: ExtractSceneAsync
@@ -57,75 +61,111 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             if (videoDurationSeconds <= 0) videoDurationSeconds = 3600;
 
             var isHDR = metadata.VideoMetadata.VideoHdrType.IsHDR();
+            var is10Bit = metadata.VideoMetadata.VideoColorBits >= 10;
+            var needsToneMapping = isHDR || is10Bit;
             var brightnessThreshold = isHDR ? BrightnessThreshold * 0.5 : BrightnessThreshold;
+
+            _logger.LogInformation("Video analysis: HDR={HDR}, 10-bit={TenBit}, Tone mapping needed={NeedsToneMapping}",
+                isHDR, is10Bit, needsToneMapping);
+
+            bool hardwareValidated = false;
+            if (config.EnableHWA)
+            {
+                _logger.LogInformation("Validating hardware acceleration availability for {HwAccel}", encodingOptions.HardwareAccelerationType);
+                hardwareValidated = await _validationService.ValidateHardwareAcceleration(
+                    encodingOptions.HardwareAccelerationType,
+                    encodingOptions,
+                    cancellationToken).ConfigureAwait(false);
+
+                if (!hardwareValidated)
+                {
+                    _logger.LogWarning("Hardware validation failed - hardware acceleration unavailable or misconfigured. Falling back to software decoding.");
+                }
+            }
 
             string? bestFramePath = null;
 
-            // Strategy 1: Hardware acceleration with tone mapping (if HDR and HWA enabled)
-            if (config.EnableHWA && encodingOptions.EnableTonemapping && isHDR)
+            if (config.EnableHWA && hardwareValidated && encodingOptions.EnableTonemapping && needsToneMapping)
             {
-                _logger.LogInformation("Attempting Strategy 1: Hardware acceleration with tone mapping");
+                _logger.LogInformation("Attempting to use HWA with tone mapping");
                 bestFramePath = await TryExtractionStrategy(
                     metadata, config, encodingOptions, videoDurationSeconds, brightnessThreshold,
-                    useHardware: true, useToneMapping: true, cancellationToken).ConfigureAwait(false);
-                
+                    useHardware: true, useToneMapping: true, "HWA + Tone Mapping", cancellationToken).ConfigureAwait(false);
+
                 if (bestFramePath != null)
                 {
-                    _logger.LogInformation("Strategy 1 succeeded");
+                    _logger.LogInformation("HWA with tone mapping succeeded");
                     return await ApplyFinalProcessing(bestFramePath, config, isHDR).ConfigureAwait(false);
                 }
-                _logger.LogWarning("Strategy 1 failed, trying Strategy 2");
+                _logger.LogWarning("HWA with tone mapping failed, falling back to HWA without tone mapping");
             }
 
-            // Strategy 2: Hardware acceleration without tone mapping (if HWA enabled)
-            if (config.EnableHWA)
+            if (config.EnableHWA && hardwareValidated)
             {
-                _logger.LogInformation("Attempting Strategy 2: Hardware acceleration without tone mapping");
+                if (needsToneMapping)
+                {
+                    _logger.LogInformation("Falling back to HWA without tone mapping");
+                }
+                else
+                {
+                    _logger.LogInformation("Attempting to use HWA");
+                }
+
                 bestFramePath = await TryExtractionStrategy(
                     metadata, config, encodingOptions, videoDurationSeconds, brightnessThreshold,
-                    useHardware: true, useToneMapping: false, cancellationToken).ConfigureAwait(false);
-                
+                    useHardware: true, useToneMapping: false, "HWA", cancellationToken).ConfigureAwait(false);
+
                 if (bestFramePath != null)
                 {
-                    _logger.LogInformation("Strategy 2 succeeded");
+                    _logger.LogInformation("HWA succeeded");
                     return await ApplyFinalProcessing(bestFramePath, config, isHDR).ConfigureAwait(false);
                 }
-                _logger.LogWarning("Strategy 2 failed, trying Strategy 3");
+                _logger.LogWarning("HWA failed, falling back to software");
+            }
+            else if (config.EnableHWA && !hardwareValidated)
+            {
+                _logger.LogInformation("Hardware acceleration disabled due to failed validation, using software");
             }
             else
             {
-                _logger.LogInformation("Hardware acceleration disabled, skipping to Strategy 3");
+                _logger.LogInformation("Hardware acceleration disabled, using software");
             }
 
-            // Strategy 3: Software with tone mapping (if HDR and enabled)
-            if (encodingOptions.EnableTonemapping && isHDR)
+            if (encodingOptions.EnableTonemapping && needsToneMapping)
             {
-                _logger.LogInformation("Attempting Strategy 3: Software with tone mapping");
+                _logger.LogInformation("Attempting software with tone mapping");
                 bestFramePath = await TryExtractionStrategy(
                     metadata, config, encodingOptions, videoDurationSeconds, brightnessThreshold,
-                    useHardware: false, useToneMapping: true, cancellationToken).ConfigureAwait(false);
-                
+                    useHardware: false, useToneMapping: true, "Software + Tone Mapping", cancellationToken).ConfigureAwait(false);
+
                 if (bestFramePath != null)
                 {
-                    _logger.LogInformation("Strategy 3 succeeded");
+                    _logger.LogInformation("Software with tone mapping succeeded");
                     return await ApplyFinalProcessing(bestFramePath, config, isHDR).ConfigureAwait(false);
                 }
-                _logger.LogWarning("Strategy 3 failed, trying Strategy 4");
+                _logger.LogWarning("Software with tone mapping failed, falling back to software without tone mapping");
             }
 
-            // Strategy 4: Software without tone mapping (final fallback)
-            _logger.LogInformation("Attempting Strategy 4: Software without tone mapping (final fallback)");
+            if (needsToneMapping)
+            {
+                _logger.LogInformation("Final fallback to software without tone mapping");
+            }
+            else
+            {
+                _logger.LogInformation("Using software");
+            }
+
             bestFramePath = await TryExtractionStrategy(
                 metadata, config, encodingOptions, videoDurationSeconds, brightnessThreshold,
-                useHardware: false, useToneMapping: false, cancellationToken).ConfigureAwait(false);
-            
+                useHardware: false, useToneMapping: false, "Software", cancellationToken).ConfigureAwait(false);
+
             if (bestFramePath != null)
             {
-                _logger.LogInformation("Strategy 4 succeeded");
+                _logger.LogInformation("Software extraction succeeded");
                 return await ApplyFinalProcessing(bestFramePath, config, isHDR).ConfigureAwait(false);
             }
 
-            _logger.LogError("All extraction strategies failed");
+            _logger.LogError("All extraction methods failed - no usable frames found");
             return null;
         }
 
@@ -138,15 +178,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             double brightnessThreshold,
             bool useHardware,
             bool useToneMapping,
+            string methodName,
             CancellationToken cancellationToken)
         {
             IFFmpegService service = useHardware ? _hardwareService : _softwareService;
-            var strategyName = $"{(useHardware ? "Hardware" : "Software")}{(useToneMapping ? " + ToneMapping" : "")}";
 
-            // Check if strategy is viable
             if (useHardware && !service.CanProcess(metadata, encodingOptions))
             {
-                _logger.LogWarning("Hardware service cannot process this content, skipping {Strategy}", strategyName);
+                _logger.LogWarning("{Method}: Hardware service cannot process this content - codec not supported or HWA unavailable", methodName);
                 return null;
             }
 
@@ -162,24 +201,32 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 string? args = service.BuildFFmpegArgs(outputPath, metadata, encodingOptions, seekTime, !useToneMapping);
                 if (string.IsNullOrWhiteSpace(args))
                 {
-                    _logger.LogError("Could not build FFmpeg args for {Strategy}", strategyName);
+                    _logger.LogError("{Method}: Could not build FFmpeg arguments - service returned null", methodName);
                     break;
                 }
 
                 var ffmpegPath = string.IsNullOrWhiteSpace(encodingOptions.EncoderAppPath) ? "ffmpeg" : encodingOptions.EncoderAppPath;
-                _logger.LogDebug("{Strategy} Command: {Path} {Args}", strategyName, ffmpegPath, args);
+
+                if (attempt == 0)
+                {
+                    _logger.LogInformation("{Method}: Using FFmpeg command: {Path} {Args}", methodName, ffmpegPath, args);
+                }
 
                 bool success = await RunFFmpegAsync(ffmpegPath, args, outputPath, cancellationToken).ConfigureAwait(false);
 
                 if (!success)
                 {
                     if (File.Exists(outputPath)) File.Delete(outputPath);
-                    
-                    // For hardware strategies, fail fast on first few attempts
+
                     if (useHardware && attempt < 3)
                     {
-                        _logger.LogWarning("{Strategy} failed on attempt {Attempt}, strategy likely not working", strategyName, attempt + 1);
+                        _logger.LogWarning("{Method}: Failed on attempt {Attempt} - hardware likely not working, giving up", methodName, attempt + 1);
                         break;
+                    }
+
+                    if (attempt == 0)
+                    {
+                        _logger.LogWarning("{Method}: FFmpeg execution failed on first attempt", methodName);
                     }
                     continue;
                 }
@@ -187,13 +234,18 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 var brightnessOk = _brightnessService.IsFrameBrightEnough(outputPath, brightnessThreshold);
                 var actualBrightness = GetFrameBrightness(outputPath);
 
-                _logger.LogDebug("{Strategy} Attempt {Attempt}: Brightness {Brightness:F3}, Acceptable: {Acceptable}",
-                    strategyName, attempt + 1, actualBrightness, brightnessOk);
+                if (attempt < 5 || brightnessOk)
+                {
+                    _logger.LogDebug("{Method} attempt {Attempt}: Brightness {Brightness:F3}, Acceptable: {Acceptable}",
+                        methodName, attempt + 1, actualBrightness, brightnessOk);
+                }
 
                 if (brightnessOk)
                 {
                     if (bestFramePath != null && File.Exists(bestFramePath))
                         File.Delete(bestFramePath);
+                    _logger.LogInformation("{Method}: Found acceptable frame on attempt {Attempt} with brightness {Brightness:F3}",
+                        methodName, attempt + 1, actualBrightness);
                     return outputPath;
                 }
 
@@ -209,23 +261,22 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     if (File.Exists(outputPath)) File.Delete(outputPath);
                 }
 
-                // Early exit for reasonable HDR frames
                 if (metadata.VideoMetadata.VideoHdrType.IsHDR() && actualBrightness > 0.03 && attempt > 5)
                 {
-                    _logger.LogInformation("{Strategy} found reasonably bright HDR frame after {Attempts} attempts", 
-                        strategyName, attempt + 1);
+                    _logger.LogInformation("{Method}: Found reasonably bright HDR frame after {Attempts} attempts, stopping search",
+                        methodName, attempt + 1);
                     break;
                 }
             }
 
             if (bestFramePath != null)
             {
-                _logger.LogInformation("{Strategy} using best available frame (Brightness: {Brightness:F3})", 
-                    strategyName, bestBrightness);
+                _logger.LogInformation("{Method}: Using best available frame with brightness {Brightness:F3} (threshold was {Threshold:F3})",
+                    methodName, bestBrightness, brightnessThreshold);
                 return bestFramePath;
             }
 
-            _logger.LogWarning("{Strategy} failed to extract any usable frame", strategyName);
+            _logger.LogWarning("{Method}: Failed to extract any usable frames after {Attempts} attempts", methodName, maxAttemptsForStrategy);
             return null;
         }
 
@@ -247,15 +298,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             var random = new Random();
             var startPercent = config.ExtractWindowStart / 100.0;
             var endPercent = config.ExtractWindowEnd / 100.0;
-            
+
             if (startPercent >= endPercent)
             {
-                _logger.LogWarning("Invalid extraction window: start {Start}% >= end {End}%, using default 20%-80%", 
+                _logger.LogWarning("Invalid extraction window: start {Start}% >= end {End}%, using default 20%-80%",
                     config.ExtractWindowStart, config.ExtractWindowEnd);
                 startPercent = 0.2;
                 endPercent = 0.8;
             }
-            
+
             var startTime = videoDurationSeconds * startPercent;
             var endTime = videoDurationSeconds * endPercent;
             return (int)(random.NextDouble() * (endTime - startTime) + startTime);
@@ -318,13 +369,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                 if (process.ExitCode != 0)
                 {
-                    _logger.LogDebug("FFmpeg failed with exit code {ExitCode}: {Error}", process.ExitCode, error);
+                    var errorType = AnalyzeFFmpegError(error);
+                    _logger.LogWarning("FFmpeg failed with exit code {ExitCode}, Error type: {ErrorType}, Details: {Error}",
+                        process.ExitCode, errorType, error);
                     return false;
                 }
 
                 if (!File.Exists(outputPath) || new FileInfo(outputPath).Length == 0)
                 {
-                    _logger.LogDebug("FFmpeg completed but output file is missing or empty: {OutputPath}", outputPath);
+                    _logger.LogWarning("FFmpeg completed but output file is missing or empty: {OutputPath}", outputPath);
                     return false;
                 }
 
@@ -332,9 +385,39 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Error running FFmpeg");
+                _logger.LogError(ex, "Error running FFmpeg process");
                 return false;
             }
+        }
+
+        // MARK: AnalyzeFFmpegError
+        private string AnalyzeFFmpegError(string stderr)
+        {
+            if (string.IsNullOrWhiteSpace(stderr))
+                return "Unknown";
+            
+            var lower = stderr.ToLowerInvariant();
+            
+            if (lower.Contains("cannot load opencl", StringComparison.Ordinal) || lower.Contains("failed to set value 'opencl", StringComparison.Ordinal))
+                return "OpenCL unavailable";
+            if (lower.Contains("cannot load cuda", StringComparison.Ordinal) || lower.Contains("cuda", StringComparison.Ordinal))
+                return "CUDA unavailable";
+            if (lower.Contains("cannot load qsv", StringComparison.Ordinal) || lower.Contains("qsv", StringComparison.Ordinal))
+                return "QSV unavailable";
+            if (lower.Contains("cannot load vaapi", StringComparison.Ordinal) || lower.Contains("vaapi", StringComparison.Ordinal))
+                return "VAAPI unavailable";
+            if (lower.Contains("hwaccel", StringComparison.Ordinal) && lower.Contains("not found", StringComparison.Ordinal))
+                return "Hardware decoder not found";
+            if (lower.Contains("hwupload", StringComparison.Ordinal) || lower.Contains("hwdownload", StringComparison.Ordinal))
+                return "Hardware upload/download failed";
+            if (lower.Contains("tonemap", StringComparison.Ordinal))
+                return "Tone mapping filter failed";
+            if (lower.Contains("cannot open", StringComparison.Ordinal) || lower.Contains("no such file", StringComparison.Ordinal))
+                return "File access error";
+            if (lower.Contains("invalid", StringComparison.Ordinal) && lower.Contains("codec", StringComparison.Ordinal))
+                return "Unsupported codec";
+            
+            return "Unknown FFmpeg error";
         }
     }
 }

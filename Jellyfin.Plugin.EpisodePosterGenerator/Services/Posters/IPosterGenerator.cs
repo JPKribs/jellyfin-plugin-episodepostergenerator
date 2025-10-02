@@ -171,8 +171,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         // MARK: RenderGraphics
         protected virtual void RenderGraphics(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
         {
-            if (string.IsNullOrEmpty(config.GraphicPath) || !File.Exists(config.GraphicPath))
+            if (string.IsNullOrEmpty(config.GraphicPath))
                 return;
+
+            if (!File.Exists(config.GraphicPath))
+            {
+                LogError(new FileNotFoundException("Graphic file not found"), config.GraphicPath);
+                return;
+            }
 
             try
             {
@@ -185,17 +191,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 ApplySafeAreaConstraints(width, height, config, out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop);
                 var graphicRect = CalculateGraphicRect(graphicBitmap, safeLeft, safeTop, safeWidth, safeHeight, config);
 
-                using var graphicPaint = new SKPaint 
-                { 
-                    IsAntialias = true, 
-                    FilterQuality = SKFilterQuality.High 
+                using var graphicPaint = new SKPaint
+                {
+                    IsAntialias = true,
+                    FilterQuality = SKFilterQuality.High
                 };
-                
+
                 skCanvas.DrawBitmap(graphicBitmap, graphicRect, graphicPaint);
             }
             catch
             {
-                // Silently skip if graphic can't be loaded
+                LogError(new InvalidDataException("Failed to load or render graphic"), config.GraphicPath);
             }
         }
 

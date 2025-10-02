@@ -52,7 +52,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     var toneMapFilter = ToneMapFilterService.GetToneMapFilter(
                         encodingOptions,
                         video,
-                        HardwareAccelerationType.none
+                        HardwareAccelerationType.none,
+                        _logger
                     );
 
                     if (!string.IsNullOrEmpty(toneMapFilter))

@@ -22,35 +22,46 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         public static string GetToneMapFilter(
             EncodingOptions options,
             VideoMetadata video,
-            HardwareAccelerationType hwAccel)
+            HardwareAccelerationType hwAccel,
+            ILogger logger)
         {
             if (!options.EnableTonemapping || !video.VideoHdrType.IsHDR())
                 return string.Empty;
 
-            return hwAccel switch
+            if (video.VideoHdrType == VideoRangeType.Unknown && IsLikelyHDR(video))
             {
-                HardwareAccelerationType.videotoolbox 
-                    => GetSoftwareToneMapFilter(options),
-                
-                HardwareAccelerationType.qsv when options.EnableVppTonemapping 
-                    => GetVppToneMapFilter(options),
-                
-                HardwareAccelerationType.nvenc or HardwareAccelerationType.amf 
-                    => GetOpenCLToneMapFilter(options),
-                
-                HardwareAccelerationType.vaapi 
-                    => GetVaapiToneMapFilter(options),
-                
-                HardwareAccelerationType.v4l2m2m or HardwareAccelerationType.rkmpp or HardwareAccelerationType.none or _
-                    => GetSoftwareToneMapFilter(options)
-            };
+                logger.LogWarning("HDR detected by video characteristics, applying tone mapping");
+                video.VideoHdrType = VideoRangeType.HDR10;
+            }
+
+            return GetSoftwareToneMapFilter(options);
+        }
+
+        // MARK: IsLikelyHDR
+        private static bool IsLikelyHDR(VideoMetadata video)
+        {
+            return video.VideoColorBits >= 10 || 
+                video.VideoColorSpace?.Contains("2020", StringComparison.OrdinalIgnoreCase) == true ||
+                video.VideoColorSpace?.Contains("2100", StringComparison.OrdinalIgnoreCase) == true;
         }
 
         // MARK: GetVppToneMapFilter
         private static string GetVppToneMapFilter(EncodingOptions options)
         {
+            return "vpp_qsv=tonemap=1,scale_qsv=format=nv12";
+        }
+
+        // MARK: GetNvencToneMapFilter
+        private static string GetNvencToneMapFilter(EncodingOptions options)
+        {
             var algorithm = GetToneMappingAlgorithm(options);
-            return $"scale_qsv=format=nv12,vpp_qsv=tonemap=1:tonemap_mode={algorithm}";
+            var peak = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
+
+            return "format=p010,hwupload," +
+                   $"tonemap_opencl=tonemap={algorithm}:format=nv12:" +
+                   $"primaries=bt709:transfer=bt709:matrix=bt709:" +
+                   $"peak={peak}:desat=0," +
+                   "hwdownload,format=nv12";
         }
 
         // MARK: GetOpenCLToneMapFilter
@@ -58,25 +69,31 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         {
             var algorithm = GetToneMappingAlgorithm(options);
             var peak = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
-            return $"hwupload,tonemap_opencl=tonemap={algorithm}:peak={peak}:desat=0,hwdownload,format=nv12";
+
+            return $"hwmap,tonemap_opencl=tonemap={algorithm}:format=nv12:" +
+                $"primaries=bt709:transfer=bt709:matrix=bt709:" +
+                $"peak={peak}:desat=0:threshold=0.8," +
+                "hwmap=derive_device=qsv:reverse=1";
         }
 
         // MARK: GetVaapiToneMapFilter
         private static string GetVaapiToneMapFilter(EncodingOptions options)
         {
-            var algorithm = GetToneMappingAlgorithm(options);
-            var peak = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
-            return $"scale_vaapi=format=p010,tonemap_vaapi=tonemap={algorithm}:peak={peak}:desat=0,scale_vaapi=format=nv12";
+            return "tonemap_vaapi=format=nv12:primaries=bt709:transfer=bt709";
         }
 
         // MARK: GetSoftwareToneMapFilter
         private static string GetSoftwareToneMapFilter(EncodingOptions options)
         {
             var algorithm = GetToneMappingAlgorithm(options);
-            double npl = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
+            var npl = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
             
-            // Return clean filter string without -vf prefix and without extra quotes
-            return $"zscale=transfer=linear:primaries=bt2020:matrix=bt2020nc:range=pc,tonemap=tonemap={algorithm}:peak={npl}:desat=0,zscale=transfer=bt709:primaries=bt709:matrix=bt709:range=pc,format=yuv420p";
+            return $"zscale=t=linear:npl={npl}," +
+                "format=gbrpf32le," +
+                "zscale=p=bt709," +
+                $"tonemap=tonemap={algorithm}:desat=0," +
+                "zscale=t=bt709:m=bt709:r=tv," +
+                "format=yuv420p";
         }
 
         // MARK: GetToneMappingAlgorithm

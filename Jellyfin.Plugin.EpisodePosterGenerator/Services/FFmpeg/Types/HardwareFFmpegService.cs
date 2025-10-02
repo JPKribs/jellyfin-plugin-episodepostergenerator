@@ -14,11 +14,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
     public class HardwareFFmpegService : IFFmpegService
     {
         private readonly ILogger<HardwareFFmpegService> _logger;
+        private readonly HardwareValidationService _validationService;
 
         // MARK: Constructor
-        public HardwareFFmpegService(ILogger<HardwareFFmpegService> logger)
+        public HardwareFFmpegService(
+            ILogger<HardwareFFmpegService> logger,
+            HardwareValidationService validationService)
         {
             _logger = logger;
+            _validationService = validationService;
         }
 
         // MARK: BuildFFmpegArgs
@@ -59,19 +63,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             // Input specification
             args += $" -ss {actualSeekSeconds} -i \"{inputPath}\"";
 
-            // Video filter chain using ToneMapFilterService
+            string? filterChain = null;
+
             if (!skipToneMapping && encodingOptions.EnableTonemapping && isHDR)
             {
-                var filterChain = ToneMapFilterService.GetToneMapFilter(encodingOptions, video, hwAccel);
-                if (!string.IsNullOrEmpty(filterChain))
-                {
-                    args += $" -vf {filterChain}";
-                    _logger.LogDebug("Applied hardware tone mapping filter for HDR content");
-                }
-                else
-                {
-                    _logger.LogWarning("Hardware tone mapping filter was empty for HDR content");
-                }
+                filterChain = ToneMapFilterService.GetToneMapFilter(encodingOptions, video, hwAccel, _logger);
+            }
+
+            if (!string.IsNullOrEmpty(filterChain))
+            {
+                args += $" -vf \"{filterChain}\"";
+                _logger.LogDebug("Applied filter chain: {Filter}", filterChain);
             }
 
             // Output encoding parameters
@@ -100,11 +102,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         {
             return hwAccel switch
             {
-                HardwareAccelerationType.qsv => "-hwaccel qsv -hwaccel_output_format qsv",
-                HardwareAccelerationType.nvenc => "-hwaccel cuda -hwaccel_output_format cuda",
-                HardwareAccelerationType.amf => "-hwaccel vaapi -hwaccel_output_format vaapi",
-                HardwareAccelerationType.vaapi => "-hwaccel vaapi -hwaccel_output_format vaapi",
-                HardwareAccelerationType.videotoolbox => "-hwaccel videotoolbox -hwaccel_output_format videotoolbox_vld",
+                HardwareAccelerationType.qsv => "-hwaccel qsv",
+                HardwareAccelerationType.nvenc => "-hwaccel cuda",
+                HardwareAccelerationType.amf => "-hwaccel vaapi",
+                HardwareAccelerationType.vaapi => "-hwaccel vaapi",
+                HardwareAccelerationType.videotoolbox => "-hwaccel videotoolbox",
                 _ => string.Empty
             };
         }

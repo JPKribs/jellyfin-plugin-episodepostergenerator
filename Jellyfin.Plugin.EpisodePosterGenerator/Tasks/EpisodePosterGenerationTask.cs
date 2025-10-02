@@ -125,24 +125,42 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                         // Generate poster using PosterService
                         var posterPath = await posterService.GenerateAsync(TaskTrigger.Task, episode, config).ConfigureAwait(false);
 
-                        if (!string.IsNullOrEmpty(posterPath))
+                        if (!string.IsNullOrEmpty(posterPath) && File.Exists(posterPath))
                         {
-                            // Successfully generated poster
-                            successCount++;
+                            try
+                            {
+                                using var imageStream = File.OpenRead(posterPath);
+                                                                
+                                await _providerManager.SaveImage(
+                                    episode,
+                                    imageStream,
+                                    config.PosterFileType.GetMimeType(),
+                                    ImageType.Primary,
+                                    null,
+                                    CancellationToken.None).ConfigureAwait(false);
 
-                            // Mark episode as processed in tracking database
-                            await trackingService.MarkEpisodeProcessedAsync(episode, config).ConfigureAwait(false);
-
-                            _logger.LogInformation("Successfully processed episode: {SeriesName} - {EpisodeName}",
-                                episode.Series?.Name ?? "Unknown Series",
-                                episode.Name ?? "Unknown Episode");
+                                await episode.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, CancellationToken.None).ConfigureAwait(false);
+                                
+                                successCount++;
+                                
+                                await trackingService.MarkEpisodeProcessedAsync(episode, config).ConfigureAwait(false);
+                                
+                                _logger.LogInformation("Successfully processed and saved poster for: {SeriesName} - {EpisodeName}",
+                                    episode.Series?.Name ?? "Unknown Series",
+                                    episode.Name ?? "Unknown Episode");
+                            }
+                            catch (Exception saveEx)
+                            {
+                                failureCount++;
+                                _logger.LogError(saveEx, "Failed to save poster to Jellyfin for: {SeriesName} - {EpisodeName}",
+                                    episode.Series?.Name ?? "Unknown Series",
+                                    episode.Name ?? "Unknown Episode");
+                            }
                         }
                         else
                         {
-                            // Failed to generate poster
                             failureCount++;
-                            
-                            _logger.LogWarning("Failed to generate poster for episode: {SeriesName} - {EpisodeName}",
+                            _logger.LogWarning("Poster path invalid or file does not exist for: {SeriesName} - {EpisodeName}",
                                 episode.Series?.Name ?? "Unknown Series",
                                 episode.Name ?? "Unknown Episode");
                         }
