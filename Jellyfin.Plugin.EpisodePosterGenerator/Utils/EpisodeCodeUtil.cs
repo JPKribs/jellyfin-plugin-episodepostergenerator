@@ -34,6 +34,27 @@ public static class EpisodeCodeUtil
         };
     }
 
+    // MARK: FormatFullText
+    public static string FormatFullText(int seasonNumber, int episodeNumber, bool includeSeason, bool includeEpisode)
+    {
+        if (includeSeason && includeEpisode)
+        {
+            return $"SEASON {seasonNumber} • EPISODE {episodeNumber}";
+        }
+        
+        if (includeSeason)
+        {
+            return $"SEASON {seasonNumber}";
+        }
+        
+        if (includeEpisode)
+        {
+            return $"EPISODE {episodeNumber}";
+        }
+        
+        return string.Empty;
+    }
+
     // MARK: GetNumberFormat
     private static string GetNumberFormat(int number)
     {

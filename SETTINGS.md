@@ -58,11 +58,12 @@ This document provides a comprehensive guide to all configuration settings avail
 
 ### Style
 **Type:** Dropdown  
-**Options:** Standard, Cutout, Logo, Numeral  
+**Options:** Standard, Cutout, Frame, Logo, Numeral  
 **Default:** Standard  
 **Effect:** Determines the overall poster design and layout approach:
 - **Standard:** Classic poster with background image and bottom-aligned text
 - **Cutout:** Large text with transparent cutout effect revealing background
+- **Frame:** Decorative border frame with episode title and optional episode details
 - **Logo:** Series logo-focused design with clean typography
 - **Numeral:** Roman numeral episode numbers with elegant styling
 

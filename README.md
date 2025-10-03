@@ -50,6 +50,24 @@ Large episode numbers displayed as transparent cutouts revealing the screenshot 
 - Optional contrasting borders for improved visibility
 - Support for graphic overlays
 
+### Frame Style
+Decorative frame borders with episode title and optional season/episode information.
+
+| Episode Title | Episode Title + Details | Episode Title + Details + Graphic |
+|--------------|------------------------|----------------------------------|
+| ![Frame Episode Title](Screenshots/Frame/Episode_Title.jpg) | ![Frame Episode Title+Details](Screenshots/Frame/Episode_Title+Details.jpg) | ![Frame Episode Title+Details+Graphic](Screenshots/Frame/Episode_Title+Details+Graphic.jpg) |
+
+**Features:**
+- Decorative frame border around poster edges
+- Border lines stop at text boundaries for clean integration
+- Episode title always displayed at top (required)
+- Optional season and episode information at bottom
+- Centered text alignment for balanced composition
+- Border lines vertically centered on text height
+- Automatic uppercase conversion for episode titles
+- Support for graphic overlays
+- Respects safe area margins for optimal framing
+
 ### Logo Style
 Series logo-focused posters with episode information and clean typography.
 

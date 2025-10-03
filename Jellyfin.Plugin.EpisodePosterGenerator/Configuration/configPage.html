@@ -102,6 +102,7 @@
                         <select is="emby-select" id="selectPosterStyle" data-config="PosterStyle">
                             <option value="Standard">Standard</option>
                             <option value="Cutout">Cutout</option>
+                            <option value="Frame">Frame</option>
                             <option value="Logo">Logo</option>
                             <option value="Numeral">Numeral</option>
                         </select>
@@ -272,7 +273,7 @@
                         <h2 class="sectionTitle">Episode Title</h2>
                     </div>
 
-                    <div class="inputContainer">
+                    <div class="inputContainer" id="showTitleContainer" data-hide-for-styles="Frame">
                         <label class="checkboxContainer">
                             <input is="emby-checkbox" type="checkbox" id="chkShowTitle" data-config="ShowTitle" />
                             <span>Show Title</span>
@@ -583,6 +584,12 @@
                 const showEpisodeCheckbox = document.getElementById('chkShowEpisode');
                 if (posterStyle === 'Cutout' || posterStyle === 'Numeral') {
                     showEpisodeCheckbox.checked = true;
+                }
+
+                // For Frame style, ensure ShowTitle is always true
+                const showTitleCheckbox = document.getElementById('chkShowTitle');
+                if (posterStyle === 'Frame') {
+                    showTitleCheckbox.checked = true;
                 }
             },
 

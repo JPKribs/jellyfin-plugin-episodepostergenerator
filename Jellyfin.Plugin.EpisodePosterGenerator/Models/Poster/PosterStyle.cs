@@ -18,6 +18,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         /// <summary>
         /// Series logo with episode code and optional title on solid background.
         /// </summary>
-        Logo
+        Logo,
+        /// <summary>
+        /// Frame border around poster with episode title and optional season/episode information.
+        /// </summary>
+        Frame
     }
 }
