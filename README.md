@@ -55,7 +55,7 @@ Decorative frame borders with episode title and optional season/episode informat
 
 | Episode Title | Episode Title + Details | Episode Title + Details + Graphic |
 |--------------|------------------------|----------------------------------|
-| ![Frame Episode Title](Screenshots/Frame/Episode Title + Gradient.jpg) | ![Frame Episode Title+Details](Screenshots/Frame/Episode Title + Details + Gradient.jpg) | ![Frame Episode Title+Details+Graphic](Screenshots/Frame/Episode Title + Details + Graphic.jpg) |
+| ![Frame Episode Title](Screenshots/Frame/Episode_Title+Gradient.jpg) | ![Frame Episode Title+Details](Screenshots/Frame/Episode_Title+Details+Gradient.jpg) | ![Frame Episode Title+Details+Graphic](Screenshots/Frame/Episode_Title+Details+Graphic.jpg) |
 
 **Features:**
 - Decorative frame border around poster edges
