@@ -13,20 +13,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
 {
-    /// <summary>
-    /// Image provider trigger for on-demand episode poster generation.
-    /// Gets episode from Jellyfin, passes directly to PosterService (no filtering).
-    /// </summary>
     public class EpisodePosterImageProvider : IDynamicImageProvider
     {
-        /// <summary>
-        /// Logger for image provider operations
-        /// </summary>
         private readonly ILogger<EpisodePosterImageProvider> _logger;
-
-        /// <summary>
-        /// Application paths for temporary file management
-        /// </summary>
         private readonly IApplicationPaths _appPaths;
 
         // MARK: Constructor
@@ -90,8 +79,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
             {
                 _logger.LogInformation("Starting to create poster for {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
 
-                // Generate poster using PosterService
-                var posterPath = await posterService.GenerateAsync(Models.TaskTrigger.Provider, episode, config).ConfigureAwait(false);
+                var posterPath = await posterService.GeneratePosterAsync(episode).ConfigureAwait(false);
                 
                 if (string.IsNullOrEmpty(posterPath) || !File.Exists(posterPath))
                 {
@@ -99,11 +87,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                     return new DynamicImageResponse { HasImage = false };
                 }
 
-                // Load poster into memory stream for Jellyfin
                 var imageBytes = await File.ReadAllBytesAsync(posterPath, cancellationToken).ConfigureAwait(false);
                 var imageStream = new MemoryStream(imageBytes);
 
-                // Mark as processed in tracking service
                 var trackingService = Plugin.Instance?.TrackingService;
                 if (trackingService != null)
                 {
@@ -119,11 +105,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
 
                 _logger.LogInformation("Poster created for {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
 
+                var posterSettings = Plugin.Instance!.PosterConfigService.GetSettingsForEpisode(episode);
+                var imageFormat = posterSettings.PosterFileType == Models.PosterFileType.PNG ? ImageFormat.Png :
+                                  posterSettings.PosterFileType == Models.PosterFileType.WEBP ? ImageFormat.Webp :
+                                  ImageFormat.Jpg;
+
                 return new DynamicImageResponse
                 {
                     HasImage = true,
                     Stream = imageStream,
-                    Format = ImageFormat.Jpg
+                    Format = imageFormat
                 };
             }
             catch (Exception ex)

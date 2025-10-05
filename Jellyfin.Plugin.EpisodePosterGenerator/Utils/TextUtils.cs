@@ -77,7 +77,7 @@ public static class TextUtils
         string title,
         Position position,
         Alignment alignment,
-        PluginConfiguration config,
+        PosterSettings settings,
         float canvasWidth,
         float canvasHeight)
     {
@@ -87,21 +87,21 @@ public static class TextUtils
 
         // Calculate responsive font size based on canvas height and safe area constraints
         // This ensures text scales appropriately across different poster dimensions
-        var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight, config.PosterSafeArea);
+        var fontSize = FontUtils.CalculateFontSizeFromPercentage(settings.TitleFontSize, canvasHeight, settings.PosterSafeArea);
         
         // Create typeface with user-configured font family and style preferences
-        var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
+        var typeface = FontUtils.CreateTypeface(settings.TitleFontFamily, FontUtils.GetFontStyle(settings.TitleFontStyle));
 
         // Set up paint objects for main text and shadow rendering with proper resource management
-        using var titlePaint = CreateTextPaint(config.TitleFontColor, fontSize, typeface, alignment);
+        using var titlePaint = CreateTextPaint(settings.TitleFontColor, fontSize, typeface, alignment);
         using var shadowPaint = CreateShadowPaint(fontSize, typeface, alignment);
 
         // Calculate safe drawing area that respects poster margins and layout constraints
-        var safeArea = CalculateSafeArea(canvasWidth, canvasHeight, config);
+        var safeArea = CalculateSafeArea(canvasWidth, canvasHeight, settings);
         
         // Determine maximum text width considering horizontal padding within the safe area
         // This ensures text doesn't extend too close to the safe area boundaries
-        var safeAreaMargin = config.PosterSafeArea / 100f;
+        var safeAreaMargin = settings.PosterSafeArea / 100f;
         var horizontalPadding = 1.0f - (2 * safeAreaMargin);
         var maxTextWidth = safeArea.Width * horizontalPadding;
         
@@ -368,10 +368,10 @@ public static class TextUtils
     /// <param name="config">Plugin configuration containing the PosterSafeArea percentage setting.</param>
     /// <returns>SKRect defining the safe drawing area with appropriate margin padding applied.</returns>
     // MARK: CalculateSafeArea
-    private static SKRect CalculateSafeArea(float canvasWidth, float canvasHeight, PluginConfiguration config)
+    private static SKRect CalculateSafeArea(float canvasWidth, float canvasHeight, PosterSettings settings)
     {
         // Convert percentage to decimal for calculations (e.g., 5% becomes 0.05)
-        var safeAreaMargin = config.PosterSafeArea / 100f;
+        var safeAreaMargin = settings.PosterSafeArea / 100f;
         
         // Calculate pixel margins for horizontal and vertical edges
         var marginX = canvasWidth * safeAreaMargin;

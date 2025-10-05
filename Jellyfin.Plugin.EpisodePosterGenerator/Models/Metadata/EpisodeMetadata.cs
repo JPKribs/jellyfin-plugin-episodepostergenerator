@@ -1,3 +1,4 @@
+using System;
 using MediaBrowser.Controller.Entities.TV;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
@@ -7,6 +8,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
     /// </summary>
     public class EpisodeMetadata
     {
+        /// <summary>
+        /// Name of the series this episode belongs to
+        /// </summary>
+        public Guid SeriesId { get; set; }
+
         /// <summary>
         /// Name of the series this episode belongs to
         /// </summary>

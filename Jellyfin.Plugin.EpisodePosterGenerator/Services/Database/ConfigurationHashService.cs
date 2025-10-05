@@ -2,18 +2,12 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
+using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services;
 
-/// <summary>
-/// Service for generating and comparing configuration hashes
-/// </summary>
 public class ConfigurationHashService
 {
-    /// <summary>
-    /// Cached JSON serializer options for consistent hash generation
-    /// </summary>
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -21,46 +15,48 @@ public class ConfigurationHashService
     };
 
     // MARK: ComputeHash
-    public string ComputeHash(PluginConfiguration config)
+    public string ComputeHash(PosterSettings settings)
     {
-        ArgumentNullException.ThrowIfNull(config);
+        ArgumentNullException.ThrowIfNull(settings);
 
-        // Create configuration subset excluding system settings (EnableProvider, EnableTask)
         var hashConfig = new
         {
-            config.ExtractPoster,
-            config.EnableLetterboxDetection,
-            config.LetterboxBlackThreshold,
-            config.LetterboxConfidence,
-            config.ExtractWindowStart,
-            config.ExtractWindowEnd,
-            config.PosterStyle,
-            config.CutoutType,
-            config.CutoutBorder,
-            config.LogoPosition,
-            config.LogoAlignment,
-            config.LogoHeight,
-            config.BrightenHDR,
-            config.PosterFill,
-            config.PosterDimensionRatio,
-            config.PosterFileType,
-            config.PosterSafeArea,
-            config.ShowEpisode,
-            config.EpisodeFontFamily,
-            config.EpisodeFontStyle,
-            config.EpisodeFontSize,
-            config.EpisodeFontColor,
-            config.ShowTitle,
-            config.TitleFontFamily,
-            config.TitleFontStyle,
-            config.TitleFontSize,
-            config.TitleFontColor,
-            config.OverlayColor,
-            config.GraphicPath,
-            config.GraphicWidth,
-            config.GraphicHeight,
-            config.GraphicPosition,
-            config.GraphicAlignment
+            settings.ExtractPoster,
+            settings.EnableHWA,
+            settings.EnableLetterboxDetection,
+            settings.LetterboxBlackThreshold,
+            settings.LetterboxConfidence,
+            settings.ExtractWindowStart,
+            settings.ExtractWindowEnd,
+            settings.PosterStyle,
+            settings.CutoutType,
+            settings.CutoutBorder,
+            settings.LogoPosition,
+            settings.LogoAlignment,
+            settings.LogoHeight,
+            settings.BrightenHDR,
+            settings.PosterFill,
+            settings.PosterDimensionRatio,
+            settings.PosterFileType,
+            settings.PosterSafeArea,
+            settings.ShowEpisode,
+            settings.EpisodeFontFamily,
+            settings.EpisodeFontStyle,
+            settings.EpisodeFontSize,
+            settings.EpisodeFontColor,
+            settings.ShowTitle,
+            settings.TitleFontFamily,
+            settings.TitleFontStyle,
+            settings.TitleFontSize,
+            settings.TitleFontColor,
+            settings.OverlayColor,
+            settings.OverlayGradient,
+            settings.OverlaySecondaryColor,
+            settings.GraphicPath,
+            settings.GraphicWidth,
+            settings.GraphicHeight,
+            settings.GraphicPosition,
+            settings.GraphicAlignment
         };
 
         var json = JsonSerializer.Serialize(hashConfig, JsonOptions);
@@ -69,18 +65,18 @@ public class ConfigurationHashService
     }
 
     // MARK: HasConfigurationChanged
-    public bool HasConfigurationChanged(PluginConfiguration config, string previousHash)
+    public bool HasConfigurationChanged(PosterSettings settings, string previousHash)
     {
         if (string.IsNullOrEmpty(previousHash))
             return true;
 
-        var currentHash = ComputeHash(config);
+        var currentHash = ComputeHash(settings);
         return !string.Equals(currentHash, previousHash, StringComparison.OrdinalIgnoreCase);
     }
 
     // MARK: GetCurrentHash
-    public string GetCurrentHash(PluginConfiguration config)
+    public string GetCurrentHash(PosterSettings settings)
     {
-        return ComputeHash(config);
+        return ComputeHash(settings);
     }
 }

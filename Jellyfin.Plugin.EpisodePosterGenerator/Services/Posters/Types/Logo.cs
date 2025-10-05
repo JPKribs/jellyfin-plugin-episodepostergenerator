@@ -22,33 +22,33 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: RenderGraphics
-        protected override void RenderGraphics(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        protected override void RenderGraphics(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             // First try to render any configured graphic path (base implementation)
-            base.RenderGraphics(skCanvas, episodeMetadata, config, width, height);
+            base.RenderGraphics(skCanvas, episodeMetadata, settings, width, height);
 
             // Then render the series logo
-            RenderSeriesLogo(skCanvas, episodeMetadata, config, width, height);
+            RenderSeriesLogo(skCanvas, episodeMetadata, settings, width, height);
         }
 
         // MARK: RenderTypography
-        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
-            var safeArea = GetSafeAreaBounds(width, height, config);
+            var safeArea = GetSafeAreaBounds(width, height, settings);
             float spacing = height * 0.02f;
             float currentY = safeArea.Bottom;
 
             // Draw episode title if enabled
-            if (config.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
+            if (settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
             {
-                var titleHeight = DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, config, width, height, currentY, safeArea);
+                var titleHeight = DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, settings, width, height, currentY, safeArea);
                 currentY -= titleHeight + spacing;
             }
 
             // Draw episode code if enabled
-            if (config.ShowEpisode)
+            if (settings.ShowEpisode)
             {
-                DrawEpisodeCode(skCanvas, episodeMetadata.SeasonNumber ?? 0, episodeMetadata.EpisodeNumberStart ?? 0, config, width, height, currentY);
+                DrawEpisodeCode(skCanvas, episodeMetadata.SeasonNumber ?? 0, episodeMetadata.EpisodeNumberStart ?? 0, settings, width, height, currentY);
             }
         }
 
@@ -59,7 +59,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: RenderSeriesLogo
-        private void RenderSeriesLogo(SKCanvas canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        private void RenderSeriesLogo(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, int width, int height)
         {
             var seriesName = episodeMetadata.SeriesName ?? "Unknown Series";
             var logoPath = GetSeriesLogoPath(episodeMetadata);
@@ -84,7 +84,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: DrawSeriesLogoImage
-        private void DrawSeriesLogoImage(SKCanvas canvas, string logoPath, Position position, Alignment alignment, PluginConfiguration config, int width, int height)
+        private void DrawSeriesLogoImage(SKCanvas canvas, string logoPath, Position position, Alignment alignment, PosterSettings config, int width, int height)
         {
             try
             {
@@ -115,7 +115,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: DrawSeriesLogoText
-        private void DrawSeriesLogoText(SKCanvas canvas, string seriesName, Position position, Alignment alignment, PluginConfiguration config, int width, int height)
+        private void DrawSeriesLogoText(SKCanvas canvas, string seriesName, Position position, Alignment alignment, PosterSettings config, int width, int height)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize * 1.2f, height);
             var color = ColorUtils.ParseHexColor(config.EpisodeFontColor ?? "#FFFFFF");
@@ -158,7 +158,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: DrawEpisodeTitle
-        private float DrawEpisodeTitle(SKCanvas canvas, string title, PluginConfiguration config, int width, int height, float bottomY, SKRect safeArea)
+        private float DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int width, int height, float bottomY, SKRect safeArea)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
             var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
@@ -200,7 +200,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: DrawEpisodeCode
-        private void DrawEpisodeCode(SKCanvas canvas, int seasonNumber, int episodeNumber, PluginConfiguration config, int width, int height, float bottomY)
+        private void DrawEpisodeCode(SKCanvas canvas, int seasonNumber, int episodeNumber, PosterSettings config, int width, int height, float bottomY)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, height);
             var color = ColorUtils.ParseHexColor(config.EpisodeFontColor ?? "#FFFFFF");

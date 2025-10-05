@@ -47,7 +47,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         // MARK: ExtractSceneAsync
         public async Task<string?> ExtractSceneAsync(
             EpisodeMetadata metadata,
-            PluginConfiguration config,
+            PosterSettings config,
             CancellationToken cancellationToken = default)
         {
             if (metadata?.VideoMetadata == null)
@@ -172,7 +172,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         // MARK: TryExtractionStrategy
         private async Task<string?> TryExtractionStrategy(
             EpisodeMetadata metadata,
-            PluginConfiguration config,
+            PosterSettings config,
             EncodingOptions encodingOptions,
             double videoDurationSeconds,
             double brightnessThreshold,
@@ -281,7 +281,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // MARK: ApplyFinalProcessing
-        private Task<string> ApplyFinalProcessing(string framePath, PluginConfiguration config, bool isHDR)
+        private Task<string> ApplyFinalProcessing(string framePath, PosterSettings config, bool isHDR)
         {
             if (isHDR && config.BrightenHDR > 0)
             {
@@ -293,7 +293,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // MARK: GenerateSeekTime
-        private int GenerateSeekTime(double videoDurationSeconds, int attempt, PluginConfiguration config)
+        private int GenerateSeekTime(double videoDurationSeconds, int attempt, PosterSettings config)
         {
             var random = new Random();
             var startPercent = config.ExtractWindowStart / 100.0;

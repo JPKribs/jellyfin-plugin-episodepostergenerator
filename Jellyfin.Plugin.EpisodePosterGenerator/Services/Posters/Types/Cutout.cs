@@ -22,12 +22,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: RenderOverlay
-        protected override void RenderOverlay(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        protected override void RenderOverlay(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
-            if (string.IsNullOrEmpty(config.OverlayColor))
+            if (string.IsNullOrEmpty(settings.OverlayColor))
                 return;
 
-            var overlayColor = ColorUtils.ParseHexColor(config.OverlayColor);
+            var overlayColor = ColorUtils.ParseHexColor(settings.OverlayColor);
             if (overlayColor.Alpha == 0)
                 return;
 
@@ -44,7 +44,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             overlayCanvas.DrawRect(SKRect.Create(width, height), overlayPaint);
 
             // Create cutout text (this will remove parts of the overlay)
-            DrawCutoutText(overlayCanvas, episodeMetadata, config, width, height, overlayColor);
+            DrawCutoutText(overlayCanvas, episodeMetadata, settings, width, height, overlayColor);
 
             // Draw the overlay with cutouts onto the main canvas
             using var finalPaint = new SKPaint { IsAntialias = true };
@@ -52,23 +52,23 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: RenderTypography
-        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             // Cutout style can optionally show title text if enabled
-            if (!config.ShowTitle || string.IsNullOrEmpty(episodeMetadata.EpisodeName))
+            if (!settings.ShowTitle || string.IsNullOrEmpty(episodeMetadata.EpisodeName))
                 return;
 
-            var safeArea = GetSafeAreaBounds(width, height, config);
+            var safeArea = GetSafeAreaBounds(width, height, settings);
             
             // Position title at bottom of safe area
             var titleY = safeArea.Bottom - (safeArea.Height * 0.1f);
             
             using var titlePaint = new SKPaint
             {
-                Color = ColorUtils.ParseHexColor(config.TitleFontColor),
-                TextSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height),
+                Color = ColorUtils.ParseHexColor(settings.TitleFontColor),
+                TextSize = FontUtils.CalculateFontSizeFromPercentage(settings.TitleFontSize, height),
                 IsAntialias = true,
-                Typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle)),
+                Typeface = FontUtils.CreateTypeface(settings.TitleFontFamily, FontUtils.GetFontStyle(settings.TitleFontStyle)),
                 TextAlign = SKTextAlign.Center
             };
 
@@ -93,7 +93,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: DrawCutoutText
-        private void DrawCutoutText(SKCanvas canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int canvasWidth, int canvasHeight, SKColor overlayColor)
+        private void DrawCutoutText(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, int canvasWidth, int canvasHeight, SKColor overlayColor)
         {
             var safeArea = GetSafeAreaBounds(canvasWidth, canvasHeight, config);
 
@@ -151,7 +151,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: CalculateCutoutArea
-        private SKRect CalculateCutoutArea(SKRect safeArea, bool hasTitle, PluginConfiguration config, float canvasHeight)
+        private SKRect CalculateCutoutArea(SKRect safeArea, bool hasTitle, PosterSettings config, float canvasHeight)
         {
             if (!hasTitle)
                 return safeArea;

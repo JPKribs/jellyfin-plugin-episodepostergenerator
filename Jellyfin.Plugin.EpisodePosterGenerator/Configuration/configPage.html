@@ -20,7 +20,7 @@
 
                     <div class="inputContainer">
                         <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkEnableProvider" data-config="EnableProvider" />
+                            <input is="emby-checkbox" type="checkbox" id="chkEnableProvider" />
                             <span>Enable Provider</span>
                         </label>
                         <div class="fieldDescription">Enable the plugin as a metadata provider for episode posters.</div>
@@ -28,20 +28,56 @@
 
                     <div class="inputContainer">
                         <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkEnableTask" data-config="EnableTask" />
+                            <input is="emby-checkbox" type="checkbox" id="chkEnableTask" />
                             <span>Enable Scheduled Task</span>
                         </label>
                         <div class="fieldDescription">Enable the plugin as a scheduled task for batch poster generation.</div>
                     </div>
 
-                    <!-- Poster Settings -->
+                    <!-- Poster Configuration Selector -->
+                    <div class="sectionTitleContainer">
+                        <h2 class="sectionTitle">Poster Configuration</h2>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label for="selectPosterConfig">Active Configuration:</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select is="emby-select" id="selectPosterConfig" style="flex: 1;">
+                                <!-- Options populated dynamically -->
+                            </select>
+                            <button is="emby-button" type="button" id="btnRenameConfig" class="raised" style="white-space: nowrap;">
+                                <span>Rename</span>
+                            </button>
+                            <button is="emby-button" type="button" id="btnNewConfig" class="raised button-submit" style="white-space: nowrap;">
+                                <span>New</span>
+                            </button>
+                            <button is="emby-button" type="button" id="btnDeleteConfig" class="raised button-delete" style="white-space: nowrap;">
+                                <span>Delete</span>
+                            </button>
+                        </div>
+                        <div class="fieldDescription">Select which poster configuration to edit. Default configuration applies to all series not explicitly assigned elsewhere.</div>
+                    </div>
+
+                    <!-- Series Assignment (hidden for default) -->
+                    <div id="seriesAssignmentSection" class="inputContainer" style="display: none;">
+                        <label>Assigned Series:</label>
+                        <div id="assignedSeriesList" class="assigned-series-container">
+                            <!-- Series tags populated dynamically -->
+                        </div>
+                        <button is="emby-button" type="button" id="btnAddSeries" class="raised" style="margin-top: 8px;">
+                            <span>Edit Series</span>
+                        </button>
+                        <div class="fieldDescription">Select which series should use this poster configuration.</div>
+                    </div>
+
+                    <!-- All existing poster settings below -->
                     <div class="sectionTitleContainer">
                         <h2 class="sectionTitle">Poster</h2>
                     </div>
 
                     <div class="inputContainer">
                         <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkExtractPoster" data-config="ExtractPoster" />
+                            <input is="emby-checkbox" type="checkbox" id="chkExtractPoster" data-setting="ExtractPoster" />
                             <span>Enable Poster Episode</span>
                         </label>
                         <div class="fieldDescription">Extract the poster image from the episode.</div>
@@ -50,25 +86,25 @@
                     <div class="nested-settings" data-depends-on="chkExtractPoster">
                         <div class="inputContainer">
                             <label for="txtExtractWindowStart">Extraction Start (%):</label>
-                            <input is="emby-input" type="number" id="txtExtractWindowStart" min="0" max="100" step="1" data-config="ExtractWindowStart" data-type="number" />
+                            <input is="emby-input" type="number" id="txtExtractWindowStart" min="0" max="100" step="1" data-setting="ExtractWindowStart" data-type="number" />
                             <div class="fieldDescription">Skip the first X% of the episode to avoid opening credits and intro sequences (0-100%).</div>
                         </div>
 
                         <div class="inputContainer">
                             <label for="txtExtractWindowEnd">Extraction End (%):</label>
-                            <input is="emby-input" type="number" id="txtExtractWindowEnd" min="0" max="100" step="1" data-config="ExtractWindowEnd" data-type="number" />
+                            <input is="emby-input" type="number" id="txtExtractWindowEnd" min="0" max="100" step="1" data-setting="ExtractWindowEnd" data-type="number" />
                             <div class="fieldDescription">Stop extracting at X% of the episode to avoid end credits and outro sequences (0-100%).</div>
                         </div>
 
                         <div class="inputContainer">
                             <label for="txtBrightenHDR">Brighten HDR (%):</label>
-                            <input is="emby-input" type="number" id="txtBrightenHDR" min="0" max="100" data-config="BrightenHDR" data-type="number" />
+                            <input is="emby-input" type="number" id="txtBrightenHDR" min="0" max="100" data-setting="BrightenHDR" data-type="number" />
                             <div class="fieldDescription">Brightness adjustment for HDR content as percentage (0-100%).</div>
                         </div>
                                                 
                         <div class="inputContainer">
                             <label class="checkboxContainer">
-                                <input is="emby-checkbox" type="checkbox" id="chkEnableHWA" data-config="EnableHWA" />
+                                <input is="emby-checkbox" type="checkbox" id="chkEnableHWA" data-setting="EnableHWA" />
                                 <span>Enable Hardware Accelerated Decoding</span>
                             </label>
                             <div class="fieldDescription">Uses the transcoding settings for Hardware Acceleration to extract the canvas image.</div>
@@ -77,7 +113,7 @@
                 
                     <div class="inputContainer" id="letterboxDetectionContainer" data-depends-on="chkExtractPoster">
                         <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkEnableLetterboxDetection" data-config="EnableLetterboxDetection" />
+                            <input is="emby-checkbox" type="checkbox" id="chkEnableLetterboxDetection" data-setting="EnableLetterboxDetection" />
                             <span>Enable Letterbox Detection</span>
                         </label>
                         <div class="fieldDescription">Automatically detect and crop black letterbox borders from poster images.</div>
@@ -86,20 +122,20 @@
                     <div class="nested-settings" data-depends-on="chkExtractPoster,chkEnableLetterboxDetection">
                         <div class="inputContainer">
                             <label for="txtLetterboxBlackThreshold">Black Threshold:</label>
-                            <input is="emby-input" type="number" id="txtLetterboxBlackThreshold" min="0" max="255" data-config="LetterboxBlackThreshold" data-type="number" />
+                            <input is="emby-input" type="number" id="txtLetterboxBlackThreshold" min="0" max="255" data-setting="LetterboxBlackThreshold" data-type="number" />
                             <div class="fieldDescription">Pixel brightness threshold for black detection (0-255). Lower values detect darker pixels as letterbox.</div>
                         </div>
 
                         <div class="inputContainer">
                             <label for="txtLetterboxConfidence">Detection Confidence (%):</label>
-                            <input is="emby-input" type="number" id="txtLetterboxConfidence" min="50" max="100" step="1" data-config="LetterboxConfidence" data-type="number" />
+                            <input is="emby-input" type="number" id="txtLetterboxConfidence" min="50" max="100" step="1" data-setting="LetterboxConfidence" data-type="number" />
                             <div class="fieldDescription">Percentage of pixels that must be black to consider it letterboxing (50-100%).</div>
                         </div>
                     </div>
 
                     <div class="inputContainer">
                         <label for="selectPosterStyle">Style:</label>
-                        <select is="emby-select" id="selectPosterStyle" data-config="PosterStyle">
+                        <select is="emby-select" id="selectPosterStyle" data-setting="PosterStyle">
                             <option value="Standard">Standard</option>
                             <option value="Cutout">Cutout</option>
                             <option value="Frame">Frame</option>
@@ -113,7 +149,7 @@
                     <div class="cutout-logo-group" id="cutoutOptions" data-poster-styles="Cutout">
                         <div class="inputContainer">
                             <label class="checkboxContainer">
-                                <input is="emby-checkbox" type="checkbox" id="chkCutoutBorder" data-config="CutoutBorder" />
+                                <input is="emby-checkbox" type="checkbox" id="chkCutoutBorder" data-setting="CutoutBorder" />
                                 <span>Enable Cutout Text Border</span>
                             </label>
                             <div class="fieldDescription">Add a contrasting border around the cutout text for better visibility.</div>
@@ -121,7 +157,7 @@
 
                         <div class="inputContainer">
                             <label for="selectCutoutType">Type:</label>
-                            <select is="emby-select" id="selectCutoutType" data-config="CutoutType">
+                            <select is="emby-select" id="selectCutoutType" data-setting="CutoutType">
                                 <option value="Code">Code</option>
                                 <option value="Text">Text</option>
                             </select>
@@ -133,7 +169,7 @@
                     <div class="cutout-logo-group" id="logoOptions" data-poster-styles="Logo">
                         <div class="inputContainer">
                             <label for="selectLogoAlignment">Logo Alignment:</label>
-                            <select is="emby-select" id="selectLogoAlignment" data-config="LogoAlignment">
+                            <select is="emby-select" id="selectLogoAlignment" data-setting="LogoAlignment">
                                 <option value="Left">Left</option>
                                 <option value="Center">Center</option>
                                 <option value="Right">Right</option>
@@ -143,7 +179,7 @@
 
                         <div class="inputContainer">
                             <label for="selectLogoPosition">Logo Position:</label>
-                            <select is="emby-select" id="selectLogoPosition" data-config="LogoPosition">
+                            <select is="emby-select" id="selectLogoPosition" data-setting="LogoPosition">
                                 <option value="Top">Top</option>
                                 <option value="Center">Center</option>
                                 <option value="Bottom">Bottom</option>
@@ -153,7 +189,7 @@
 
                         <div class="inputContainer">
                             <label for="txtLogoHeight">Logo Height:</label>
-                            <input is="emby-input" type="number" id="txtLogoHeight" min="1.0" max="100.0" data-config="LogoHeight" data-type="number" />
+                            <input is="emby-input" type="number" id="txtLogoHeight" min="1.0" max="100.0" data-setting="LogoHeight" data-type="number" />
                             <div class="fieldDescription">Logo height as a percentage of the poster height (1-100%).</div>
                         </div>
                     </div>
@@ -161,7 +197,7 @@
                     <!-- General Poster Options -->
                     <div class="inputContainer">
                         <label for="selectPosterFill">Fill Strategy:</label>
-                        <select is="emby-select" id="selectPosterFill" data-config="PosterFill">
+                        <select is="emby-select" id="selectPosterFill" data-setting="PosterFill">
                             <option value="Original">Original</option>
                             <option value="Fill">Fill</option>
                             <option value="Fit">Fit</option>
@@ -171,19 +207,19 @@
 
                     <div class="inputContainer nested-settings" data-hide-for-posterfill="Original">
                         <label for="txtPosterDimensionRatio">Aspect Ratio:</label>
-                        <input is="emby-input" type="text" id="txtPosterDimensionRatio" placeholder="16:9" data-config="PosterDimensionRatio" />
+                        <input is="emby-input" type="text" id="txtPosterDimensionRatio" placeholder="16:9" data-setting="PosterDimensionRatio" />
                         <div class="fieldDescription">Aspect ratio for the poster (e.g., 16:9, 3:2, 4:3).</div>
                     </div>
 
                     <div class="inputContainer">
                         <label for="txtPosterSafeArea">Safe Area:</label>
-                        <input is="emby-input" type="number" id="txtPosterSafeArea" min="1.0" max="100.0" data-config="PosterSafeArea" data-type="number" />
+                        <input is="emby-input" type="number" id="txtPosterSafeArea" min="1.0" max="100.0" data-setting="PosterSafeArea" data-type="number" />
                         <div class="fieldDescription">Percentage of vertical and horizontal space preserved around edges as safe area (1-100%).</div>
                     </div>
 
                     <div class="inputContainer">
                         <label for="selectPosterFileType">File Type:</label>
-                        <select is="emby-select" id="selectPosterFileType" data-config="PosterFileType">
+                        <select is="emby-select" id="selectPosterFileType" data-setting="PosterFileType">
                             <option value="JPEG">JPEG</option>
                             <option value="PNG">PNG</option>
                             <option value="WEBP">WEBP</option>
@@ -198,7 +234,7 @@
 
                     <div class="inputContainer" id="showEpisodeContainer" data-hide-for-styles="Cutout,Numeral">
                         <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkShowEpisode" data-config="ShowEpisode" />
+                            <input is="emby-checkbox" type="checkbox" id="chkShowEpisode" data-setting="ShowEpisode" />
                             <span>Show Episode</span>
                         </label>
                         <div class="fieldDescription">Display season and episode information on the poster.</div>
@@ -206,7 +242,7 @@
 
                     <div class="inputContainer" data-depends-on="chkShowEpisode">
                         <label for="selectEpisodeFontFamily">Font:</label>
-                        <select is="emby-select" id="selectEpisodeFontFamily" data-config="EpisodeFontFamily">
+                        <select is="emby-select" id="selectEpisodeFontFamily" data-setting="EpisodeFontFamily">
                             <option value="Arial">Arial</option>
                             <option value="Arial Black">Arial Black</option>
                             <option value="Book Antiqua">Book Antiqua</option>
@@ -242,7 +278,7 @@
 
                     <div class="inputContainer" data-depends-on="chkShowEpisode">
                         <label for="selectEpisodeFontStyle">Font Style:</label>
-                        <select is="emby-select" id="selectEpisodeFontStyle" data-config="EpisodeFontStyle">
+                        <select is="emby-select" id="selectEpisodeFontStyle" data-setting="EpisodeFontStyle">
                             <option value="Normal">Normal</option>
                             <option value="Bold">Bold</option>
                             <option value="Italic">Italic</option>
@@ -253,7 +289,7 @@
 
                     <div class="inputContainer" data-hide-for-styles="Cutout,Numeral" data-depends-on="chkShowEpisode">
                         <label for="txtEpisodeFontSize">Font Size:</label>
-                        <input is="emby-input" type="number" id="txtEpisodeFontSize" min="1.0" max="100.0" data-config="EpisodeFontSize" data-type="number" />
+                        <input is="emby-input" type="number" id="txtEpisodeFontSize" min="1.0" max="100.0" data-setting="EpisodeFontSize" data-type="number" />
                         <div class="fieldDescription">Font size for episode information as a percentage of poster height (1-100%).</div>
                     </div>
 
@@ -263,7 +299,7 @@
                             <input type="color" id="colorEpisodeFontColor" class="color-picker" />
                             <input type="range" id="alphaEpisodeFontColor" class="alpha-slider" min="0" max="255" value="255" />
                             <span class="alpha-label">255</span>
-                            <input is="emby-input" type="text" id="txtEpisodeFontColor" placeholder="#FFFFFFFF" data-config="EpisodeFontColor" class="hex-input" />
+                            <input is="emby-input" type="text" id="txtEpisodeFontColor" placeholder="#FFFFFFFF" data-setting="EpisodeFontColor" class="hex-input" />
                         </div>
                         <div class="fieldDescription">ARGB hex color code for episode number text (e.g., #FFFFFFFF for white).</div>
                     </div>
@@ -275,7 +311,7 @@
 
                     <div class="inputContainer" id="showTitleContainer" data-hide-for-styles="Frame">
                         <label class="checkboxContainer">
-                            <input is="emby-checkbox" type="checkbox" id="chkShowTitle" data-config="ShowTitle" />
+                            <input is="emby-checkbox" type="checkbox" id="chkShowTitle" data-setting="ShowTitle" />
                             <span>Show Title</span>
                         </label>
                         <div class="fieldDescription">Display the episode title text on the poster.</div>
@@ -283,7 +319,7 @@
 
                     <div class="inputContainer" data-depends-on="chkShowTitle">
                         <label for="selectTitleFontFamily">Font:</label>
-                        <select is="emby-select" id="selectTitleFontFamily" data-config="TitleFontFamily">
+                        <select is="emby-select" id="selectTitleFontFamily" data-setting="TitleFontFamily">
                             <option value="Arial">Arial</option>
                             <option value="Arial Black">Arial Black</option>
                             <option value="Book Antiqua">Book Antiqua</option>
@@ -319,7 +355,7 @@
 
                     <div class="inputContainer" data-depends-on="chkShowTitle">
                         <label for="selectTitleFontStyle">Font Style:</label>
-                        <select is="emby-select" id="selectTitleFontStyle" data-config="TitleFontStyle">
+                        <select is="emby-select" id="selectTitleFontStyle" data-setting="TitleFontStyle">
                             <option value="Normal">Normal</option>
                             <option value="Bold">Bold</option>
                             <option value="Italic">Italic</option>
@@ -330,7 +366,7 @@
 
                     <div class="inputContainer" data-depends-on="chkShowTitle">
                         <label for="txtTitleFontSize">Font Size:</label>
-                        <input is="emby-input" type="number" id="txtTitleFontSize" min="1.0" max="100.0" data-config="TitleFontSize" data-type="number" />
+                        <input is="emby-input" type="number" id="txtTitleFontSize" min="1.0" max="100.0" data-setting="TitleFontSize" data-type="number" />
                         <div class="fieldDescription">Font size for episode title as a percentage of poster height (1-100%).</div>
                     </div>
 
@@ -340,7 +376,7 @@
                             <input type="color" id="colorTitleFontColor" class="color-picker" />
                             <input type="range" id="alphaTitleFontColor" class="alpha-slider" min="0" max="255" value="255" />
                             <span class="alpha-label">255</span>
-                            <input is="emby-input" type="text" id="txtTitleFontColor" placeholder="#FFFFFFFF" data-config="TitleFontColor" class="hex-input" />
+                            <input is="emby-input" type="text" id="txtTitleFontColor" placeholder="#FFFFFFFF" data-setting="TitleFontColor" class="hex-input" />
                         </div>
                         <div class="fieldDescription">ARGB hex color code for episode title text (e.g., #FFFFFFFF for white).</div>
                     </div>
@@ -356,14 +392,14 @@
                             <input type="color" id="colorOverlayColor" class="color-picker" />
                             <input type="range" id="alphaOverlayColor" class="alpha-slider" min="0" max="255" value="102" />
                             <span class="alpha-label">102</span>
-                            <input is="emby-input" type="text" id="txtOverlayColor" placeholder="#66000000" data-config="OverlayColor" class="hex-input" />
+                            <input is="emby-input" type="text" id="txtOverlayColor" placeholder="#66000000" data-setting="OverlayColor" class="hex-input" />
                         </div>
                         <div class="fieldDescription">ARGB hex for background overlay color and transparency (e.g., #66000000 for semi-transparent black).</div>
                     </div>
 
                     <div class="inputContainer">
                         <label for="selectOverlayGradient">Overlay Gradient:</label>
-                        <select is="emby-select" id="selectOverlayGradient" data-config="OverlayGradient">
+                        <select is="emby-select" id="selectOverlayGradient" data-setting="OverlayGradient">
                             <option value="None">None</option>
                             <option value="LeftToRight">Left to Right</option>
                             <option value="BottomToTop">Bottom to Top</option>
@@ -380,7 +416,7 @@
                                 <input type="color" id="colorOverlaySecondaryColor" class="color-picker" />
                                 <input type="range" id="alphaOverlaySecondaryColor" class="alpha-slider" min="0" max="255" value="102" />
                                 <span class="alpha-label">102</span>
-                                <input is="emby-input" type="text" id="txtOverlaySecondaryColor" placeholder="#66000000" data-config="OverlaySecondaryColor" class="hex-input" />
+                                <input is="emby-input" type="text" id="txtOverlaySecondaryColor" placeholder="#66000000" data-setting="OverlaySecondaryColor" class="hex-input" />
                             </div>
                             <div class="fieldDescription">ARGB hex for secondary gradient color. This is the end color for gradient overlays.</div>
                         </div>
@@ -393,14 +429,14 @@
 
                     <div class="inputContainer">
                         <label for="txtGraphicPath">Graphic File Path:</label>
-                        <input is="emby-input" type="text" id="txtGraphicPath" placeholder="/path/to/graphic.png" data-config="GraphicPath" />
+                        <input is="emby-input" type="text" id="txtGraphicPath" placeholder="/path/to/graphic.png" data-setting="GraphicPath" />
                         <div class="fieldDescription">Optional file path to a static graphic overlay applied to all posters. The graphic is positioned above the background image but below all text elements. Supports PNG, JPG, and WEBP formats. Leave empty to disable. Use absolute file paths accessible by the Jellyfin server.</div>
                     </div>
 
                     <div class="cutout-logo-group" id="graphicOptions" data-depends-on-value="txtGraphicPath">
                         <div class="inputContainer">
                             <label for="selectGraphicPosition">Graphic Position:</label>
-                            <select is="emby-select" id="selectGraphicPosition" data-config="GraphicPosition">
+                            <select is="emby-select" id="selectGraphicPosition" data-setting="GraphicPosition">
                                 <option value="Top">Top</option>
                                 <option value="Center">Center</option>
                                 <option value="Bottom">Bottom</option>
@@ -410,7 +446,7 @@
 
                         <div class="inputContainer">
                             <label for="selectGraphicAlignment">Graphic Alignment:</label>
-                            <select is="emby-select" id="selectGraphicAlignment" data-config="GraphicAlignment">
+                            <select is="emby-select" id="selectGraphicAlignment" data-setting="GraphicAlignment">
                                 <option value="Left">Left</option>
                                 <option value="Center">Center</option>
                                 <option value="Right">Right</option>
@@ -420,13 +456,13 @@
 
                         <div class="inputContainer">
                             <label for="txtGraphicWidth">Graphic Width (%):</label>
-                            <input is="emby-input" type="number" id="txtGraphicWidth" min="1.0" max="100.0" data-config="GraphicWidth" data-type="number" />
+                            <input is="emby-input" type="number" id="txtGraphicWidth" min="1.0" max="100.0" data-setting="GraphicWidth" data-type="number" />
                             <div class="fieldDescription">Graphic width as a percentage of the poster width (1-100%).</div>
                         </div>
 
                         <div class="inputContainer">
                             <label for="txtGraphicHeight">Graphic Height (%):</label>
-                            <input is="emby-input" type="number" id="txtGraphicHeight" min="1.0" max="100.0" data-config="GraphicHeight" data-type="number" />
+                            <input is="emby-input" type="number" id="txtGraphicHeight" min="1.0" max="100.0" data-setting="GraphicHeight" data-type="number" />
                             <div class="fieldDescription">Graphic height as a percentage of the poster height (1-100%).</div>
                         </div>
                     </div>
@@ -448,6 +484,27 @@
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Series Selection Modal -->
+    <div id="seriesSelectionModal" class="dialog" style="display: none;">
+        <div class="dialog-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <h2>Select Series</h2>
+            <div id="seriesSearchContainer" style="margin-bottom: 16px;">
+                <input is="emby-input" type="text" id="seriesSearchInput" placeholder="Search series..." style="width: 100%;" />
+            </div>
+            <div id="seriesCheckboxList" style="max-height: 400px; overflow-y: auto;">
+                <!-- Series checkboxes populated dynamically -->
+            </div>
+            <div style="margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end;">
+                <button is="emby-button" type="button" id="btnCancelSeriesSelection" class="raised">
+                    <span>Cancel</span>
+                </button>
+                <button is="emby-button" type="button" id="btnConfirmSeriesSelection" class="raised button-submit">
+                    <span>OK</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -525,40 +582,578 @@
             margin: 8px 0;
             color: #c8e6c9;
         }
+
+        .assigned-series-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 12px;
+            border: 1px solid rgba(85, 85, 85, 0.3);
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.1);
+            min-height: 48px;
+        }
+
+        .series-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 12px 6px 6px;
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .series-tag:hover {
+            background: rgba(40, 40, 40, 0.9);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .series-tag-poster {
+            width: 32px;
+            height: 48px;
+            border-radius: 3px;
+            object-fit: cover;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .series-tag-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .series-tag-remove {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 18px;
+            color: rgba(231, 76, 60, 0.7);
+            padding: 0 4px;
+            transition: color 0.2s ease;
+        }
+
+        .series-tag-remove:hover {
+            color: rgba(231, 76, 60, 1);
+        }
+
+        .dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .dialog-content {
+            background: var(--theme-background-primary, #1c1c1c);
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+        }
+
+        .series-checkbox-item {
+            padding: 8px;
+            border-bottom: 1px solid rgba(85, 85, 85, 0.2);
+        }
+
+        .series-checkbox-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .series-checkbox-item:last-child {
+            border-bottom: none;
+        }
     </style>
 
     <script type="text/javascript">
         var EpisodePosterGeneratorConfig = {
             pluginId: 'b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e',
+            fullConfig: null,
+            currentConfigId: null,
+            allSeries: [],
+
+            // MARK: generateGuid
+            generateGuid: function() {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            },
+
+            // MARK: loadConfig
+            loadConfig: function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(this.pluginId).then(function (config) {
+                    EpisodePosterGeneratorConfig.fullConfig = config;
+                    
+                    document.getElementById('chkEnableProvider').checked = config.EnableProvider !== false;
+                    document.getElementById('chkEnableTask').checked = config.EnableTask !== false;
+
+                    if (!config.PosterConfigurations || config.PosterConfigurations.length === 0) {
+                        config.PosterConfigurations = [{
+                            Id: EpisodePosterGeneratorConfig.generateGuid(),
+                            Settings: {},
+                            SeriesIds: []
+                        }];
+                    }
+
+                    EpisodePosterGeneratorConfig.populateConfigDropdown();
+                    
+                    // Load series and WAIT for them before hiding loading
+                    EpisodePosterGeneratorConfig.loadAllSeries().then(() => {
+                        EpisodePosterGeneratorConfig.initializeColorControls();
+                        Dashboard.hideLoadingMsg();
+                    });
+                }).catch(function (error) {
+                    console.error('Failed to load config:', error);
+                    Dashboard.hideLoadingMsg();
+                });
+            },
+
+            // MARK: populateConfigDropdown
+            populateConfigDropdown: function() {
+                const select = document.getElementById('selectPosterConfig');
+                const previousId = this.currentConfigId;
+                select.innerHTML = '';
+                
+                const configs = this.fullConfig.PosterConfigurations;
+                
+                configs.forEach((config, index) => {
+                    const option = document.createElement('option');
+                    option.value = config.Id;
+                    
+                    // First config with no series = "Default" display
+                    const isDefault = index === 0 && (!config.SeriesIds || config.SeriesIds.length === 0);
+                    option.textContent = isDefault ? 'Default' : (config.Name || 'Unnamed Configuration');
+                    
+                    select.appendChild(option);
+                });
+
+                if (previousId && configs.some(c => c.Id === previousId)) {
+                    this.currentConfigId = previousId;
+                } else {
+                    this.currentConfigId = configs[0].Id;
+                }
+                
+                select.value = this.currentConfigId;
+                this.loadCurrentConfig();
+            },
+
+            // MARK: loadCurrentConfig
+            loadCurrentConfig: function() {
+                const config = this.getCurrentConfig();
+                if (!config) return;
+
+                const settings = config.Settings || {};
+
+                document.querySelectorAll('[data-setting]').forEach(element => {
+                    const settingKey = element.getAttribute('data-setting');
+                    const settingValue = settings[settingKey];
+                    
+                    if (element.type === 'checkbox') {
+                        element.checked = settingValue !== false;
+                    } else if (element.getAttribute('data-type') === 'number') {
+                        element.value = settingValue || 0;
+                    } else {
+                        element.value = settingValue || '';
+                    }
+                });
+
+                this.updateSeriesAssignment();
+                this.updateVisibility();
+                this.initializeColorControls();
+            },
+
+            // MARK: getCurrentConfig
+            getCurrentConfig: function() {
+                return this.fullConfig.PosterConfigurations.find(c => c.Id === this.currentConfigId);
+            },
+
+            // MARK: updateSeriesAssignment
+            updateSeriesAssignment: function() {
+                const config = this.getCurrentConfig();
+                const configs = this.fullConfig.PosterConfigurations;
+                
+                const isDefault = configs.indexOf(config) === 0;
+                
+                document.getElementById('seriesAssignmentSection').style.display = isDefault ? 'none' : 'block';
+                document.getElementById('btnDeleteConfig').style.display = isDefault ? 'none' : 'inline-block';
+                document.getElementById('btnRenameConfig').style.display = isDefault ? 'none' : 'inline-block';
+
+                if (!isDefault) {
+                    this.renderAssignedSeries();
+                }
+            },
+
+            // MARK: renderAssignedSeries
+            renderAssignedSeries: function() {
+                const config = this.getCurrentConfig();
+                const container = document.getElementById('assignedSeriesList');
+                container.innerHTML = '';
+
+                if (!config.SeriesIds || config.SeriesIds.length === 0) {
+                    const emptyMsg = document.createElement('div');
+                    emptyMsg.style.padding = '12px';
+                    emptyMsg.style.color = '#999';
+                    emptyMsg.textContent = 'No series assigned';
+                    container.appendChild(emptyMsg);
+                    return;
+                }
+
+                config.SeriesIds.forEach(seriesId => {
+                    const series = this.allSeries.find(s => s.Id === seriesId);
+                    
+                    if (!series) {
+                        console.warn('Series not found for ID:', seriesId);
+                        return;
+                    }
+
+                    const tag = document.createElement('div');
+                    tag.className = 'series-tag';
+                    
+                    // Add poster image
+                    const posterImg = document.createElement('img');
+                    posterImg.className = 'series-tag-poster';
+                    posterImg.src = ApiClient.getImageUrl(series.Id, {
+                        type: 'Primary',
+                        maxWidth: 64,
+                        quality: 90
+                    });
+                    posterImg.onerror = function() {
+                        this.style.display = 'none';
+                    };
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'series-tag-name';
+                    nameSpan.textContent = series.Name;
+                    
+                    const removeSpan = document.createElement('span');
+                    removeSpan.className = 'series-tag-remove';
+                    removeSpan.textContent = '×';
+                    removeSpan.setAttribute('data-series-id', seriesId);
+                    
+                    tag.appendChild(posterImg);
+                    tag.appendChild(nameSpan);
+                    tag.appendChild(removeSpan);
+                    container.appendChild(tag);
+                });
+
+                container.querySelectorAll('.series-tag-remove').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        EpisodePosterGeneratorConfig.removeSeries(this.getAttribute('data-series-id'));
+                    });
+                });
+            },
+
+            // MARK: loadAllSeries
+            loadAllSeries: function() {
+                console.log('Loading all series from Jellyfin...');
+                return ApiClient.getItems(ApiClient.getCurrentUserId(), {
+                    IncludeItemTypes: 'Series',
+                    Recursive: true,
+                    SortBy: 'SortName',
+                    SortOrder: 'Ascending'
+                }).then(result => {
+                    this.allSeries = result.Items || [];
+                    console.log('Loaded series count:', this.allSeries.length);
+                    return this.allSeries;
+                }).catch(error => {
+                    console.error('Failed to load series:', error);
+                    this.allSeries = [];
+                    return [];
+                });
+            },
+
+            // MARK: showSeriesSelectionModal
+            showSeriesSelectionModal: function() {
+                if (!this.allSeries) {
+                    Dashboard.showLoadingMsg();
+                    setTimeout(() => {
+                        Dashboard.hideLoadingMsg();
+                        if (!this.allSeries || this.allSeries.length === 0) {
+                            Dashboard.alert('No series found. Make sure you have TV series in your Jellyfin library.');
+                        } else {
+                            this.showSeriesSelectionModal();
+                        }
+                    }, 1000);
+                    return;
+                }
+                
+                if (this.allSeries.length === 0) {
+                    Dashboard.alert('No series found in your library.');
+                    return;
+                }
+                
+                console.log('Opening modal with', this.allSeries.length, 'series');
+                
+                const modal = document.getElementById('seriesSelectionModal');
+                const listContainer = document.getElementById('seriesCheckboxList');
+                const config = this.getCurrentConfig();
+                const currentSeriesIds = config.SeriesIds || [];
+                const assignedSeriesIds = this.getAllAssignedSeriesIds();
+                
+                listContainer.innerHTML = '';
+
+                this.allSeries.forEach(series => {
+                    const isAssignedHere = currentSeriesIds.includes(series.Id);
+                    const isAssignedElsewhere = !isAssignedHere && assignedSeriesIds.includes(series.Id);
+                    
+                    // Build DOM elements instead of innerHTML
+                    const item = document.createElement('div');
+                    item.className = 'series-checkbox-item';
+                    
+                    const label = document.createElement('label');
+                    label.className = 'checkboxContainer';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'series-checkbox';
+                    checkbox.value = series.Id;
+                    if (isAssignedHere) checkbox.checked = true;
+                    if (isAssignedElsewhere) checkbox.disabled = true;
+                    
+                    const span = document.createElement('span');
+                    span.textContent = series.Name + (isAssignedElsewhere ? ' (already assigned)' : '');
+                    
+                    label.appendChild(checkbox);
+                    label.appendChild(span);
+                    item.appendChild(label);
+                    listContainer.appendChild(item);
+                });
+
+                modal.style.display = 'flex';
+
+                const searchInput = document.getElementById('seriesSearchInput');
+                searchInput.value = '';
+                searchInput.oninput = function() {
+                    const searchTerm = this.value.toLowerCase();
+                    listContainer.querySelectorAll('.series-checkbox-item').forEach(item => {
+                        const text = item.textContent.toLowerCase();
+                        item.style.display = text.includes(searchTerm) ? 'block' : 'none';
+                    });
+                };
+            },
+
+            // MARK: getAllAssignedSeriesIds
+            getAllAssignedSeriesIds: function() {
+                const allIds = [];
+                this.fullConfig.PosterConfigurations.forEach(config => {
+                    if (config.SeriesIds) {
+                        allIds.push(...config.SeriesIds);
+                    }
+                });
+                return allIds;
+            },
+
+            // MARK: confirmSeriesSelection
+            confirmSeriesSelection: function() {
+                const config = this.getCurrentConfig();
+                const selectedIds = [];
+                
+                document.querySelectorAll('.series-checkbox:checked').forEach(checkbox => {
+                    selectedIds.push(checkbox.value);
+                });
+
+                config.SeriesIds = selectedIds;
+                this.renderAssignedSeries();
+                this.closeSeriesSelectionModal();
+            },
+
+            // MARK: closeSeriesSelectionModal
+            closeSeriesSelectionModal: function() {
+                document.getElementById('seriesSelectionModal').style.display = 'none';
+            },
+
+            // MARK: removeSeries
+            removeSeries: function(seriesId) {
+                const config = this.getCurrentConfig();
+                config.SeriesIds = config.SeriesIds.filter(id => id !== seriesId);
+                this.renderAssignedSeries();
+            },
+
+            // MARK: createNewConfig
+            createNewConfig: function() {
+                const name = prompt('Enter a name for this poster configuration:');
+                
+                if (!name || name.trim() === '') {
+                    Dashboard.alert('Configuration name is required.');
+                    return;
+                }
+                
+                // Check for duplicate names
+                const exists = this.fullConfig.PosterConfigurations.some(c => 
+                    c.Name && c.Name.toLowerCase() === name.trim().toLowerCase()
+                );
+                
+                if (exists) {
+                    Dashboard.alert('A configuration with this name already exists.');
+                    return;
+                }
+                
+                const newConfig = {
+                    Id: this.generateGuid(),
+                    Name: name.trim(),
+                    Settings: {
+                        ExtractPoster: true,
+                        EnableHWA: false,
+                        EnableLetterboxDetection: true,
+                        LetterboxBlackThreshold: 25,
+                        LetterboxConfidence: 85.0,
+                        ExtractWindowStart: 20.0,
+                        ExtractWindowEnd: 80.0,
+                        PosterStyle: 'Standard',
+                        CutoutType: 'Code',
+                        CutoutBorder: true,
+                        LogoPosition: 'Center',
+                        LogoAlignment: 'Center',
+                        LogoHeight: 30.0,
+                        BrightenHDR: 25.0,
+                        PosterFill: 'Original',
+                        PosterDimensionRatio: '16:9',
+                        PosterFileType: 'WEBP',
+                        PosterSafeArea: 5.0,
+                        ShowEpisode: true,
+                        EpisodeFontFamily: 'Arial',
+                        EpisodeFontStyle: 'Bold',
+                        EpisodeFontSize: 7.0,
+                        EpisodeFontColor: '#FFFFFFFF',
+                        ShowTitle: true,
+                        TitleFontFamily: 'Arial',
+                        TitleFontStyle: 'Bold',
+                        TitleFontSize: 10.0,
+                        TitleFontColor: '#FFFFFFFF',
+                        OverlayColor: '#66000000',
+                        OverlayGradient: 'None',
+                        OverlaySecondaryColor: '#66000000',
+                        GraphicPath: '',
+                        GraphicWidth: 25.0,
+                        GraphicHeight: 25.0,
+                        GraphicPosition: 'Center',
+                        GraphicAlignment: 'Center'
+                    },
+                    SeriesIds: []
+                };
+                
+                this.fullConfig.PosterConfigurations.push(newConfig);
+                this.currentConfigId = newConfig.Id;
+                this.populateConfigDropdown();
+            },
+
+            // MARK: renameCurrentConfig
+            renameCurrentConfig: function() {
+                const config = this.getCurrentConfig();
+                const configs = this.fullConfig.PosterConfigurations;
+                const isFirstConfig = configs.indexOf(config) === 0;
+                
+                if (isFirstConfig) {
+                    Dashboard.alert('The default configuration cannot be renamed.');
+                    return;
+                }
+                
+                const currentName = config.Name || 'Unnamed';
+                const newName = prompt('Enter new name for this configuration:', currentName);
+                
+                if (!newName || newName.trim() === '') {
+                    return;
+                }
+                
+                const exists = this.fullConfig.PosterConfigurations.some(c => 
+                    c.Id !== config.Id && c.Name && c.Name.toLowerCase() === newName.trim().toLowerCase()
+                );
+                
+                if (exists) {
+                    Dashboard.alert('A configuration with this name already exists.');
+                    return;
+                }
+                
+                config.Name = newName.trim();
+                this.populateConfigDropdown();
+            },
+
+            // MARK: deleteCurrentConfig
+            deleteCurrentConfig: function() {
+                const config = this.getCurrentConfig();
+                const configs = this.fullConfig.PosterConfigurations;
+                const isFirstConfig = configs.indexOf(config) === 0;
+                
+                if (isFirstConfig) {
+                    Dashboard.alert('Cannot delete the default configuration.');
+                    return;
+                }
+
+                Dashboard.confirm('Are you sure you want to delete this poster configuration?', 'Delete Configuration', function(confirmed) {
+                    if (confirmed) {
+                        EpisodePosterGeneratorConfig.fullConfig.PosterConfigurations = 
+                            EpisodePosterGeneratorConfig.fullConfig.PosterConfigurations.filter(c => c.Id !== EpisodePosterGeneratorConfig.currentConfigId);
+                        
+                        EpisodePosterGeneratorConfig.currentConfigId = EpisodePosterGeneratorConfig.fullConfig.PosterConfigurations[0].Id;
+                        EpisodePosterGeneratorConfig.populateConfigDropdown();
+                    }
+                });
+            },
+
+            // MARK: saveCurrentConfigSettings
+            saveCurrentConfigSettings: function() {
+                const config = this.getCurrentConfig();
+                if (!config.Settings) {
+                    config.Settings = {};
+                }
+
+                document.querySelectorAll('[data-setting]').forEach(element => {
+                    const settingKey = element.getAttribute('data-setting');
+                    
+                    if (element.type === 'checkbox') {
+                        config.Settings[settingKey] = element.checked;
+                    } else if (element.getAttribute('data-type') === 'number') {
+                        config.Settings[settingKey] = parseFloat(element.value) || 0;
+                    } else {
+                        config.Settings[settingKey] = element.value;
+                    }
+                });
+            },
+
+            // MARK: saveConfig
+            saveConfig: function () {
+                this.saveCurrentConfigSettings();
+                
+                this.fullConfig.EnableProvider = document.getElementById('chkEnableProvider').checked;
+                this.fullConfig.EnableTask = document.getElementById('chkEnableTask').checked;
+
+                Dashboard.showLoadingMsg();
+                ApiClient.updatePluginConfiguration(this.pluginId, this.fullConfig).then(function (result) {
+                    Dashboard.processPluginConfigurationUpdateResult(result);
+                });
+            },
 
             // MARK: updateVisibility
             updateVisibility: function() {
                 const posterStyle = document.getElementById('selectPosterStyle').value;
         
-                // Handle poster style specific hiding (Logo and Cutout variables)
                 document.querySelectorAll('[data-poster-styles]').forEach(element => {
                     const supportedStyles = element.getAttribute('data-poster-styles').split(',');
                     const isVisible = supportedStyles.includes(posterStyle);
                     element.style.display = isVisible ? 'block' : 'none';
                 });
 
-                // Handle PosterFill dependencies
                 const posterFill = document.getElementById('selectPosterFill').value;
-
                 document.querySelectorAll('[data-hide-for-posterfill]').forEach(element => {
                     const hiddenFills = element.getAttribute('data-hide-for-posterfill').split(',');
                     const shouldHide = hiddenFills.includes(posterFill);
                     element.style.display = shouldHide ? 'none' : 'block';
                 });
 
-                // Handle styles that should be hidden for certain poster types
                 document.querySelectorAll('[data-hide-for-styles]').forEach(element => {
                     const hiddenStyles = element.getAttribute('data-hide-for-styles').split(',');
                     const shouldHide = hiddenStyles.includes(posterStyle);
                     element.style.display = shouldHide ? 'none' : 'block';
                 });
 
-                // Handle multiple dependencies (comma-separated)
                 document.querySelectorAll('[data-depends-on]').forEach(element => {
                     const dependencies = element.getAttribute('data-depends-on').split(',');
                     let allDependenciesMet = true;
@@ -580,75 +1175,19 @@
                     element.style.display = isVisible ? 'block' : 'none';
                 });
 
-                // For Cutout and Numeral styles, ensure ShowEpisode is always true
                 const showEpisodeCheckbox = document.getElementById('chkShowEpisode');
                 if (posterStyle === 'Cutout' || posterStyle === 'Numeral') {
                     showEpisodeCheckbox.checked = true;
                 }
 
-                // For Frame style, ensure ShowTitle is always true
                 const showTitleCheckbox = document.getElementById('chkShowTitle');
                 if (posterStyle === 'Frame') {
                     showTitleCheckbox.checked = true;
                 }
             },
 
-            // MARK: loadConfig
-            loadConfig: function () {
-                Dashboard.showLoadingMsg();
-                ApiClient.getPluginConfiguration(this.pluginId).then(function (config) {
-                    // Use data attributes to automatically map config to form elements
-                    document.querySelectorAll('[data-config]').forEach(element => {
-                        const configKey = element.getAttribute('data-config');
-                        const configValue = config[configKey];
-                        
-                        if (element.type === 'checkbox') {
-                            element.checked = configValue !== false;
-                        } else if (element.getAttribute('data-type') === 'number') {
-                            element.value = configValue || 0;
-                        } else {
-                            element.value = configValue || '';
-                        }
-                    });
-
-                    // Handle color pickers and alpha sliders
-                    EpisodePosterGeneratorConfig.initializeColorControls();
-                    
-                    EpisodePosterGeneratorConfig.updateVisibility();
-                    Dashboard.hideLoadingMsg();
-                }).catch(function (error) {
-                    console.error('Failed to load config:', error);
-                    EpisodePosterGeneratorConfig.updateVisibility();
-                    Dashboard.hideLoadingMsg();
-                });
-            },
-
-            // MARK: saveConfig
-            saveConfig: function () {
-                Dashboard.showLoadingMsg();
-                var config = {};
-                
-                // Use data attributes to automatically map form elements to config
-                document.querySelectorAll('[data-config]').forEach(element => {
-                    const configKey = element.getAttribute('data-config');
-                    
-                    if (element.type === 'checkbox') {
-                        config[configKey] = element.checked;
-                    } else if (element.getAttribute('data-type') === 'number') {
-                        config[configKey] = parseFloat(element.value) || 0;
-                    } else {
-                        config[configKey] = element.value;
-                    }
-                });
-
-                ApiClient.updatePluginConfiguration(this.pluginId, config).then(function (result) {
-                    Dashboard.processPluginConfigurationUpdateResult(result);
-                });
-            },
-
             // MARK: resetHistory
             resetHistory: function() {
-                // Create confirmation dialog
                 const confirmationHtml = `
                     <div class="reset-warning">
                         <h3>⚠️ Warning</h3>
@@ -658,29 +1197,11 @@
                     </div>
                 `;
                 
-                const dialog = Dashboard.confirm(confirmationHtml, 'Reset Processing History', function(confirmed) {
+                Dashboard.confirm(confirmationHtml, 'Reset Processing History', function(confirmed) {
                     if (confirmed) {
                         EpisodePosterGeneratorConfig.performReset();
                     }
                 });
-                
-                // Style the dialog buttons
-                if (dialog) {
-                    setTimeout(() => {
-                        const confirmBtn = dialog.querySelector('.btnConfirm');
-                        const cancelBtn = dialog.querySelector('.btnCancel');
-                        
-                        if (confirmBtn) {
-                            confirmBtn.textContent = 'Reset History';
-                            confirmBtn.style.backgroundColor = '#d32f2f';
-                            confirmBtn.style.color = 'white';
-                        }
-                        
-                        if (cancelBtn) {
-                            cancelBtn.textContent = 'Cancel';
-                        }
-                    }, 100);
-                }
             },
 
             // MARK: performReset
@@ -694,32 +1215,15 @@
                         'X-Emby-Token': ApiClient.accessToken()
                     }
                 })
-                .then(response => {
-                    if (response.ok) {
-                        return response.json();
-                    }
-                    throw new Error('Failed to reset history');
-                })
+                .then(response => response.ok ? response.json() : Promise.reject('Failed'))
                 .then(data => {
                     Dashboard.hideLoadingMsg();
                     Dashboard.alert((data.clearedCount || 0) + " Records Deleted", 'History Reset Complete');
                 })
                 .catch(error => {
                     Dashboard.hideLoadingMsg();
-                    console.error('Reset history error:', error);
-                    Dashboard.alert('Failed to reset processing history. Please check the server logs.', 'Error');
+                    Dashboard.alert('Failed to reset processing history.', 'Error');
                 });
-            },
-
-            // MARK: bindResetHistoryEvent
-            bindResetHistoryEvent: function() {
-                const resetBtn = document.getElementById('btnResetHistory');
-                if (resetBtn) {
-                    resetBtn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        EpisodePosterGeneratorConfig.resetHistory();
-                    });
-                }
             },
 
             // MARK: initializeColorControls
@@ -730,9 +1234,8 @@
                     const alphaSlider = container.querySelector('.alpha-slider');
                     const alphaLabel = container.querySelector('.alpha-label');
                     
-                    // Set initial values from hex
                     if (hexInput.value) {
-                        const parsed = EpisodePosterGeneratorConfig.parseARGBHex(hexInput.value);
+                        const parsed = this.parseARGBHex(hexInput.value);
                         if (parsed) {
                             colorPicker.value = parsed.rgb;
                             alphaSlider.value = parsed.alpha;
@@ -740,21 +1243,12 @@
                         }
                     }
                     
-                    // Update hex when color picker changes
-                    colorPicker.addEventListener('input', function() {
-                        EpisodePosterGeneratorConfig.updateHexFromControls(container);
-                    });
-                    
-                    // Update hex when alpha slider changes
+                    colorPicker.addEventListener('input', () => this.updateHexFromControls(container));
                     alphaSlider.addEventListener('input', function() {
                         alphaLabel.textContent = alphaSlider.value;
                         EpisodePosterGeneratorConfig.updateHexFromControls(container);
                     });
-                    
-                    // Update controls when hex input changes
-                    hexInput.addEventListener('input', function() {
-                        EpisodePosterGeneratorConfig.updateControlsFromHex(container);
-                    });
+                    hexInput.addEventListener('input', () => this.updateControlsFromHex(container));
                 });
             },
 
@@ -764,13 +1258,10 @@
                 const alphaSlider = container.querySelector('.alpha-slider');
                 const hexInput = container.querySelector('.hex-input');
                 
-                const rgb = colorPicker.value.substring(1); // Remove #
+                const rgb = colorPicker.value.substring(1);
                 const alpha = parseInt(alphaSlider.value);
                 const alphaHex = alpha.toString(16).padStart(2, '0').toUpperCase();
                 hexInput.value = '#' + alphaHex + rgb.toUpperCase();
-                
-                // Trigger change event to save config if needed
-                hexInput.dispatchEvent(new Event('change'));
             },
 
             // MARK: updateControlsFromHex
@@ -780,7 +1271,7 @@
                 const alphaLabel = container.querySelector('.alpha-label');
                 const hexInput = container.querySelector('.hex-input');
                 
-                const parsed = EpisodePosterGeneratorConfig.parseARGBHex(hexInput.value);
+                const parsed = this.parseARGBHex(hexInput.value);
                 if (parsed) {
                     colorPicker.value = parsed.rgb;
                     alphaSlider.value = parsed.alpha;
@@ -791,36 +1282,25 @@
             // MARK: parseARGBHex
             parseARGBHex: function(input) {
                 if (!input) return null;
-                
-                // Remove # if present
                 input = input.replace('#', '').toUpperCase();
                 
-                // Handle ARGB format (8 characters)
                 if (input.length === 8) {
-                    const alpha = parseInt(input.substring(0, 2), 16);
-                    const rgb = '#' + input.substring(2);
-                    return { rgb: rgb, alpha: alpha };
+                    return { rgb: '#' + input.substring(2), alpha: parseInt(input.substring(0, 2), 16) };
                 }
-                
-                // Handle RGB format (6 characters) - assume full opacity
                 if (input.length === 6) {
                     return { rgb: '#' + input, alpha: 255 };
                 }
-                
-                // Handle short format (3 characters) - assume full opacity
                 if (input.length === 3) {
                     const expanded = input[0] + input[0] + input[1] + input[1] + input[2] + input[2];
                     return { rgb: '#' + expanded, alpha: 255 };
                 }
-                
                 return null;
             }
         };
 
-        // Event Listeners
+        // MARK: Event Listeners
         document.getElementById('EpisodePosterGeneratorConfigPage').addEventListener('pageshow', function () {
             EpisodePosterGeneratorConfig.loadConfig();
-            EpisodePosterGeneratorConfig.bindResetHistoryEvent();
         });
 
         document.getElementById('EpisodePosterGeneratorConfigForm').addEventListener('submit', function (e) {
@@ -828,21 +1308,41 @@
             EpisodePosterGeneratorConfig.saveConfig();
         });
 
-        document.getElementById('selectOverlayGradient').addEventListener('change', function () {
-            EpisodePosterGeneratorConfig.updateVisibility();
+        document.getElementById('selectPosterConfig').addEventListener('change', function() {
+            EpisodePosterGeneratorConfig.saveCurrentConfigSettings();
+            EpisodePosterGeneratorConfig.currentConfigId = this.value;
+            EpisodePosterGeneratorConfig.loadCurrentConfig();
         });
 
-        // Add listeners for visibility changes
+        document.getElementById('btnNewConfig').addEventListener('click', function() {
+            EpisodePosterGeneratorConfig.createNewConfig();
+        });
+
+        document.getElementById('btnDeleteConfig').addEventListener('click', function() {
+            EpisodePosterGeneratorConfig.deleteCurrentConfig();
+        });
+
+        document.getElementById('btnAddSeries').addEventListener('click', function() {
+            EpisodePosterGeneratorConfig.showSeriesSelectionModal();
+        });
+
+        document.getElementById('btnCancelSeriesSelection').addEventListener('click', function() {
+            EpisodePosterGeneratorConfig.closeSeriesSelectionModal();
+        });
+
+        document.getElementById('btnConfirmSeriesSelection').addEventListener('click', function() {
+            EpisodePosterGeneratorConfig.confirmSeriesSelection();
+        });
+
+        document.getElementById('btnResetHistory').addEventListener('click', function() {
+            EpisodePosterGeneratorConfig.resetHistory();
+        });
+
         document.getElementById('selectPosterStyle').addEventListener('change', function () {
             EpisodePosterGeneratorConfig.updateVisibility();
         });
 
         document.getElementById('chkShowTitle').addEventListener('change', function () {
-            EpisodePosterGeneratorConfig.updateVisibility();
-        });
-
-        // Add listeners for visibility changes
-        document.getElementById('selectPosterStyle').addEventListener('change', function () {
             EpisodePosterGeneratorConfig.updateVisibility();
         });
 
@@ -850,13 +1350,12 @@
             EpisodePosterGeneratorConfig.updateVisibility();
         });
 
-        document.getElementById('chkShowTitle').addEventListener('change', function () {
+        document.getElementById('chkExtractPoster').addEventListener('change', function () {
             EpisodePosterGeneratorConfig.updateVisibility();
         });
 
-        // Add listeners for letterbox detection dependencies
-        document.getElementById('chkExtractPoster').addEventListener('change', function () {
-            EpisodePosterGeneratorConfig.updateVisibility();
+        document.getElementById('btnRenameConfig').addEventListener('click', function() {
+            EpisodePosterGeneratorConfig.renameCurrentConfig();
         });
 
         document.getElementById('chkEnableLetterboxDetection').addEventListener('change', function () {
@@ -864,6 +1363,10 @@
         });
 
         document.getElementById('selectPosterFill').addEventListener('change', function () {
+            EpisodePosterGeneratorConfig.updateVisibility();
+        });
+
+        document.getElementById('selectOverlayGradient').addEventListener('change', function () {
             EpisodePosterGeneratorConfig.updateVisibility();
         });
     </script>

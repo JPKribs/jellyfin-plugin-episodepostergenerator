@@ -37,6 +37,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         private readonly BrightnessService _brightnessService;
         private readonly CroppingService _croppingService;
         private readonly PosterService _posterService;
+        private readonly PosterConfigurationService _posterConfigService;
+
         private bool _disposed;
 
         // MARK: Constructor
@@ -61,6 +63,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
                 loggerFactory.CreateLogger<EpisodeTrackingService>(),
                 _trackingDatabase,
                 configHashService);
+
+            _posterConfigService = new PosterConfigurationService(
+                loggerFactory.CreateLogger<PosterConfigurationService>());
+            _posterConfigService.Initialize(Configuration);
 
             _brightnessService = new BrightnessService(
                 loggerFactory.CreateLogger<BrightnessService>());
@@ -120,6 +126,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public HardwareFFmpegService HardwareFFmpegService => _hardwareFFmpegService;
         public SoftwareFFmpegService SoftwareFFmpegService => _softwareFFmpegService;
         public PosterService PosterService => _posterService;
+        public PosterConfigurationService PosterConfigService => _posterConfigService;
+
 
         // MARK: GetPages
         public IEnumerable<PluginPageInfo> GetPages()
@@ -156,6 +164,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
                 _hardwareValidationService?.Dispose();
                 _disposed = true;
             }
+        }
+
+        public override void UpdateConfiguration(BasePluginConfiguration configuration)
+        {
+            base.UpdateConfiguration(configuration);
+            _posterConfigService?.Initialize(Configuration);
         }
     }
 }

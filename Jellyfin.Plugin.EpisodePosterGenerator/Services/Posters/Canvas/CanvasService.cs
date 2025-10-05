@@ -35,7 +35,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // MARK: GenerateCanvasAsync
-        public async Task<byte[]?> GenerateCanvasAsync(EpisodeMetadata metadata, PluginConfiguration config)
+        public async Task<byte[]?> GenerateCanvasAsync(EpisodeMetadata metadata, PosterSettings config)
         {
             if (metadata?.VideoMetadata == null)
             {

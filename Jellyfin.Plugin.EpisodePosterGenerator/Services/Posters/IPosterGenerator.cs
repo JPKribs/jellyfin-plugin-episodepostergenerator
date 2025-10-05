@@ -29,7 +29,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         string? Generate(
             SKBitmap canvas,
             EpisodeMetadata episodeMetadata,
-            PluginConfiguration config,
+            PosterSettings settings,
             string? outputPath = null);
     }
 
@@ -39,13 +39,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
     /// </summary>
     public abstract class BasePosterGenerator : IPosterGenerator
     {
-        protected static float GetSafeAreaMargin(PluginConfiguration config) => config.PosterSafeArea / 100f;
+        protected static float GetSafeAreaMargin(PosterSettings settings) => settings.PosterSafeArea / 100f;
 
         protected static void ApplySafeAreaConstraints(
-            int width, int height, PluginConfiguration config,
+            int width, int height, PosterSettings settings,
             out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop)
         {
-            var safeAreaMargin = GetSafeAreaMargin(config);
+            var safeAreaMargin = GetSafeAreaMargin(settings);
             safeLeft = width * safeAreaMargin;
             safeTop = height * safeAreaMargin;
             safeWidth = width * (1 - 2 * safeAreaMargin);
@@ -53,7 +53,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: Generate
-        public string? Generate(SKBitmap canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, string? outputPath = null)
+        public string? Generate(SKBitmap canvas, EpisodeMetadata episodeMetadata, PosterSettings settings, string? outputPath = null)
         {
             try
             {
@@ -65,22 +65,22 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 skCanvas.Clear(SKColors.Transparent);
 
                 // Layer 1: Canvas (base layer)
-                RenderCanvas(skCanvas, canvas, episodeMetadata, config, width, height);
+                RenderCanvas(skCanvas, canvas, episodeMetadata, settings, width, height);
 
                 // Layer 2: Overlay (color tinting)
-                RenderOverlay(skCanvas, episodeMetadata, config, width, height);
+                RenderOverlay(skCanvas, episodeMetadata, settings, width, height);
 
                 // Layer 3: Graphics (static images/watermarks)
-                RenderGraphics(skCanvas, episodeMetadata, config, width, height);
+                RenderGraphics(skCanvas, episodeMetadata, settings, width, height);
 
                 // Layer 4: Typography (text and logos)
-                RenderTypography(skCanvas, episodeMetadata, config, width, height);
+                RenderTypography(skCanvas, episodeMetadata, settings, width, height);
 
                 // Encode and save
                 using var finalImage = surface.Snapshot();
                 using var finalBitmap = SKBitmap.FromImage(finalImage);
                 
-                return SavePoster(finalBitmap, config, outputPath);
+                return SavePoster(finalBitmap, settings, outputPath);
             }
             catch (Exception ex)
             {
@@ -90,25 +90,25 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: RenderCanvas
-        protected virtual void RenderCanvas(SKCanvas skCanvas, SKBitmap canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        protected virtual void RenderCanvas(SKCanvas skCanvas, SKBitmap canvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             using var canvasPaint = new SKPaint { IsAntialias = true };
             skCanvas.DrawBitmap(canvas, 0, 0, canvasPaint);
         }
 
         // MARK: RenderOverlay
-        protected virtual void RenderOverlay(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        protected virtual void RenderOverlay(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
-            if (string.IsNullOrEmpty(config.OverlayColor))
+            if (string.IsNullOrEmpty(settings.OverlayColor))
                 return;
 
-            var primaryColor = ColorUtils.ParseHexColor(config.OverlayColor);
+            var primaryColor = ColorUtils.ParseHexColor(settings.OverlayColor);
             if (primaryColor.Alpha == 0)
                 return;
 
             var rect = SKRect.Create(width, height);
 
-            if (config.OverlayGradient == OverlayGradient.None)
+            if (settings.OverlayGradient == OverlayGradient.None)
             {
                 // Solid color overlay
                 using var overlayPaint = new SKPaint
@@ -121,10 +121,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             else
             {
                 // Gradient overlay
-                var secondaryColor = ColorUtils.ParseHexColor(config.OverlaySecondaryColor);
+                var secondaryColor = ColorUtils.ParseHexColor(settings.OverlaySecondaryColor);
                 if (secondaryColor.Alpha == 0) secondaryColor = primaryColor;
 
-                var gradient = CreateOverlayGradient(config.OverlayGradient, rect, primaryColor, secondaryColor);
+                var gradient = CreateOverlayGradient(settings.OverlayGradient, rect, primaryColor, secondaryColor);
                 if (gradient != null)
                 {
                     using var overlayPaint = new SKPaint
@@ -169,27 +169,27 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: RenderGraphics
-        protected virtual void RenderGraphics(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        protected virtual void RenderGraphics(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
-            if (string.IsNullOrEmpty(config.GraphicPath))
+            if (string.IsNullOrEmpty(settings.GraphicPath))
                 return;
 
-            if (!File.Exists(config.GraphicPath))
+            if (!File.Exists(settings.GraphicPath))
             {
-                LogError(new FileNotFoundException("Graphic file not found"), config.GraphicPath);
+                LogError(new FileNotFoundException("Graphic file not found"), settings.GraphicPath);
                 return;
             }
 
             try
             {
-                using var stream = File.OpenRead(config.GraphicPath);
+                using var stream = File.OpenRead(settings.GraphicPath);
                 using var graphicBitmap = SKBitmap.Decode(stream);
                 if (graphicBitmap == null)
                     return;
 
                 // Graphics layer respects safe area constraints
-                ApplySafeAreaConstraints(width, height, config, out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop);
-                var graphicRect = CalculateGraphicRect(graphicBitmap, safeLeft, safeTop, safeWidth, safeHeight, config);
+                ApplySafeAreaConstraints(width, height, settings, out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop);
+                var graphicRect = CalculateGraphicRect(graphicBitmap, safeLeft, safeTop, safeWidth, safeHeight, settings);
 
                 using var graphicPaint = new SKPaint
                 {
@@ -201,17 +201,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             }
             catch
             {
-                LogError(new InvalidDataException("Failed to load or render graphic"), config.GraphicPath);
+                LogError(new InvalidDataException("Failed to load or render graphic"), settings.GraphicPath);
             }
         }
 
         // MARK: RenderTypography
-        protected abstract void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height);
+        protected abstract void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height);
 
         // MARK: GetSafeAreaBounds
-        protected static SKRect GetSafeAreaBounds(int width, int height, PluginConfiguration config)
+        protected static SKRect GetSafeAreaBounds(int width, int height, PosterSettings settings)
         {
-            ApplySafeAreaConstraints(width, height, config, out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop);
+            ApplySafeAreaConstraints(width, height, settings, out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop);
             return new SKRect(safeLeft, safeTop, safeLeft + safeWidth, safeTop + safeHeight);
         }
 
@@ -219,14 +219,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         protected abstract void LogError(Exception ex, string? episodeName);
 
         // MARK: CalculateGraphicRect
-        protected virtual SKRect CalculateGraphicRect(SKBitmap graphicBitmap, float safeLeft, float safeTop, float safeWidth, float safeHeight, PluginConfiguration config)
+        protected virtual SKRect CalculateGraphicRect(SKBitmap graphicBitmap, float safeLeft, float safeTop, float safeWidth, float safeHeight, PosterSettings settings)
         {
             // Calculate maximum allowed dimensions from percentages
-            var posterWidth = safeWidth / (1 - 2 * GetSafeAreaMargin(config));
-            var posterHeight = safeHeight / (1 - 2 * GetSafeAreaMargin(config));
+            var posterWidth = safeWidth / (1 - 2 * GetSafeAreaMargin(settings));
+            var posterHeight = safeHeight / (1 - 2 * GetSafeAreaMargin(settings));
             
-            var maxWidth = posterWidth * (config.GraphicWidth / 100f);
-            var maxHeight = posterHeight * (config.GraphicHeight / 100f);
+            var maxWidth = posterWidth * (settings.GraphicWidth / 100f);
+            var maxHeight = posterHeight * (settings.GraphicHeight / 100f);
             
             // Calculate aspect ratio preserving dimensions
             var originalAspect = (float)graphicBitmap.Width / graphicBitmap.Height;
@@ -248,8 +248,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             }
             
             // Calculate position based on alignment and position
-            var x = CalculateGraphicX(config.GraphicAlignment, safeLeft, safeWidth, finalWidth);
-            var y = CalculateGraphicY(config.GraphicPosition, safeTop, safeHeight, finalHeight);
+            var x = CalculateGraphicX(settings.GraphicAlignment, safeLeft, safeWidth, finalWidth);
+            var y = CalculateGraphicY(settings.GraphicPosition, safeTop, safeHeight, finalHeight);
             
             return new SKRect(x, y, x + finalWidth, y + finalHeight);
         }
@@ -279,15 +279,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: SavePoster
-        private string? SavePoster(SKBitmap bitmap, PluginConfiguration config, string? outputPath)
+        private string? SavePoster(SKBitmap bitmap, PosterSettings settings, string? outputPath)
         {
             if (string.IsNullOrWhiteSpace(outputPath))
             {
-                var extension = config.PosterFileType.ToString().ToLowerInvariant();
+                var extension = settings.PosterFileType.ToString().ToLowerInvariant();
                 outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.{extension}");
             }
 
-            SKEncodedImageFormat format = config.PosterFileType switch
+            SKEncodedImageFormat format = settings.PosterFileType switch
             {
                 PosterFileType.JPEG => SKEncodedImageFormat.Jpeg,
                 PosterFileType.PNG => SKEncodedImageFormat.Png,
@@ -325,9 +325,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: RenderCanvas
-        protected override void RenderCanvas(SKCanvas skCanvas, SKBitmap canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        protected override void RenderCanvas(SKCanvas skCanvas, SKBitmap canvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
-            var processedCanvas = _croppingService.CropPoster(canvas, episodeMetadata.VideoMetadata, config);
+            var processedCanvas = _croppingService.CropPoster(canvas, episodeMetadata.VideoMetadata, settings);
             using var canvasPaint = new SKPaint { IsAntialias = true };
             skCanvas.DrawBitmap(processedCanvas, 0, 0, canvasPaint);
             
@@ -336,7 +336,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: RenderTypography
-        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             // Canvas generator has no typography by default
         }

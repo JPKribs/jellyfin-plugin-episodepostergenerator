@@ -35,76 +35,70 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             _loggerFactory = loggerFactory;
         }
 
-        // MARK: Generate
-        public async Task<string?> GenerateAsync(TaskTrigger trigger, Episode episode, PluginConfiguration config)
+        // MARK: GeneratePosterAsync
+        public async Task<string?> GeneratePosterAsync(Episode episode)
         {
-            if (episode == null)
+            if (Plugin.Instance == null)
             {
-                _logger.LogError("Episode cannot be null");
+                _logger.LogError("Plugin instance not available");
                 return null;
             }
 
+            var config = Plugin.Instance.Configuration;
             if (config == null)
             {
-                _logger.LogError("Configuration cannot be null");
+                _logger.LogError("Plugin configuration not available");
                 return null;
             }
 
-            try
+            var posterSettings = Plugin.Instance.PosterConfigService.GetSettingsForEpisode(episode);
+
+            _logger.LogInformation("Generating poster for {SeriesName} - {EpisodeName}",
+                episode.Series?.Name ?? "Unknown Series",
+                episode.Name ?? "Unknown Episode");
+
+            var episodeMetadata = EpisodeMetadata.CreateFromEpisode(episode);
+
+            var canvasData = await _canvasService.GenerateCanvasAsync(episodeMetadata, posterSettings).ConfigureAwait(false);
+            if (canvasData == null || canvasData.Length == 0)
             {
-                _logger.LogInformation("Starting poster generation for episode: {SeriesName} - {EpisodeName}",
-                    episode.Series?.Name ?? "Unknown Series",
-                    episode.Name ?? "Unknown Episode");
-
-                // Extract complete metadata from the episode
-                var episodeMetadata = EpisodeMetadata.CreateFromEpisode(episode);
-
-                // Generate canvas using CanvasService
-                var canvasData = await _canvasService.GenerateCanvasAsync(episodeMetadata, config).ConfigureAwait(false);
-                if (canvasData == null || canvasData.Length == 0)
-                {
-                    _logger.LogWarning("Failed to generate canvas for episode: {EpisodeName}", episode.Name);
-                    return null;
-                }
-
-                // Decode SKBitmap from byte array
-                using var bitmap = SkiaSharp.SKBitmap.Decode(canvasData);
-                if (bitmap == null)
-                {
-                    _logger.LogWarning("Failed to decode bitmap for episode: {EpisodeName}", episode.Name);
-                    return null;
-                }
-
-                // MARK: Select Poster Generator
-                IPosterGenerator generator = config.PosterStyle switch
-                {
-                    PosterStyle.Logo => new LogoPosterGenerator(_loggerFactory.CreateLogger<LogoPosterGenerator>()),
-                    PosterStyle.Numeral => new NumeralPosterGenerator(_loggerFactory.CreateLogger<NumeralPosterGenerator>()),
-                    PosterStyle.Cutout => new CutoutPosterGenerator(_loggerFactory.CreateLogger<CutoutPosterGenerator>()),
-                    PosterStyle.Standard => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>()),
-                    PosterStyle.Frame => new FramePosterGenerator(_loggerFactory.CreateLogger<FramePosterGenerator>()),
-                    _ => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>()) // fallback
-                };
-
-                // Determine temp path
-                var tempFilePath = GetTemporaryPosterPath(episode.Id, config.PosterFileType);
-
-                // Generate poster
-                var resultPath = generator.Generate(bitmap, episodeMetadata, config, tempFilePath);
-                if (resultPath == null)
-                {
-                    _logger.LogWarning("Poster generator failed for episode: {EpisodeName}", episode.Name);
-                    return null;
-                }
-
-                _logger.LogInformation("Poster generated and saved to: {FilePath}", resultPath);
-                return resultPath;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to generate poster for episode: {EpisodeName}", episode.Name);
+                _logger.LogWarning("Failed to generate canvas for episode: {EpisodeName}", episode.Name);
                 return null;
             }
+
+            using var bitmap = SkiaSharp.SKBitmap.Decode(canvasData);
+            if (bitmap == null)
+            {
+                _logger.LogWarning("Failed to decode bitmap for episode: {EpisodeName}", episode.Name);
+                return null;
+            }
+
+            // MARK: Select Poster Generator
+            IPosterGenerator generator = posterSettings.PosterStyle switch
+            {
+                PosterStyle.Logo => new LogoPosterGenerator(_loggerFactory.CreateLogger<LogoPosterGenerator>()),
+                PosterStyle.Numeral => new NumeralPosterGenerator(_loggerFactory.CreateLogger<NumeralPosterGenerator>()),
+                PosterStyle.Cutout => new CutoutPosterGenerator(_loggerFactory.CreateLogger<CutoutPosterGenerator>()),
+                PosterStyle.Standard => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>()),
+                PosterStyle.Frame => new FramePosterGenerator(_loggerFactory.CreateLogger<FramePosterGenerator>()),
+                _ => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>())
+            };
+
+            var tempFilePath = GetTemporaryPosterPath(episode.Id, posterSettings.PosterFileType);
+
+            var generatedPath = generator.Generate(bitmap, episodeMetadata, posterSettings, tempFilePath);
+            
+            if (generatedPath == null)
+            {
+                _logger.LogError("Failed to generate poster for episode: {EpisodeName}", episode.Name);
+                return null;
+            }
+
+            _logger.LogInformation("Successfully generated poster for {SeriesName} - {EpisodeName}",
+                episode.Series?.Name ?? "Unknown Series",
+                episode.Name ?? "Unknown Episode");
+
+            return generatedPath;
         }
 
         // MARK: GetTemporaryPosterPath

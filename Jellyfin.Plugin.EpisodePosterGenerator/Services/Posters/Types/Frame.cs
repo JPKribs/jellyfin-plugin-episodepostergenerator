@@ -21,20 +21,20 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: RenderTypography
-        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             if (string.IsNullOrEmpty(episodeMetadata.EpisodeName))
                 return;
 
-            var safeArea = GetSafeAreaBounds(width, height, config);
+            var safeArea = GetSafeAreaBounds(width, height, settings);
             float spacing = height * 0.02f;
 
-            var titleInfo = DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, config, width, height, safeArea);
+            var titleInfo = DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, settings, width, height, safeArea);
 
             TextInfo? episodeInfo = null;
-            if (config.ShowEpisode && episodeMetadata.SeasonNumber.HasValue && episodeMetadata.EpisodeNumberStart.HasValue)
+            if (settings.ShowEpisode && episodeMetadata.SeasonNumber.HasValue && episodeMetadata.EpisodeNumberStart.HasValue)
             {
-                episodeInfo = DrawEpisodeInfo(skCanvas, episodeMetadata.SeasonNumber.Value, episodeMetadata.EpisodeNumberStart.Value, config, width, height, safeArea);
+                episodeInfo = DrawEpisodeInfo(skCanvas, episodeMetadata.SeasonNumber.Value, episodeMetadata.EpisodeNumberStart.Value, settings, width, height, safeArea);
             }
 
             DrawFrameBorder(skCanvas, safeArea, titleInfo, episodeInfo, spacing);
@@ -47,7 +47,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: DrawEpisodeTitle
-        private TextInfo DrawEpisodeTitle(SKCanvas canvas, string title, PluginConfiguration config, int width, int height, SKRect safeArea)
+        private TextInfo DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int width, int height, SKRect safeArea)
         {
             title = title.ToUpperInvariant();
             
@@ -107,7 +107,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: DrawEpisodeInfo
-        private TextInfo DrawEpisodeInfo(SKCanvas canvas, int seasonNumber, int episodeNumber, PluginConfiguration config, int width, int height, SKRect safeArea)
+        private TextInfo DrawEpisodeInfo(SKCanvas canvas, int seasonNumber, int episodeNumber, PosterSettings config, int width, int height, SKRect safeArea)
         {
             var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, height);
             var episodeColor = ColorUtils.ParseHexColor(config.EpisodeFontColor ?? "#FFFFFF");
@@ -181,54 +181,56 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 ? safeArea.Bottom - episodeInfo.Value.Height - spacing 
                 : safeArea.Bottom;
 
-            canvas.DrawLine(safeArea.Left + 2, topLineY + 2, safeArea.Left + 2, topTextBottom + 2, shadowPaint);
-            canvas.DrawLine(safeArea.Left, topLineY, safeArea.Left, topTextBottom, borderPaint);
+            var overlap = 1.5f;
+
+            canvas.DrawLine(safeArea.Left + 2, topLineY + 2 - overlap, safeArea.Left + 2, topTextBottom + 2, shadowPaint);
+            canvas.DrawLine(safeArea.Left, topLineY - overlap, safeArea.Left, topTextBottom, borderPaint);
 
             canvas.DrawLine(safeArea.Left + 2, topTextBottom + 2, safeArea.Left + 2, bottomTextTop + 2, shadowPaint);
             canvas.DrawLine(safeArea.Left, topTextBottom, safeArea.Left, bottomTextTop, borderPaint);
 
             if (episodeInfo.HasValue)
             {
-                canvas.DrawLine(safeArea.Left + 2, bottomTextTop + 2, safeArea.Left + 2, bottomLineY + 2, shadowPaint);
-                canvas.DrawLine(safeArea.Left, bottomTextTop, safeArea.Left, bottomLineY, borderPaint);
+                canvas.DrawLine(safeArea.Left + 2, bottomTextTop + 2, safeArea.Left + 2, bottomLineY + 2 + overlap, shadowPaint);
+                canvas.DrawLine(safeArea.Left, bottomTextTop, safeArea.Left, bottomLineY + overlap, borderPaint);
             }
 
-            canvas.DrawLine(safeArea.Right + 2, topLineY + 2, safeArea.Right + 2, topTextBottom + 2, shadowPaint);
-            canvas.DrawLine(safeArea.Right, topLineY, safeArea.Right, topTextBottom, borderPaint);
+            canvas.DrawLine(safeArea.Right + 2, topLineY + 2 - overlap, safeArea.Right + 2, topTextBottom + 2, shadowPaint);
+            canvas.DrawLine(safeArea.Right, topLineY - overlap, safeArea.Right, topTextBottom, borderPaint);
 
             canvas.DrawLine(safeArea.Right + 2, topTextBottom + 2, safeArea.Right + 2, bottomTextTop + 2, shadowPaint);
             canvas.DrawLine(safeArea.Right, topTextBottom, safeArea.Right, bottomTextTop, borderPaint);
 
             if (episodeInfo.HasValue)
             {
-                canvas.DrawLine(safeArea.Right + 2, bottomTextTop + 2, safeArea.Right + 2, bottomLineY + 2, shadowPaint);
-                canvas.DrawLine(safeArea.Right, bottomTextTop, safeArea.Right, bottomLineY, borderPaint);
+                canvas.DrawLine(safeArea.Right + 2, bottomTextTop + 2, safeArea.Right + 2, bottomLineY + 2 + overlap, shadowPaint);
+                canvas.DrawLine(safeArea.Right, bottomTextTop, safeArea.Right, bottomLineY + overlap, borderPaint);
             }
 
             var titleLeftEdge = titleInfo.CenterX - (titleInfo.Width / 2f) - spacing;
             var titleRightEdge = titleInfo.CenterX + (titleInfo.Width / 2f) + spacing;
 
-            canvas.DrawLine(safeArea.Left + 2, topLineY + 2, titleLeftEdge + 2, topLineY + 2, shadowPaint);
-            canvas.DrawLine(safeArea.Left, topLineY, titleLeftEdge, topLineY, borderPaint);
+            canvas.DrawLine(safeArea.Left + 2 - overlap, topLineY + 2, titleLeftEdge + 2, topLineY + 2, shadowPaint);
+            canvas.DrawLine(safeArea.Left - overlap, topLineY, titleLeftEdge, topLineY, borderPaint);
 
-            canvas.DrawLine(titleRightEdge + 2, topLineY + 2, safeArea.Right + 2, topLineY + 2, shadowPaint);
-            canvas.DrawLine(titleRightEdge, topLineY, safeArea.Right, topLineY, borderPaint);
+            canvas.DrawLine(titleRightEdge + 2, topLineY + 2, safeArea.Right + 2 + overlap, topLineY + 2, shadowPaint);
+            canvas.DrawLine(titleRightEdge, topLineY, safeArea.Right + overlap, topLineY, borderPaint);
 
             if (episodeInfo.HasValue)
             {
                 var episodeLeftEdge = episodeInfo.Value.CenterX - (episodeInfo.Value.Width / 2f) - spacing;
                 var episodeRightEdge = episodeInfo.Value.CenterX + (episodeInfo.Value.Width / 2f) + spacing;
 
-                canvas.DrawLine(safeArea.Left + 2, bottomLineY + 2, episodeLeftEdge + 2, bottomLineY + 2, shadowPaint);
-                canvas.DrawLine(safeArea.Left, bottomLineY, episodeLeftEdge, bottomLineY, borderPaint);
+                canvas.DrawLine(safeArea.Left + 2 - overlap, bottomLineY + 2, episodeLeftEdge + 2, bottomLineY + 2, shadowPaint);
+                canvas.DrawLine(safeArea.Left - overlap, bottomLineY, episodeLeftEdge, bottomLineY, borderPaint);
 
-                canvas.DrawLine(episodeRightEdge + 2, bottomLineY + 2, safeArea.Right + 2, bottomLineY + 2, shadowPaint);
-                canvas.DrawLine(episodeRightEdge, bottomLineY, safeArea.Right, bottomLineY, borderPaint);
+                canvas.DrawLine(episodeRightEdge + 2, bottomLineY + 2, safeArea.Right + 2 + overlap, bottomLineY + 2, shadowPaint);
+                canvas.DrawLine(episodeRightEdge, bottomLineY, safeArea.Right + overlap, bottomLineY, borderPaint);
             }
             else
             {
-                canvas.DrawLine(safeArea.Left + 2, bottomLineY + 2, safeArea.Right + 2, bottomLineY + 2, shadowPaint);
-                canvas.DrawLine(safeArea.Left, bottomLineY, safeArea.Right, bottomLineY, borderPaint);
+                canvas.DrawLine(safeArea.Left + 2 - overlap, bottomLineY + 2, safeArea.Right + 2 + overlap, bottomLineY + 2, shadowPaint);
+                canvas.DrawLine(safeArea.Left - overlap, bottomLineY, safeArea.Right + overlap, bottomLineY, borderPaint);
             }
         }
     }

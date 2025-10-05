@@ -21,19 +21,19 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // MARK: CropPoster
-        public SKBitmap CropPoster(SKBitmap source, VideoMetadata metadata, PluginConfiguration config)
+        public SKBitmap CropPoster(SKBitmap source, VideoMetadata metadata, PosterSettings settings)
         {
             ArgumentNullException.ThrowIfNull(source);
             ArgumentNullException.ThrowIfNull(metadata);
-            ArgumentNullException.ThrowIfNull(config);
+            ArgumentNullException.ThrowIfNull(settings);
 
             var result = source;
             var originalSize = $"{source.Width}x{source.Height}";
 
             // Step 1: Remove letterbox/pillarbox if enabled
-            if (config.EnableLetterboxDetection)
+            if (settings.EnableLetterboxDetection)
             {
-                var cropped = RemoveLetterboxAndPillarbox(result, config);
+                var cropped = RemoveLetterboxAndPillarbox(result, settings);
                 if (cropped != result)
                 {
                     _logger.LogInformation("Letterbox/pillarbox removed: {Original} -> {New}", 
@@ -48,15 +48,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
 
             // Step 2: Apply poster fill to achieve target dimensions (unless Original mode)
-            if (config.PosterFill != PosterFill.Original)
+            if (settings.PosterFill != PosterFill.Original)
             {
-                var posterRatio = ParseAspectRatio(config.PosterDimensionRatio);
-                var filled = ApplyPosterFill(result, posterRatio, config.PosterFill);
+                var posterRatio = ParseAspectRatio(settings.PosterDimensionRatio);
+                var filled = ApplyPosterFill(result, posterRatio, settings.PosterFill);
                 
                 if (filled != result)
                 {
                     _logger.LogInformation("Poster fill applied: {Fill} ratio {Ratio}", 
-                        config.PosterFill, config.PosterDimensionRatio);
+                        settings.PosterFill, settings.PosterDimensionRatio);
                         
                     if (result != source) result.Dispose();
                     result = filled;
@@ -90,10 +90,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // MARK: RemoveLetterboxAndPillarbox
-        private SKBitmap RemoveLetterboxAndPillarbox(SKBitmap source, PluginConfiguration config)
+        private SKBitmap RemoveLetterboxAndPillarbox(SKBitmap source, PosterSettings settings)
         {
-            var blackThreshold = config.LetterboxBlackThreshold;
-            var confidence = config.LetterboxConfidence / 100.0f;
+            var blackThreshold = settings.LetterboxBlackThreshold;
+            var confidence = settings.LetterboxConfidence / 100.0f;
 
             _logger.LogDebug("Letterbox detection: threshold={Threshold}, confidence={Confidence:F3}", 
                 blackThreshold, confidence);

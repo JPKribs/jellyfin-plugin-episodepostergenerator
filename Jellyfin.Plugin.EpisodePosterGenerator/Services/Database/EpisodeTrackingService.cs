@@ -11,24 +11,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services;
 
-/// <summary>
-/// Service for tracking processed episodes and determining reprocessing needs
-/// </summary>
 public class EpisodeTrackingService
 {
-    /// <summary>
-    /// Logger for tracking service operations
-    /// </summary>
     private readonly ILogger<EpisodeTrackingService> _logger;
-
-    /// <summary>
-    /// Database service for persistent episode tracking storage
-    /// </summary>
     private readonly EpisodeTrackingDatabase _database;
-
-    /// <summary>
-    /// Service for generating configuration hashes
-    /// </summary>
     private readonly ConfigurationHashService _configHashService;
 
     // MARK: Constructor
@@ -62,7 +48,9 @@ public class EpisodeTrackingService
             return true;
         }
 
-        var currentConfigHash = _configHashService.GetCurrentHash(config);
+        var posterSettings = Plugin.Instance!.PosterConfigService.GetSettingsForEpisode(episode);
+        var currentConfigHash = _configHashService.GetCurrentHash(posterSettings);
+        
         if (record.ConfigurationHash != currentConfigHash)
         {
             _logger.LogDebug("Configuration changed for episode {EpisodeId}, requires reprocessing", episode.Id);
@@ -87,7 +75,8 @@ public class EpisodeTrackingService
         }
 
         var fileInfo = new FileInfo(episode.Path);
-        var configHash = _configHashService.GetCurrentHash(config);
+        var posterSettings = Plugin.Instance!.PosterConfigService.GetSettingsForEpisode(episode);
+        var configHash = _configHashService.GetCurrentHash(posterSettings);
 
         var record = new ProcessedEpisodeRecord
         {

@@ -22,34 +22,34 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: RenderTypography
-        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             var seasonNumber = episodeMetadata.SeasonNumber ?? 0;
             var episodeNumber = episodeMetadata.EpisodeNumberStart ?? 0;
             var episodeTitle = episodeMetadata.EpisodeName ?? "-";
 
-            var safeArea = GetSafeAreaBounds(width, height, config);
+            var safeArea = GetSafeAreaBounds(width, height, settings);
             float spacingHeight = height * 0.02f;
             float currentBottomY = safeArea.Bottom;
 
             // Build text stack from bottom to top: episode info, separator line, episode title
-            if (config.ShowTitle && config.ShowEpisode)
+            if (settings.ShowTitle && settings.ShowEpisode)
             {
-                var titleHeight = DrawEpisodeTitle(skCanvas, episodeTitle, config, width, height, currentBottomY, safeArea);
+                var titleHeight = DrawEpisodeTitle(skCanvas, episodeTitle, settings, width, height, currentBottomY, safeArea);
                 currentBottomY -= titleHeight + spacingHeight;
 
-                var lineHeight = DrawSeparatorLine(config, skCanvas, width, currentBottomY, safeArea);
+                var lineHeight = DrawSeparatorLine(settings, skCanvas, width, currentBottomY, safeArea);
                 currentBottomY -= lineHeight + spacingHeight;
 
-                DrawEpisodeInfo(skCanvas, seasonNumber, episodeNumber, config, width, height, currentBottomY, safeArea);
+                DrawEpisodeInfo(skCanvas, seasonNumber, episodeNumber, settings, width, height, currentBottomY, safeArea);
             }
-            else if (config.ShowTitle)
+            else if (settings.ShowTitle)
             {
-                DrawEpisodeTitle(skCanvas, episodeTitle, config, width, height, currentBottomY, safeArea);
+                DrawEpisodeTitle(skCanvas, episodeTitle, settings, width, height, currentBottomY, safeArea);
             }
-            else if (config.ShowEpisode)
+            else if (settings.ShowEpisode)
             {
-                DrawEpisodeInfo(skCanvas, seasonNumber, episodeNumber, config, width, height, currentBottomY, safeArea);
+                DrawEpisodeInfo(skCanvas, seasonNumber, episodeNumber, settings, width, height, currentBottomY, safeArea);
             }
         }
 
@@ -60,7 +60,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: DrawEpisodeTitle
-        private float DrawEpisodeTitle(SKCanvas canvas, string title, PluginConfiguration config, int canvasWidth, int canvasHeight, float bottomY, SKRect safeArea)
+        private float DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int canvasWidth, int canvasHeight, float bottomY, SKRect safeArea)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight);
             var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
@@ -103,7 +103,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: DrawSeparatorLine
-        private float DrawSeparatorLine(PluginConfiguration config, SKCanvas canvas, int canvasWidth, float y, SKRect safeArea)
+        private float DrawSeparatorLine(PosterSettings config, SKCanvas canvas, int canvasWidth, float y, SKRect safeArea)
         {
             var startX = safeArea.Left;
             var endX = safeArea.Right;
@@ -132,7 +132,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: DrawEpisodeInfo
-        private void DrawEpisodeInfo(SKCanvas canvas, int seasonNumber, int episodeNumber, PluginConfiguration config, int canvasWidth, int canvasHeight, float bottomY, SKRect safeArea)
+        private void DrawEpisodeInfo(SKCanvas canvas, int seasonNumber, int episodeNumber, PosterSettings config, int canvasWidth, int canvasHeight, float bottomY, SKRect safeArea)
         {
             var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, canvasHeight);
             var episodeColor = ColorUtils.ParseHexColor(config.EpisodeFontColor ?? "#FFFFFF");

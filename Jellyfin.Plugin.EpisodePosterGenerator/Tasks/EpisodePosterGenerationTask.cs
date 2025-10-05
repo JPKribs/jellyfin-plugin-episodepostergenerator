@@ -123,18 +123,26 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                             episode.Name ?? "Unknown Episode");
 
                         // Generate poster using PosterService
-                        var posterPath = await posterService.GenerateAsync(TaskTrigger.Task, episode, config).ConfigureAwait(false);
+                        var posterPath = await posterService.GeneratePosterAsync(episode).ConfigureAwait(false);
 
                         if (!string.IsNullOrEmpty(posterPath) && File.Exists(posterPath))
                         {
                             try
                             {
+                                var posterSettings = Plugin.Instance?.PosterConfigService.GetSettingsForEpisode(episode);
+
+                                if (posterSettings == null)
+                                {
+                                    _logger.LogError("Failed to get poster settings for episode");
+                                    continue;
+                                }
+
                                 using var imageStream = File.OpenRead(posterPath);
                                                                 
                                 await _providerManager.SaveImage(
                                     episode,
                                     imageStream,
-                                    config.PosterFileType.GetMimeType(),
+                                    posterSettings.PosterFileType.GetMimeType(),
                                     ImageType.Primary,
                                     null,
                                     CancellationToken.None).ConfigureAwait(false);

@@ -21,17 +21,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: RenderTypography
-        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, int width, int height)
+        protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
-            var safeArea = GetSafeAreaBounds(width, height, config);
+            var safeArea = GetSafeAreaBounds(width, height, settings);
 
             // Always draw Roman numeral centered in full safe area
-            DrawRomanNumeral(skCanvas, episodeMetadata, config, safeArea);
+            DrawRomanNumeral(skCanvas, episodeMetadata, settings, safeArea);
 
             // Draw title overlapping on top of the Roman numeral if enabled
-            if (config.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
+            if (settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
             {
-                DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, config, width, height, safeArea);
+                DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, settings, width, height, safeArea);
             }
         }
 
@@ -42,7 +42,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: DrawRomanNumeral
-        private void DrawRomanNumeral(SKCanvas canvas, EpisodeMetadata episodeMetadata, PluginConfiguration config, SKRect area)
+        private void DrawRomanNumeral(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, SKRect area)
         {
             var numeralText = NumberUtils.NumberToRomanNumeral(episodeMetadata.EpisodeNumberStart ?? 0);
             var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
@@ -79,7 +79,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: DrawEpisodeTitle
-        private void DrawEpisodeTitle(SKCanvas canvas, string title, PluginConfiguration config, int width, int height, SKRect safeArea)
+        private void DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int width, int height, SKRect safeArea)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
             var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
@@ -123,7 +123,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MARK: CalculateTitleHeight
-        private float CalculateTitleHeight(string title, PluginConfiguration config, int height, SKRect safeArea)
+        private float CalculateTitleHeight(string title, PosterSettings config, int height, SKRect safeArea)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
             var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
