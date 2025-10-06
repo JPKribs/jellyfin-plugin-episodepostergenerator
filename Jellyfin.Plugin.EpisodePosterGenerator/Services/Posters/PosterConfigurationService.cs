@@ -32,10 +32,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             
             if (defaults.Count == 0)
             {
-                _logger.LogWarning("No default poster configuration found, creating one");
-                var newDefault = new PosterConfiguration();
-                config.PosterConfigurations.Add(newDefault);
+                _logger.LogInformation("No default poster configuration found, creating one");
+                var newDefault = new PosterConfiguration
+                {
+                    Name = "Default",
+                    IsDefault = true
+                };
+                config.PosterConfigurations.Insert(0, newDefault);
                 _defaultSettings = newDefault.Settings;
+                
+                Plugin.Instance?.SaveConfiguration();
             }
             else if (defaults.Count > 1)
             {
@@ -75,7 +81,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             if (episode?.Series?.Id == null)
             {
                 _logger.LogDebug("Episode has no series, using default settings");
-                return _defaultSettings ?? new PosterSettings();
+                
+                if (_defaultSettings == null)
+                {
+                    _logger.LogError("Default settings are null, this should never happen. Creating fallback settings.");
+                    return new PosterSettings();
+                }
+                
+                return _defaultSettings;
             }
 
             return GetSettingsForSeries(episode.Series.Id);
@@ -90,8 +103,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 return settings;
             }
 
+            if (_defaultSettings == null)
+            {
+                _logger.LogError("Default settings are null, this should never happen. Creating fallback settings.");
+                return new PosterSettings();
+            }
+
             _logger.LogDebug("Using default settings for series {SeriesId}", seriesId);
-            return _defaultSettings ?? new PosterSettings();
+            return _defaultSettings;
         }
     }
 }

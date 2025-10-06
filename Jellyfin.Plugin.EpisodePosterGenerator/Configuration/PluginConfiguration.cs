@@ -17,10 +17,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
 
         public PluginConfiguration()
         {
-            PosterConfigurations = new List<PosterConfiguration>
-            {
-                new PosterConfiguration()
-            };
+            PosterConfigurations = new List<PosterConfiguration>();
         }
     }
 }

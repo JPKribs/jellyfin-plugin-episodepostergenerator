@@ -32,14 +32,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         public List<Guid> SeriesIds { get; set; }
 
         /// <summary>
-        /// Whether this is the default configuration (empty SeriesIds)
+        /// Whether this is the default configuration for all unassigned series
         /// </summary>
-        public bool IsDefault => SeriesIds == null || SeriesIds.Count == 0;
+        public bool IsDefault { get; set; }
 
         public PosterConfiguration()
         {
             Id = Guid.NewGuid();
             Name = "Poster";
+            IsDefault = false;
             Settings = new PosterSettings();
             SeriesIds = new List<Guid>();
         }

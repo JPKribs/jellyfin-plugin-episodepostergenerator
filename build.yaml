@@ -1,7 +1,7 @@
 ---
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
-version: "10.10.27"
+version: "10.10.28"
 targetAbi: "10.10.7.0"
 framework: "net8.0"
 overview: "Generate Custom Episode Posters"
@@ -12,23 +12,19 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
-  features:
-  - Added multi-configuration support - create multiple named poster configurations with different styles
-  - Added series assignment system - assign specific series to use custom poster configurations
-  - Added default configuration that applies to all unassigned series
-  - Added visual series tags with poster thumbnails in configuration UI
-  - Added rename functionality for poster configurations
   fixes: 
-  - Fixed XML serialization error preventing plugin from loading (ICollection to List conversion)
-  - Fixed series names displaying as "series.Name" instead of actual names in UI
+  - Fixed duplicate default configurations being created on every plugin initialization/restart
+  - Fixed saved default poster configurations not persisting between restarts
+  - Fixed UI showing only default configuration until new configuration was created
+  - Fixed font color and font size controls not hiding for Cutout and Numeral poster styles
   technical:
-  - Refactored PosterConfiguration to use List<Guid> with proper XML serialization support
-  - Added Name property to PosterConfiguration for user-friendly identification
-  - Updated UI to use DOM manipulation instead of innerHTML to prevent translation system conflicts
-  - Added SuppressMessage attributes for CA1002 and CA2227 code analysis warnings
+  - Changed PluginConfiguration constructor to initialize empty PosterConfigurations list instead of creating default
+  - Made IsDefault an explicit boolean property instead of computed property based on SeriesIds
+  - Added automatic default configuration creation in PosterConfigurationService.Initialize() with persistence
+  - Added null safety checks with error logging in GetSettingsForSeries() and GetSettingsForEpisode()
+  - Updated configuration loading to properly deserialize from XML without constructor interference
   other:
-  - Improved UI styling with Jellyfin-themed series cards including poster images and hover effects
-  - Added delete protection for default configuration
-  - Improved configuration dropdown to display "Default" for first configuration
-  documentation:
-  - Updated configuration page with better field descriptions for multi-configuration workflow
+  - Improved configuration dropdown sorting to show default configuration first, then alphabetically by name
+  - Added validation to prevent users from naming configurations "Default" (reserved name)
+  - Updated UI logic to use IsDefault property instead of index-based detection
+  - Combined data-depends-on and data-hide-for-styles visibility checks to prevent conflicts

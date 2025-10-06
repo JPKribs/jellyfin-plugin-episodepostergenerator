@@ -722,16 +722,16 @@
                 const previousId = this.currentConfigId;
                 select.innerHTML = '';
                 
-                const configs = this.fullConfig.PosterConfigurations;
+                const configs = [...this.fullConfig.PosterConfigurations].sort((a, b) => {
+                    if (a.IsDefault && !b.IsDefault) return -1;
+                    if (!a.IsDefault && b.IsDefault) return 1;
+                    return (a.Name || '').localeCompare(b.Name || '');
+                });
                 
-                configs.forEach((config, index) => {
+                configs.forEach((config) => {
                     const option = document.createElement('option');
                     option.value = config.Id;
-                    
-                    // First config with no series = "Default" display
-                    const isDefault = index === 0 && (!config.SeriesIds || config.SeriesIds.length === 0);
-                    option.textContent = isDefault ? 'Default' : (config.Name || 'Unnamed Configuration');
-                    
+                    option.textContent = config.Name || 'Unnamed Configuration';
                     select.appendChild(option);
                 });
 
@@ -778,9 +778,7 @@
             // MARK: updateSeriesAssignment
             updateSeriesAssignment: function() {
                 const config = this.getCurrentConfig();
-                const configs = this.fullConfig.PosterConfigurations;
-                
-                const isDefault = configs.indexOf(config) === 0;
+                const isDefault = config.IsDefault;
                 
                 document.getElementById('seriesAssignmentSection').style.display = isDefault ? 'none' : 'block';
                 document.getElementById('btnDeleteConfig').style.display = isDefault ? 'none' : 'inline-block';
@@ -986,7 +984,11 @@
                     return;
                 }
                 
-                // Check for duplicate names
+                if (name.trim().toLowerCase() === 'default') {
+                    Dashboard.alert('The name "Default" is reserved and cannot be used.');
+                    return;
+                }
+                
                 const exists = this.fullConfig.PosterConfigurations.some(c => 
                     c.Name && c.Name.toLowerCase() === name.trim().toLowerCase()
                 );
@@ -1048,10 +1050,8 @@
             // MARK: renameCurrentConfig
             renameCurrentConfig: function() {
                 const config = this.getCurrentConfig();
-                const configs = this.fullConfig.PosterConfigurations;
-                const isFirstConfig = configs.indexOf(config) === 0;
                 
-                if (isFirstConfig) {
+                if (config.IsDefault) {
                     Dashboard.alert('The default configuration cannot be renamed.');
                     return;
                 }
@@ -1060,6 +1060,11 @@
                 const newName = prompt('Enter new name for this configuration:', currentName);
                 
                 if (!newName || newName.trim() === '') {
+                    return;
+                }
+                
+                if (newName.trim().toLowerCase() === 'default') {
+                    Dashboard.alert('The name "Default" is reserved and cannot be used.');
                     return;
                 }
                 
@@ -1079,10 +1084,8 @@
             // MARK: deleteCurrentConfig
             deleteCurrentConfig: function() {
                 const config = this.getCurrentConfig();
-                const configs = this.fullConfig.PosterConfigurations;
-                const isFirstConfig = configs.indexOf(config) === 0;
                 
-                if (isFirstConfig) {
+                if (config.IsDefault) {
                     Dashboard.alert('Cannot delete the default configuration.');
                     return;
                 }
@@ -1121,6 +1124,21 @@
             // MARK: saveConfig
             saveConfig: function () {
                 this.saveCurrentConfigSettings();
+                
+                const invalidConfigs = this.fullConfig.PosterConfigurations.filter(config => {
+                    const hasNoSeries = !config.SeriesIds || config.SeriesIds.length === 0;
+                    const isNotDefault = config.IsDefault !== true;
+                    
+                    console.log('Validating config:', config.Name, 'IsDefault:', config.IsDefault, 'SeriesIds:', config.SeriesIds, 'Invalid:', isNotDefault && hasNoSeries);
+                    
+                    return isNotDefault && hasNoSeries;
+                });
+                
+                if (invalidConfigs.length > 0) {
+                    const configNames = invalidConfigs.map(c => c.Name || 'Unnamed').join(', ');
+                    Dashboard.alert('Cannot save: The following non-default configurations have no series assigned: ' + configNames + '. Please assign series or delete these configurations.');
+                    return;
+                }
                 
                 this.fullConfig.EnableProvider = document.getElementById('chkEnableProvider').checked;
                 this.fullConfig.EnableTask = document.getElementById('chkEnableTask').checked;
@@ -1165,7 +1183,14 @@
                         }
                     });
                     
-                    element.style.display = allDependenciesMet ? 'block' : 'none';
+                    const hideForStyles = element.getAttribute('data-hide-for-styles');
+                    let shouldHideForStyle = false;
+                    if (hideForStyles) {
+                        const hiddenStyles = hideForStyles.split(',');
+                        shouldHideForStyle = hiddenStyles.includes(posterStyle);
+                    }
+                    
+                    element.style.display = (allDependenciesMet && !shouldHideForStyle) ? 'block' : 'none';
                 });
 
                 document.querySelectorAll('[data-depends-on-gradient]').forEach(element => {
