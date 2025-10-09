@@ -16,5 +16,5 @@ changelog:
   - Fixed BT.2390 tone mapping failing with "Undefined constant" error
   - Fixed plugin logo not displaying in repository/installed plugins view
   technical:
-  - Corrected tone mapping filter syntax from 'tonemap=tonemap={algorithm}' to 'tonemap={algorithm}' in ToneMapFilterService
+  - Corrected tone mapping filter syntax from "tonemap=tonemap={algorithm}" to "tonemap={algorithm}" in ToneMapFilterService
   - Removed GetImage() method from Plugin.cs to use Jellyfin's default embedded resource mechanism
