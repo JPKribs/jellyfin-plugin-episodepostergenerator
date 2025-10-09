@@ -51,10 +51,13 @@ jobs:
 
       - name: Update Manifest
         run: |
+          # Sanitize changelog by removing backticks
+          SANITIZED_CHANGELOG=$(echo "${{ github.event.release.body }}" | tr -d '`')
+          
           # Use jq to safely construct the JSON object
           NEW_VERSION=$(jq -n \
             --arg version "${{ steps.release_info.outputs.build_version }}" \
-            --arg changelog "${{ github.event.release.body }}" \
+            --arg changelog "$SANITIZED_CHANGELOG" \
             --arg targetAbi "${{ steps.release_info.outputs.target_abi }}" \
             --arg sourceUrl "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/${{ github.event.release.tag_name }}/jellyfin-plugin-episodepostergenerator-${{ steps.release_info.outputs.build_version }}.zip" \
             --arg checksum "${{ steps.release_info.outputs.checksum }}" \
