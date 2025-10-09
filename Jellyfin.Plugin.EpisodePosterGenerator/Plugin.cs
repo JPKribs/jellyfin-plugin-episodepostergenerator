@@ -141,14 +141,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             };
         }
 
-        // MARK: GetImage
-        public Stream GetImage()
-        {
-            var assembly = GetType().Assembly;
-            var stream = assembly.GetManifestResourceStream($"{typeof(Plugin).Namespace}.Logo.png");
-            return stream!;
-        }
-
         // MARK: Dispose
         public void Dispose()
         {

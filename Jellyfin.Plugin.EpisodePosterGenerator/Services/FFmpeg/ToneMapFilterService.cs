@@ -60,7 +60,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return $"zscale=t=linear:npl={npl}," +
                 "format=gbrpf32le," +
                 "zscale=p=bt709," +
-                $"tonemap=tonemap={algorithm}:desat=0," +
+                $"tonemap={algorithm}:desat=0," +
                 "zscale=t=bt709:m=bt709:r=tv," +
                 "format=yuv420p";
         }

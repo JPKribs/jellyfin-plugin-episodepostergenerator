@@ -1,7 +1,7 @@
 ---
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
-version: "10.10.28"
+version: "10.10.29"
 targetAbi: "10.10.7.0"
 framework: "net8.0"
 overview: "Generate Custom Episode Posters"
@@ -13,18 +13,8 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   fixes: 
-  - Fixed duplicate default configurations being created on every plugin initialization/restart
-  - Fixed saved default poster configurations not persisting between restarts
-  - Fixed UI showing only default configuration until new configuration was created
-  - Fixed font color and font size controls not hiding for Cutout and Numeral poster styles
+  - Fixed BT.2390 tone mapping failing with "Undefined constant" error
+  - Fixed plugin logo not displaying in repository/installed plugins view
   technical:
-  - Changed PluginConfiguration constructor to initialize empty PosterConfigurations list instead of creating default
-  - Made IsDefault an explicit boolean property instead of computed property based on SeriesIds
-  - Added automatic default configuration creation in PosterConfigurationService.Initialize() with persistence
-  - Added null safety checks with error logging in GetSettingsForSeries() and GetSettingsForEpisode()
-  - Updated configuration loading to properly deserialize from XML without constructor interference
-  other:
-  - Improved configuration dropdown sorting to show default configuration first, then alphabetically by name
-  - Added validation to prevent users from naming configurations "Default" (reserved name)
-  - Updated UI logic to use IsDefault property instead of index-based detection
-  - Combined data-depends-on and data-hide-for-styles visibility checks to prevent conflicts
+  - Corrected tone mapping filter syntax from 'tonemap=tonemap={algorithm}' to 'tonemap={algorithm}' in ToneMapFilterService
+  - Removed GetImage() method from Plugin.cs to use Jellyfin's default embedded resource mechanism
