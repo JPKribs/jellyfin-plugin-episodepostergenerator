@@ -34,7 +34,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 video.VideoHdrType = VideoRangeType.HDR10;
             }
 
-            return GetSoftwareToneMapFilter(options);
+            return hwAccel switch
+            {
+                HardwareAccelerationType.qsv => GetVppToneMapFilter(options),
+                HardwareAccelerationType.videotoolbox => GetVideoToolboxToneMapFilter(options),
+                _ => GetSoftwareToneMapFilter(options)
+            };
         }
 
         // MARK: IsLikelyHDR
@@ -51,18 +56,21 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return "vpp_qsv=tonemap=1,scale_qsv=format=nv12";
         }
 
+        // MARK: GetVideoToolboxToneMapFilter
+        private static string GetVideoToolboxToneMapFilter(EncodingOptions options)
+        {
+            return "scale_vt=format=nv12:color_matrix=bt709:color_primaries=bt709:color_transfer=bt709";
+        }
+
         // MARK: GetSoftwareToneMapFilter
         private static string GetSoftwareToneMapFilter(EncodingOptions options)
         {
             var algorithm = GetToneMappingAlgorithm(options);
             var npl = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
             
-            return $"zscale=t=linear:npl={npl}," +
-                "format=gbrpf32le," +
-                "zscale=p=bt709," +
-                $"tonemap={algorithm}:desat=0," +
-                "zscale=t=bt709:m=bt709:r=tv," +
-                "format=yuv420p";
+            // Use tonemapx (Jellyfin's custom filter) instead of tonemap
+            return $"setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc," +
+                $"tonemapx=tonemap={algorithm}:desat=0:peak={npl}:t=bt709:m=bt709:p=bt709:format=yuv420p";
         }
 
         // MARK: GetToneMappingAlgorithm

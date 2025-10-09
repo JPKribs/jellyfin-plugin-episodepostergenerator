@@ -46,21 +46,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             var args = "-y";
 
-            // Hardware device initialization comes first
             var hwInitArgs = GetHardwareInitArgs(hwAccel);
             if (!string.IsNullOrEmpty(hwInitArgs))
-            {
                 args += $" {hwInitArgs}";
-            }
 
-            // Hardware acceleration args
             var hwAccelArgs = GetHardwareAccelArgs(hwAccel);
             if (!string.IsNullOrEmpty(hwAccelArgs))
-            {
                 args += $" {hwAccelArgs}";
-            }
 
-            // Input specification
+            if (hwAccel == HardwareAccelerationType.videotoolbox)
+                args += " -hwaccel_output_format videotoolbox_vld";
+
             args += $" -ss {actualSeekSeconds} -i \"{inputPath}\"";
 
             string? filterChain = null;
@@ -70,14 +66,30 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 filterChain = ToneMapFilterService.GetToneMapFilter(encodingOptions, video, hwAccel, _logger);
             }
 
+            // VideoToolbox needs hwdownload ALWAYS (since we use -hwaccel_output_format videotoolbox_vld)
+            if (hwAccel == HardwareAccelerationType.videotoolbox)
+            {
+                if (!string.IsNullOrEmpty(filterChain))
+                {
+                    filterChain += ",hwdownload,format=nv12";
+                }
+                else
+                {
+                    filterChain = "hwdownload,format=nv12";
+                }
+            }
+            else if (!string.IsNullOrEmpty(filterChain))
+            {
+                // For QSV/other hardware with tone mapping, add hwdownload
+                filterChain += ",hwdownload,format=yuv420p";
+            }
+
             if (!string.IsNullOrEmpty(filterChain))
             {
                 args += $" -vf \"{filterChain}\"";
                 _logger.LogDebug("Applied filter chain: {Filter}", filterChain);
             }
 
-            // Output encoding parameters
-            args += GetHardwareEncodingArgs(hwAccel);
             args += $" -frames:v 1 -q:v 2 \"{outputPath}\"";
 
             return args;
@@ -107,20 +119,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 HardwareAccelerationType.amf => "-hwaccel vaapi",
                 HardwareAccelerationType.vaapi => "-hwaccel vaapi",
                 HardwareAccelerationType.videotoolbox => "-hwaccel videotoolbox",
-                _ => string.Empty
-            };
-        }
-
-        // MARK: GetHardwareEncodingArgs
-        private string GetHardwareEncodingArgs(HardwareAccelerationType hwAccel)
-        {
-            return hwAccel switch
-            {
-                HardwareAccelerationType.qsv => " -c:v mjpeg_qsv",
-                HardwareAccelerationType.nvenc => " -c:v mjpeg",
-                HardwareAccelerationType.amf => " -c:v mjpeg",
-                HardwareAccelerationType.vaapi => " -c:v mjpeg_vaapi",
-                HardwareAccelerationType.videotoolbox => " -c:v mjpeg",
                 _ => string.Empty
             };
         }
