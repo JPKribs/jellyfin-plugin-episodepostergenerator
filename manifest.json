@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.10.30",
+        "changelog": "**Fixes:**\r\n\r\n  - Rebuild 10.10.29",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.30/jellyfin-plugin-episodepostergenerator-10.10.30.zip",
+        "checksum": "ec7c4f95c356add12164ec4f53c29d41",
+        "timestamp": "2025-10-09T18:21:11Z"
+      },
+      {
         "version": "10.10.29",
         "changelog": "**Fixes:**\r\n- Fixed BT.2390 tone mapping failing with Undefined constant error\r\n- Fixed plugin logo not displaying in repository/installed plugins view\r\n\r\n**Technical:**\r\n- Corrected tone mapping filter syntax from double tonemap parameter to single in ToneMapFilterService\r\n- Removed GetImage method from Plugin.cs to use Jellyfin default embedded resource mechanism",
         "targetAbi": "10.10.7.0",
