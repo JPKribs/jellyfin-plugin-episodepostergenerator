@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.10.31",
+        "changelog": "### Notice\r\n\r\nThis version is confirmed on MacOS to resolve SW Tone Mapping and HW Tone Mapping. This being said, I do not have other hardware to test this for QSV, NVENC, and VAAPI but these should mirror how Jellyfin Transcodes work so this _should_ resolve these issues as well.\r\n\r\n**Fixes:**\r\n\r\n  - Fixed BT.2390 and all tone mapping algorithms failing with Undefined constant error\r\n  - Fixed VideoToolbox hardware acceleration failing to extract frames\r\n  - Fixed QSV hardware tone mapping not working properly\r\n  - Fixed hardware frames not converting to software for PNG encoding\r\n\r\n**Technical:**\r\n\r\n  - Changed software tone mapping to use tonemapx filter matching Jellyfin transcoding behavior\r\n  - Added VideoToolbox specific tone mapping using scale_vt filter\r\n  - Added QSV specific tone mapping using vpp_qsv filter\r\n  - Added hwdownload filter to convert hardware frames to software for all acceleration types\r\n  - VideoToolbox now always uses hwdownload due to videotoolbox_vld output format\r\n  - Removed unnecessary hardware encoding arguments for PNG output",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.31/jellyfin-plugin-episodepostergenerator-10.10.31.zip",
+        "checksum": "22a3880d1950fcbbf8e9527b328f6cf9",
+        "timestamp": "2025-10-09T19:23:00Z"
+      },
+      {
         "version": "10.10.30",
         "changelog": "**Fixes:**\r\n\r\n  - Rebuild 10.10.29",
         "targetAbi": "10.10.7.0",
