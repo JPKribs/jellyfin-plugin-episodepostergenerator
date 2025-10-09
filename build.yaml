@@ -13,8 +13,8 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   fixes: 
-  - Fixed BT.2390 tone mapping failing with "Undefined constant" error
+  - Fixed BT.2390 tone mapping failing with Undefined constant error
   - Fixed plugin logo not displaying in repository/installed plugins view
   technical:
-  - Corrected tone mapping filter syntax from "tonemap=tonemap={algorithm}" to "tonemap={algorithm}" in ToneMapFilterService
-  - Removed GetImage() method from Plugin.cs to use Jellyfin's default embedded resource mechanism
+  - Corrected tone mapping filter syntax from double tonemap parameter to single in ToneMapFilterService
+  - Removed GetImage method from Plugin.cs to use Jellyfin default embedded resource mechanism
