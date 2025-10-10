@@ -1,7 +1,7 @@
 ---
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
-version: "10.10.31"
+version: "10.10.32"
 targetAbi: "10.10.7.0"
 framework: "net8.0"
 overview: "Generate Custom Episode Posters"
@@ -13,14 +13,9 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   fixes: 
-  - Fixed BT.2390 and all tone mapping algorithms failing with Undefined constant error
-  - Fixed VideoToolbox hardware acceleration failing to extract frames
-  - Fixed QSV hardware tone mapping not working properly
-  - Fixed hardware frames not converting to software for PNG encoding
+  - Fixed QSV hardware acceleration failing with format conversion errors on Linux
+  - Fixed QSV tone mapping producing invalid filter chain errors
   technical:
-  - Changed software tone mapping to use tonemapx filter matching Jellyfin transcoding behavior
-  - Added VideoToolbox specific tone mapping using scale_vt filter
-  - Added QSV specific tone mapping using vpp_qsv filter
-  - Added hwdownload filter to convert hardware frames to software for all acceleration types
-  - VideoToolbox now always uses hwdownload due to videotoolbox_vld output format
-  - Removed unnecessary hardware encoding arguments for PNG output
+  - Changed QSV initialization to use VAAPI as base device matching Jellyfin behavior
+  - Changed QSV to use VAAPI hwaccel method instead of direct QSV hwaccel for proper hardware frame handling
+  - Changed QSV tone mapping from vpp_qsv to tonemap_vaapi filter for compatibility with VAAPI frame format

@@ -53,7 +53,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         // MARK: GetVppToneMapFilter
         private static string GetVppToneMapFilter(EncodingOptions options)
         {
-            return "vpp_qsv=tonemap=1,scale_qsv=format=nv12";
+            return "setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc,tonemap_vaapi=format=nv12:p=bt709:t=bt709:m=bt709";
         }
 
         // MARK: GetVideoToolboxToneMapFilter

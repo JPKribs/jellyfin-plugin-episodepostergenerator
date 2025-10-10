@@ -100,7 +100,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         {
             return hwAccel switch
             {
-                HardwareAccelerationType.qsv => "-init_hw_device qsv=hw",
+                HardwareAccelerationType.qsv => "-init_hw_device vaapi=va:/dev/dri/renderD128 -init_hw_device qsv=qs@va",
                 HardwareAccelerationType.nvenc => "-init_hw_device cuda=cu:0",
                 HardwareAccelerationType.amf => "-init_hw_device opencl=ocl",
                 HardwareAccelerationType.vaapi => "-init_hw_device vaapi=va:/dev/dri/renderD128",
@@ -114,7 +114,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         {
             return hwAccel switch
             {
-                HardwareAccelerationType.qsv => "-hwaccel qsv",
+                HardwareAccelerationType.qsv => "-hwaccel vaapi -hwaccel_output_format vaapi",
                 HardwareAccelerationType.nvenc => "-hwaccel cuda",
                 HardwareAccelerationType.amf => "-hwaccel vaapi",
                 HardwareAccelerationType.vaapi => "-hwaccel vaapi",
