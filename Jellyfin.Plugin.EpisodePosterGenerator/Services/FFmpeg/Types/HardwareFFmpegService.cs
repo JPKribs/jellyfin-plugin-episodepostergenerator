@@ -66,22 +66,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 filterChain = ToneMapFilterService.GetToneMapFilter(encodingOptions, video, hwAccel, _logger);
             }
 
-            // VideoToolbox needs hwdownload ALWAYS (since we use -hwaccel_output_format videotoolbox_vld)
-            if (hwAccel == HardwareAccelerationType.videotoolbox)
+            // All hardware acceleration needs hwdownload to convert GPU frames to CPU for PNG encoding
+            if (hwAccel != HardwareAccelerationType.none)
             {
-                if (!string.IsNullOrEmpty(filterChain))
-                {
-                    filterChain += ",hwdownload,format=nv12";
-                }
-                else
-                {
-                    filterChain = "hwdownload,format=nv12";
-                }
-            }
-            else if (!string.IsNullOrEmpty(filterChain))
-            {
-                // For QSV/other hardware with tone mapping, add hwdownload
-                filterChain += ",hwdownload,format=yuv420p";
+                string downloadFilter = hwAccel == HardwareAccelerationType.videotoolbox 
+                    ? "hwdownload,format=nv12" 
+                    : "hwdownload,format=yuv420p";
+                
+                filterChain = string.IsNullOrEmpty(filterChain) 
+                    ? downloadFilter 
+                    : $"{filterChain},{downloadFilter}";
             }
 
             if (!string.IsNullOrEmpty(filterChain))
