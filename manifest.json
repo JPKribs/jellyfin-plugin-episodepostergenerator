@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.10.33",
+        "changelog": "**Fixes:**\r\n\r\n  - Fixed QSV hardware acceleration failing when tone mapping is disabled\r\n  - Fixed VAAPI, NVENC, and AMF hardware acceleration failing without tone mapping\r\n\r\n**Technical:**\r\n\r\n  - Changed hwdownload filter to apply unconditionally for all hardware acceleration types\r\n  - Hardware frames now properly convert to CPU format for PNG encoding regardless of tone mapping state",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.10.33/jellyfin-plugin-episodepostergenerator-10.10.33.zip",
+        "checksum": "c0047dfe59183093142d3f5e7c99a301",
+        "timestamp": "2025-10-11T00:24:09Z"
+      },
+      {
         "version": "10.10.32",
         "changelog": "**Fixes:**\r\n\r\n  - Fixed QSV hardware acceleration failing with format conversion errors on Linux\r\n  - Fixed QSV tone mapping producing invalid filter chain errors\r\n\r\n**Technical:**\r\n\r\n  - Changed QSV initialization to use VAAPI as base device matching Jellyfin behavior\r\n  - Changed QSV to use VAAPI hwaccel method instead of direct QSV hwaccel for proper hardware frame handling\r\n  - Changed QSV tone mapping from vpp_qsv to tonemap_vaapi filter for compatibility with VAAPI frame format",
         "targetAbi": "10.10.7.0",
