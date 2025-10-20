@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.11.1",
+        "changelog": "**Technical:**\r\n* Jellyfin 10.11 Release",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.1/jellyfin-plugin-episodepostergenerator-10.11.1.zip",
+        "checksum": "aba01584c59c38cc19c8aa436bd1b3e5",
+        "timestamp": "2025-10-20T23:00:15Z"
+      },
+      {
         "version": "10.10.33",
         "changelog": "**Fixes:**\r\n\r\n  - Fixed QSV hardware acceleration failing when tone mapping is disabled\r\n  - Fixed VAAPI, NVENC, and AMF hardware acceleration failing without tone mapping\r\n\r\n**Technical:**\r\n\r\n  - Changed hwdownload filter to apply unconditionally for all hardware acceleration types\r\n  - Hardware frames now properly convert to CPU format for PNG encoding regardless of tone mapping state",
         "targetAbi": "10.10.7.0",
