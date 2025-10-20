@@ -149,7 +149,7 @@ main() {
     fi
     
     # Find the built DLL
-    local dll_path="$PROJECT_DIR/bin/$CONFIGURATION/net8.0/Jellyfin.Plugin.EpisodePosterGenerator.dll"
+    local dll_path="$PROJECT_DIR/bin/$CONFIGURATION/net9.0/Jellyfin.Plugin.EpisodePosterGenerator.dll"
     if [[ ! -f "$dll_path" ]]; then
         log "ERROR" "Could not find built DLL at: $dll_path"
         exit 1
