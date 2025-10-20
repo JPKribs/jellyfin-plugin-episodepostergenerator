@@ -19,8 +19,21 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
         /// </summary>
         public static MediaDetails GetMediaDetails(BaseItem item)
         {
-            var mediaSource = item.GetMediaSources(false).FirstOrDefault();
-            var videoStream = mediaSource?.MediaStreams?.FirstOrDefault(s => s.Type == MediaStreamType.Video);
+            var mediaSources = item.GetMediaSources(false);
+            var mediaSource = mediaSources.Count > 0 ? mediaSources[0] : null;
+            
+            MediaStream? videoStream = null;
+            if (mediaSource?.MediaStreams != null)
+            {
+                for (int i = 0; i < mediaSource.MediaStreams.Count; i++)
+                {
+                    if (mediaSource.MediaStreams[i].Type == MediaStreamType.Video)
+                    {
+                        videoStream = mediaSource.MediaStreams[i];
+                        break;
+                    }
+                }
+            }
 
             var details = new MediaDetails(
                 itemId: item.Id,
