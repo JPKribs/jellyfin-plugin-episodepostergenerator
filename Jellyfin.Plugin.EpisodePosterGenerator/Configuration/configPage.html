@@ -39,23 +39,25 @@
                         <h2 class="sectionTitle">Poster Configuration</h2>
                     </div>
 
-                    <div class="inputContainer">
-                        <label for="selectPosterConfig">Active Configuration:</label>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <select is="emby-select" id="selectPosterConfig" style="flex: 1;">
-                                <!-- Options populated dynamically -->
-                            </select>
-                            <button is="emby-button" type="button" id="btnRenameConfig" class="raised" style="white-space: nowrap;">
-                                <span>Rename</span>
-                            </button>
-                            <button is="emby-button" type="button" id="btnNewConfig" class="raised button-submit" style="white-space: nowrap;">
-                                <span>New</span>
-                            </button>
-                            <button is="emby-button" type="button" id="btnDeleteConfig" class="raised button-delete" style="white-space: nowrap;">
-                                <span>Delete</span>
-                            </button>
-                        </div>
-                        <div class="fieldDescription">Select which poster configuration to edit. Default configuration applies to all series not explicitly assigned elsewhere.</div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <select is="emby-select" id="selectPosterConfig" style="flex: 1;">
+                            <!-- Options populated dynamically -->
+                        </select>
+                        <button is="emby-button" type="button" id="btnRenameConfig" class="raised" style="white-space: nowrap;">
+                            <span>Rename</span>
+                        </button>
+                        <button is="emby-button" type="button" id="btnExportConfig" class="raised" style="white-space: nowrap;">
+                            <span>Export</span>
+                        </button>
+                        <button is="emby-button" type="button" id="btnImportConfig" class="raised" style="white-space: nowrap;">
+                            <span>Import</span>
+                        </button>
+                        <button is="emby-button" type="button" id="btnNewConfig" class="raised button-submit" style="white-space: nowrap;">
+                            <span>New</span>
+                        </button>
+                        <button is="emby-button" type="button" id="btnDeleteConfig" class="raised button-delete" style="white-space: nowrap;">
+                            <span>Delete</span>
+                        </button>
                     </div>
 
                     <!-- Series Assignment (hidden for default) -->
@@ -483,6 +485,7 @@
                         <div class="fieldDescription">Clear all episode processing history. This will cause all episodes to be reprocessed on the next run.</div>
                     </div>
                 </div>
+                <input type="file" id="templateFileInput" accept=".json" style="display: none;" />
             </form>
         </div>
     </div>
@@ -1101,6 +1104,134 @@
                 });
             },
 
+            // MARK: importCurrentConfig
+            importCurrentConfig: function() {
+                const fileInput = document.getElementById('templateFileInput');
+                
+                fileInput.onchange = function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        try {
+                            const template = JSON.parse(event.target.result);
+                            
+                            if (!template.settings) {
+                                Dashboard.alert('Invalid template file: missing settings.');
+                                return;
+                            }
+
+                            let configName = template.name || 'Imported Configuration';
+                            const nameInput = prompt('Enter a name for this configuration:', configName);
+                            
+                            if (!nameInput || nameInput.trim() === '') {
+                                return;
+                            }
+
+                            if (nameInput.trim().toLowerCase() === 'default') {
+                                Dashboard.alert('The name "Default" is reserved and cannot be used.');
+                                return;
+                            }
+
+                            const exists = EpisodePosterGeneratorConfig.fullConfig.PosterConfigurations.some(c => 
+                                c.Name && c.Name.toLowerCase() === nameInput.trim().toLowerCase()
+                            );
+                            
+                            if (exists) {
+                                Dashboard.alert('A configuration with this name already exists.');
+                                return;
+                            }
+
+                            const newConfig = {
+                                Id: EpisodePosterGeneratorConfig.generateGuid(),
+                                Name: nameInput.trim(),
+                                Settings: template.settings,
+                                SeriesIds: [],
+                                IsDefault: false
+                            };
+
+                            EpisodePosterGeneratorConfig.fullConfig.PosterConfigurations.push(newConfig);
+                            EpisodePosterGeneratorConfig.currentConfigId = newConfig.Id;
+                            EpisodePosterGeneratorConfig.populateConfigDropdown();
+                            
+                            Dashboard.alert('Template imported successfully! Version: ' + (template.version || 'unknown') + 
+                                (template.author ? '\nAuthor: ' + template.author : '') +
+                                (template.description ? '\nDescription: ' + template.description : ''));
+                            
+                        } catch (error) {
+                            console.error('Import error:', error);
+                            Dashboard.alert('Failed to import template. Please ensure the file is a valid JSON template.');
+                        }
+                    };
+                    
+                    reader.readAsText(file);
+                    fileInput.value = '';
+                };
+                
+                fileInput.click();
+            },
+
+            // MARK: exportCurrentConfig
+            exportCurrentConfig: function() {
+                const config = this.getCurrentConfig();
+                
+                if (!config) {
+                    Dashboard.alert('No configuration selected.');
+                    return;
+                }
+
+                const author = prompt('Enter author name:', '');
+                if (author === null) return;
+                
+                if (!author.trim()) {
+                    Dashboard.alert('Author name is required.');
+                    return;
+                }
+
+                const description = prompt('Enter description:', '');
+                if (description === null) return;
+                
+                if (!description.trim()) {
+                    Dashboard.alert('Description is required.');
+                    return;
+                }
+
+                Dashboard.showLoadingMsg();
+
+                ApiClient.getPluginConfiguration(this.pluginId).then(function(pluginConfig) {
+                    const pluginVersion = pluginConfig.Version || '10.11.2';
+
+                    const template = {
+                        name: config.Name,
+                        description: description.trim(),
+                        author: author.trim(),
+                        version: pluginVersion,
+                        createdDate: new Date().toISOString(),
+                        settings: config.Settings
+                    };
+
+                    const json = JSON.stringify(template, null, 2);
+                    const blob = new Blob([json], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const cleanName = config.Name.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_');
+                    a.download = cleanName + '_v' + pluginVersion + '.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    Dashboard.hideLoadingMsg();
+                    Dashboard.alert('Template exported successfully!');
+                }).catch(function(error) {
+                    console.error('Failed to get plugin version:', error);
+                    Dashboard.hideLoadingMsg();
+                    Dashboard.alert('Export failed. Please try again.');
+                });
+            },
+
             // MARK: saveCurrentConfigSettings
             saveCurrentConfigSettings: function() {
                 const config = this.getCurrentConfig();
@@ -1381,6 +1512,14 @@
 
         document.getElementById('btnRenameConfig').addEventListener('click', function() {
             EpisodePosterGeneratorConfig.renameCurrentConfig();
+        });
+
+        document.getElementById('btnExportConfig').addEventListener('click', function() {
+            EpisodePosterGeneratorConfig.exportCurrentConfig();
+        });
+
+        document.getElementById('btnImportConfig').addEventListener('click', function() {
+            EpisodePosterGeneratorConfig.importCurrentConfig();
         });
 
         document.getElementById('chkEnableLetterboxDetection').addEventListener('change', function () {

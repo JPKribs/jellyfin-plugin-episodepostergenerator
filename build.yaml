@@ -1,7 +1,7 @@
 ---
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
-version: "10.11.1"
+version: "10.11.2"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Generate Custom Episode Posters"
@@ -12,6 +12,10 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
+  features:
+  - Added template export/import system for sharing poster configurations
+  - Export poster configurations as JSON templates with metadata (author, description, & plugin version)
+  - Import templates from other users to quickly apply custom poster styles
   technical:
-  - Rebuild for .NET 9.0
-  - Rebuild on Jellyfin 10.11.0
+  - Added TemplateExportService for JSON serialization of poster configurations
+  - Created PosterTemplate model for shareable configuration format

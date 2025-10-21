@@ -38,6 +38,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         private readonly CroppingService _croppingService;
         private readonly PosterService _posterService;
         private readonly PosterConfigurationService _posterConfigService;
+        private readonly TemplateExportService _templateExportService;
 
         private bool _disposed;
 
@@ -67,6 +68,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _posterConfigService = new PosterConfigurationService(
                 loggerFactory.CreateLogger<PosterConfigurationService>());
             _posterConfigService.Initialize(Configuration);
+
+            _templateExportService = new TemplateExportService(
+                loggerFactory.CreateLogger<TemplateExportService>());
 
             _brightnessService = new BrightnessService(
                 loggerFactory.CreateLogger<BrightnessService>());
@@ -127,6 +131,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public SoftwareFFmpegService SoftwareFFmpegService => _softwareFFmpegService;
         public PosterService PosterService => _posterService;
         public PosterConfigurationService PosterConfigService => _posterConfigService;
+        public TemplateExportService TemplateExportService => _templateExportService;
 
 
         // MARK: GetPages
