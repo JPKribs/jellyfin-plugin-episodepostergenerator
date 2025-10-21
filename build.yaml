@@ -12,6 +12,9 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
+  documentation:
+  - Added a page for examples
+  - Removed old screenshots in favor of examples
   features:
   - Added template export/import system for sharing poster configurations
   - Export poster configurations as JSON templates with metadata (author, description, & plugin version)

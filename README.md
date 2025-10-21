@@ -19,9 +19,9 @@ A Jellyfin plugin that automatically generates custom episode posters using smar
 ### Standard Style
 Classic episode posters with overlay text and episode information.
 
-| All Text + Graphic | Episode Text | Season Text |
-|-------------------|--------------|-------------|
-| ![Standard All Text+Graphic](Screenshots/Standard/All_Text+Graphic.jpg) | ![Standard Episode Text](Screenshots/Standard/Episode_Text.jpg) | ![Standard Season Text](Screenshots/Standard/Season_Text.jpg) |
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Standard Example 1](Examples/Standard/Example1.png) | ![Standard Example 2](Examples/Standard/Example2.png) | ![Standard Example 3](Examples/Standard/Example3.png) |
 
 **Features:**
 - Episode screenshot as background
@@ -34,9 +34,9 @@ Classic episode posters with overlay text and episode information.
 ### Cutout Style  
 Large episode numbers displayed as transparent cutouts revealing the screenshot beneath.
 
-| Episode Code | Episode Code + Title | Episode Text + Title + Graphic |
-|-------------|---------------------|--------------------------------|
-| ![Cutout Episode Code](Screenshots/Cutout/Episode_Code.jpg) | ![Cutout Episode Code+Title](Screenshots/Cutout/Episode_Code+Title.jpg) | ![Cutout Episode Text+Title+Graphic](Screenshots/Cutout/Episode_Text+Title+Graphic.jpg) |
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Cutout Example 1](Examples/Cutout/Example1.png) | ![Cutout Example 2](Examples/Cutout/Example2.png) | ![Cutout Example 3](Examples/Cutout/Example3.png) |
 
 **Cutout Types:**
 - **Code**: Displays episode in format "S01E03" 
@@ -53,9 +53,9 @@ Large episode numbers displayed as transparent cutouts revealing the screenshot 
 ### Frame Style
 Decorative frame borders with episode title and optional season/episode information.
 
-| Episode Title | Episode Title + Details | Episode Title + Details + Graphic |
-|--------------|------------------------|----------------------------------|
-| ![Frame Episode Title](Screenshots/Frame/Episode_Title+Gradient.jpg) | ![Frame Episode Title+Details](Screenshots/Frame/Episode_Title+Details+Gradient.jpg) | ![Frame Episode Title+Details+Graphic](Screenshots/Frame/Episode_Title+Details+Graphic.jpg) |
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Frame Example 1](Examples/Frame/Example1.png) | ![Frame Example 2](Examples/Frame/Example2.png) | ![Frame Example 3](Examples/Frame/Example3.png) |
 
 **Features:**
 - Decorative frame border around poster edges
@@ -71,9 +71,9 @@ Decorative frame borders with episode title and optional season/episode informat
 ### Logo Style
 Series logo-focused posters with episode information and clean typography.
 
-| Episode Title + Graphic | Show Title + Episode Title | Show Title + Episode Title + Extra |
-|------------------------|----------------------------|-----------------------------------|
-| ![Titel + Graphic](Screenshots/Logo/Episode_Title+Graphic.jpg) | ![All Titles](Screenshots/Logo/Show_Title+Episode_Title.jpg) | ![All Titles / No Extraction](Screenshots/Logo/Show_Title+Episode_Title+Extraction_Off.jpg) |
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Logo Example 1](Examples/Logo/Example1.png) | ![Logo Example 2](Examples/Logo/Example2.png) | ![Logo Example 3](Examples/Logo/Example3.png) |
 
 **Features:**
 - Series logo image as primary visual element
@@ -96,9 +96,9 @@ Series logo-focused posters with episode information and clean typography.
 ### Numeral Style
 Roman numeral episode numbers with elegant typography and optional overlapping titles.
 
-| No Text | Text | Text + Graphic |
-|---------|------|---------------|
-| ![Numeral No Text](Screenshots/Numeral/No_Text.jpg) | ![Numeral Text](Screenshots/Numeral/Text.jpg) | ![Numeral Text+Graphic](Screenshots/Numeral/Text+Graphic.jpg) |
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Numeral Example 1](Examples/Numeral/Example1.png) | ![Numeral Example 2](Examples/Numeral/Example2.png) | ![Numeral Example 3](Examples/Numeral/Example3.png) |
 
 **Features:**
 - Roman numeral conversion (1-3999)
@@ -153,6 +153,10 @@ The top layer containing all text elements, episode information, and series logo
 
 ### Rendering Pipeline
 Each poster style (Standard, Cutout, Numeral, Logo) follows this exact 4-layer sequence, ensuring consistent output quality and predictable layering behavior. The modular approach allows for easy customization and troubleshooting while maintaining visual coherence across different poster types.
+
+## Template Examples & Downloads
+
+For additional template examples and downloadable configurations, visit [EXAMPLES.md](EXAMPLES.md).
 
 ## Settings
 
