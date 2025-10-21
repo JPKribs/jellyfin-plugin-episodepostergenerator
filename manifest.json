@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.11.2",
+        "changelog": "Please find our new examples [here](https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/tree/master/Examples)!\r\n\r\n**Features**\r\n- Added template export/import system for sharing poster configurations\r\n- Export poster configurations as JSON templates with metadata (author, description, & plugin version)\r\n- Import templates from other users to quickly apply custom poster styles\r\n\r\n**Documentation**\r\n- Added a page for examples\r\n- Removed old screenshots in favor of examples\r\n\r\n**Technical**\r\n- Added TemplateExportService for JSON serialization of poster configurations\r\n- Created PosterTemplate model for shareable configuration format",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.2/jellyfin-plugin-episodepostergenerator-10.11.2.zip",
+        "checksum": "1c02d0988bbdaded7273e0d8c5f9186f",
+        "timestamp": "2025-10-21T14:04:59Z"
+      },
+      {
         "version": "10.11.1",
         "changelog": "**Technical:**\r\n* Jellyfin 10.11 Release",
         "targetAbi": "10.11.0.0",
