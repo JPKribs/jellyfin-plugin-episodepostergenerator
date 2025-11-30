@@ -9,7 +9,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
     /// <summary>
     /// Generates cutout-style posters with transparent text revealing the canvas beneath.
-    /// Uses 4-layer rendering: Canvas → Overlay (with cutouts) → Graphics → Typography
     /// </summary>
     public class CutoutPosterGenerator : BasePosterGenerator
     {
@@ -68,6 +67,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = ColorUtils.ParseHexColor(settings.TitleFontColor),
                 TextSize = FontUtils.CalculateFontSizeFromPercentage(settings.TitleFontSize, height),
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(settings.TitleFontFamily, FontUtils.GetFontStyle(settings.TitleFontStyle)),
                 TextAlign = SKTextAlign.Center
             };
@@ -77,6 +78,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = SKColors.Black.WithAlpha(180),
                 TextSize = titlePaint.TextSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = titlePaint.Typeface,
                 TextAlign = SKTextAlign.Center
             };
@@ -116,6 +119,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                     Style = SKPaintStyle.Stroke,
                     StrokeWidth = Math.Max(1f, fontSize * 0.015f),
                     IsAntialias = true,
+                    SubpixelText = true,
+                    LcdRenderText = true,
+                    StrokeCap = SKStrokeCap.Round,
+                    StrokeJoin = SKStrokeJoin.Round,
                     Typeface = typeface,
                     TextAlign = SKTextAlign.Center,
                     TextSize = fontSize
@@ -128,6 +135,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             {
                 BlendMode = SKBlendMode.DstOut,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Center,
                 TextSize = fontSize

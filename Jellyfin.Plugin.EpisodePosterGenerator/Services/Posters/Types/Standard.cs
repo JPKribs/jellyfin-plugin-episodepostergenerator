@@ -10,7 +10,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
     /// <summary>
     /// Generates standard-style episode posters with bottom-aligned text elements.
-    /// Uses 4-layer rendering: Canvas → Overlay → Graphics → Typography (bottom text stack)
     /// </summary>
     public class StandardPosterGenerator : BasePosterGenerator
     {
@@ -70,6 +69,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = ColorUtils.ParseHexColor(config.TitleFontColor),
                 TextSize = fontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Center
             };
@@ -79,8 +80,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = SKColors.Black.WithAlpha(180),
                 TextSize = fontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = typeface,
-                TextAlign = SKTextAlign.Center
+                TextAlign = SKTextAlign.Center,
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
             };
 
             var safeWidth = safeArea.Width * 0.9f;
@@ -113,7 +117,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = SKColors.Black.WithAlpha(180),
                 StrokeWidth = 2f,
                 Style = SKPaintStyle.Stroke,
-                IsAntialias = true
+                IsAntialias = true,
+                StrokeCap = SKStrokeCap.Square
             };
 
             canvas.DrawLine(startX + 2, y + 2, endX + 2, y + 2, shadowPaint);
@@ -123,7 +128,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = SKColors.White,
                 StrokeWidth = 2f,
                 Style = SKPaintStyle.Stroke,
-                IsAntialias = true
+                IsAntialias = true,
+                StrokeCap = SKStrokeCap.Square
             };
 
             canvas.DrawLine(startX, y, endX, y, linePaint);
@@ -143,6 +149,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = episodeColor,
                 TextSize = episodeFontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
                 TextAlign = SKTextAlign.Center
             };
@@ -152,8 +160,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = shadowColor,
                 TextSize = episodeFontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
-                TextAlign = SKTextAlign.Center
+                TextAlign = SKTextAlign.Center,
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
             };
 
             using var bulletPaint = new SKPaint
@@ -161,6 +172,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = episodeColor,
                 TextSize = episodeFontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, SKFontStyle.Normal),
                 TextAlign = SKTextAlign.Center
             };
@@ -170,13 +183,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = shadowColor,
                 TextSize = episodeFontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, SKFontStyle.Normal),
-                TextAlign = SKTextAlign.Center
+                TextAlign = SKTextAlign.Center,
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
             };
 
             var seasonText = seasonNumber.ToString(CultureInfo.InvariantCulture);
             var episodeText = episodeNumber.ToString(CultureInfo.InvariantCulture);
-            var bulletText = " • ";
+            var bulletText = " â€¢ ";
 
             var fontMetrics = episodePaint.FontMetrics;
             var baselineY = bottomY - Math.Abs(fontMetrics.Descent);

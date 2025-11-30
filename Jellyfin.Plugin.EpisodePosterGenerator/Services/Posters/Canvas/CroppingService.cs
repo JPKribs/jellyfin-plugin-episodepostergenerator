@@ -135,7 +135,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             var sourceRect = new SKRect(left, top, left + newWidth, top + newHeight);
             var destRect = new SKRect(0, 0, newWidth, newHeight);
             
-            canvas.DrawBitmap(source, sourceRect, destRect);
+            using var paint = new SKPaint
+            {
+                FilterQuality = SKFilterQuality.High,
+                IsAntialias = true
+            };
+            
+            canvas.DrawBitmap(source, sourceRect, destRect, paint);
 
             return cropped;
         }
@@ -302,7 +308,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 var sourceRect = new SKRect(srcX, srcY, srcX + targetWidth, srcY + targetHeight);
                 var destRect = new SKRect(0, 0, targetWidth, targetHeight);
                 
-                canvas.DrawBitmap(source, sourceRect, destRect);
+                using var paint = new SKPaint
+                {
+                    FilterQuality = SKFilterQuality.High,
+                    IsAntialias = true
+                };
+                
+                canvas.DrawBitmap(source, sourceRect, destRect, paint);
             }
             else if (fillMode == PosterFill.Fill)
             {
@@ -310,7 +322,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 var sourceRect = new SKRect(0, 0, source.Width, source.Height);
                 var destRect = new SKRect(0, 0, targetWidth, targetHeight);
                 
-                canvas.DrawBitmap(source, sourceRect, destRect);
+                using var paint = new SKPaint
+                {
+                    FilterQuality = SKFilterQuality.High,
+                    IsAntialias = true
+                };
+                
+                canvas.DrawBitmap(source, sourceRect, destRect, paint);
             }
 
             return result;

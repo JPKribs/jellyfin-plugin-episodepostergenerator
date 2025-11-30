@@ -232,7 +232,9 @@ public static class TextUtils
         {
             Color = ColorUtils.ParseHexColor(hexColor),
             TextSize = fontSize,
-            IsAntialias = true,  // Enable anti-aliasing for smooth text rendering
+            IsAntialias = true,
+            SubpixelText = true,
+            LcdRenderText = true,
             Typeface = typeface,
             TextAlign = GetSKTextAlign(alignment)
         };
@@ -255,11 +257,14 @@ public static class TextUtils
     {
         return new SKPaint
         {
-            Color = SKColors.Black.WithAlpha(ShadowAlpha),  // Semi-transparent black for subtle shadows
+            Color = SKColors.Black.WithAlpha(ShadowAlpha),
             TextSize = fontSize,
-            IsAntialias = true,  // Enable anti-aliasing for smooth shadow rendering
+            IsAntialias = true,
+            SubpixelText = true,
+            LcdRenderText = true,
             Typeface = typeface,
-            TextAlign = GetSKTextAlign(alignment)
+            TextAlign = GetSKTextAlign(alignment),
+            MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
         };
     }
 

@@ -81,6 +81,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 PosterStyle.Cutout => new CutoutPosterGenerator(_loggerFactory.CreateLogger<CutoutPosterGenerator>()),
                 PosterStyle.Standard => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>()),
                 PosterStyle.Frame => new FramePosterGenerator(_loggerFactory.CreateLogger<FramePosterGenerator>()),
+                PosterStyle.Brush => new BrushPosterGenerator(_loggerFactory.CreateLogger<BrushPosterGenerator>()),
                 _ => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>())
             };
 

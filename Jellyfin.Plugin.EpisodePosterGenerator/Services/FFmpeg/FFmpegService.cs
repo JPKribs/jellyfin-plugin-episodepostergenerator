@@ -19,6 +19,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
     {
         private const int MaxRetries = 30;
         private const double BrightnessThreshold = 0.05;
+        private const double SharpnessThreshold = 100.0;
 
         private readonly ILogger<FFmpegService> _logger;
         private readonly IServerConfigurationManager _configurationManager;
@@ -190,8 +191,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
 
             string? bestFramePath = null;
+            double bestQualityScore = 0.0;
             double bestBrightness = 0.0;
+            double bestSharpness = 0.0;
             int maxAttemptsForStrategy = useHardware ? 15 : MaxRetries;
+            var isHDR = metadata.VideoMetadata.VideoHdrType.IsHDR();
 
             for (int attempt = 0; attempt < maxAttemptsForStrategy; attempt++)
             {
@@ -231,48 +235,55 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     continue;
                 }
 
-                var brightnessOk = _brightnessService.IsFrameBrightEnough(outputPath, brightnessThreshold);
                 var actualBrightness = GetFrameBrightness(outputPath);
+                var actualSharpness = GetFrameSharpness(outputPath);
+                var qualityScore = CalculateFrameQualityScore(actualBrightness, actualSharpness, isHDR);
+                
+                var brightnessOk = _brightnessService.IsFrameBrightEnough(outputPath, brightnessThreshold);
+                var sharpnessOk = actualSharpness >= SharpnessThreshold;
+                var qualityOk = brightnessOk && sharpnessOk;
 
-                if (attempt < 5 || brightnessOk)
+                if (attempt < 5 || qualityOk)
                 {
-                    _logger.LogDebug("{Method} attempt {Attempt}: Brightness {Brightness:F3}, Acceptable: {Acceptable}",
-                        methodName, attempt + 1, actualBrightness, brightnessOk);
+                    _logger.LogDebug("{Method} attempt {Attempt}: Brightness {Brightness:F3} (OK: {BrightOk}), Sharpness {Sharpness:F1} (OK: {SharpOk}), Score {Score:F3}",
+                        methodName, attempt + 1, actualBrightness, brightnessOk, actualSharpness, sharpnessOk, qualityScore);
                 }
 
-                if (brightnessOk)
+                if (qualityOk)
                 {
                     if (bestFramePath != null && File.Exists(bestFramePath))
                         File.Delete(bestFramePath);
-                    _logger.LogInformation("{Method}: Found acceptable frame on attempt {Attempt} with brightness {Brightness:F3}",
-                        methodName, attempt + 1, actualBrightness);
+                    _logger.LogInformation("{Method}: Found high-quality frame on attempt {Attempt} - Brightness: {Brightness:F3}, Sharpness: {Sharpness:F1}, Score: {Score:F3}",
+                        methodName, attempt + 1, actualBrightness, actualSharpness, qualityScore);
                     return outputPath;
                 }
 
-                if (actualBrightness > bestBrightness)
+                if (qualityScore > bestQualityScore)
                 {
                     if (bestFramePath != null && File.Exists(bestFramePath))
                         File.Delete(bestFramePath);
                     bestFramePath = outputPath;
+                    bestQualityScore = qualityScore;
                     bestBrightness = actualBrightness;
+                    bestSharpness = actualSharpness;
                 }
                 else
                 {
                     if (File.Exists(outputPath)) File.Delete(outputPath);
                 }
 
-                if (metadata.VideoMetadata.VideoHdrType.IsHDR() && actualBrightness > 0.03 && attempt > 5)
+                if (isHDR && qualityScore > 0.6 && attempt > 5)
                 {
-                    _logger.LogInformation("{Method}: Found reasonably bright HDR frame after {Attempts} attempts, stopping search",
-                        methodName, attempt + 1);
+                    _logger.LogInformation("{Method}: Found reasonably good HDR frame after {Attempts} attempts (score: {Score:F3}), stopping search",
+                        methodName, attempt + 1, qualityScore);
                     break;
                 }
             }
 
             if (bestFramePath != null)
             {
-                _logger.LogInformation("{Method}: Using best available frame with brightness {Brightness:F3} (threshold was {Threshold:F3})",
-                    methodName, bestBrightness, brightnessThreshold);
+                _logger.LogInformation("{Method}: Using best available frame - Brightness: {Brightness:F3}, Sharpness: {Sharpness:F1}, Quality Score: {Score:F3}",
+                    methodName, bestBrightness, bestSharpness, bestQualityScore);
                 return bestFramePath;
             }
 
@@ -342,6 +353,62 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             {
                 return 0.0;
             }
+        }
+
+        // MARK: GetFrameSharpness
+        private double GetFrameSharpness(string filePath)
+        {
+            try
+            {
+                using var stream = File.OpenRead(filePath);
+                using var bitmap = SKBitmap.Decode(stream);
+                if (bitmap == null) return 0.0;
+
+                int width = bitmap.Width;
+                int height = bitmap.Height;
+                double sumLaplacian = 0;
+                int count = 0;
+
+                for (int y = 1; y < height - 1; y++)
+                {
+                    for (int x = 1; x < width - 1; x++)
+                    {
+                        var center = bitmap.GetPixel(x, y);
+                        var top = bitmap.GetPixel(x, y - 1);
+                        var bottom = bitmap.GetPixel(x, y + 1);
+                        var left = bitmap.GetPixel(x - 1, y);
+                        var right = bitmap.GetPixel(x + 1, y);
+
+                        double centerGray = 0.2126 * center.Red + 0.7152 * center.Green + 0.0722 * center.Blue;
+                        double topGray = 0.2126 * top.Red + 0.7152 * top.Green + 0.0722 * top.Blue;
+                        double bottomGray = 0.2126 * bottom.Red + 0.7152 * bottom.Green + 0.0722 * bottom.Blue;
+                        double leftGray = 0.2126 * left.Red + 0.7152 * left.Green + 0.0722 * left.Blue;
+                        double rightGray = 0.2126 * right.Red + 0.7152 * right.Green + 0.0722 * right.Blue;
+
+                        double laplacian = Math.Abs(4 * centerGray - topGray - bottomGray - leftGray - rightGray);
+                        sumLaplacian += laplacian * laplacian;
+                        count++;
+                    }
+                }
+
+                return count > 0 ? sumLaplacian / count : 0.0;
+            }
+            catch
+            {
+                return 0.0;
+            }
+        }
+
+        // MARK: CalculateFrameQualityScore
+        private double CalculateFrameQualityScore(double brightness, double sharpness, bool isHDR)
+        {
+            double normalizedBrightness = Math.Min(brightness / BrightnessThreshold, 1.0);
+            double normalizedSharpness = Math.Min(sharpness / SharpnessThreshold, 1.0);
+            
+            double brightnessWeight = isHDR ? 0.6 : 0.4;
+            double sharpnessWeight = 1.0 - brightnessWeight;
+            
+            return (normalizedBrightness * brightnessWeight) + (normalizedSharpness * sharpnessWeight);
         }
 
         // MARK: RunFFmpegAsync

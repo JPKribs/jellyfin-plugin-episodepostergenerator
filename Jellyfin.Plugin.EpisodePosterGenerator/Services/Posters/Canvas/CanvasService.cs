@@ -181,7 +181,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         // MARK: EncodeImage
         private byte[]? EncodeImage(SKBitmap bitmap, PosterFileType fileType)
         {
-            var format = SKEncodedImageFormat.Png;
+            var format = fileType switch
+            {
+                PosterFileType.JPEG => SKEncodedImageFormat.Jpeg,
+                PosterFileType.PNG => SKEncodedImageFormat.Png,
+                PosterFileType.WEBP => SKEncodedImageFormat.Webp,
+                _ => SKEncodedImageFormat.Png
+            };
 
             using var image = SKImage.FromBitmap(bitmap);
             using var data = image.Encode(format, 100);

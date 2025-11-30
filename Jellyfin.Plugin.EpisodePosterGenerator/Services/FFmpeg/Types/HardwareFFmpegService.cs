@@ -84,7 +84,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 _logger.LogDebug("Applied filter chain: {Filter}", filterChain);
             }
 
-            args += $" -frames:v 1 -q:v 2 \"{outputPath}\"";
+            args += $" -frames:v 1 -q:v 1 -pix_fmt rgb24 \"{outputPath}\"";
 
             return args;
         }

@@ -10,7 +10,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
     /// <summary>
     /// Generates logo-style episode posters with series logo and episode information.
-    /// Uses 4-layer rendering: Canvas → Overlay → Graphics (series logo) → Typography (episode info)
     /// </summary>
     public class LogoPosterGenerator : BasePosterGenerator
     {
@@ -126,6 +125,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = color,
                 TextSize = fontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
                 TextAlign = GetSKTextAlign(alignment)
             };
@@ -135,6 +136,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = shadowColor,
                 TextSize = fontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
                 TextAlign = GetSKTextAlign(alignment)
             };
@@ -168,6 +171,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = ColorUtils.ParseHexColor(config.TitleFontColor),
                 TextSize = fontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Center
             };
@@ -177,6 +182,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = SKColors.Black.WithAlpha(180),
                 TextSize = fontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Center
             };
@@ -211,6 +218,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = color,
                 TextSize = fontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
                 TextAlign = SKTextAlign.Center
             };
@@ -220,6 +229,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = shadowColor,
                 TextSize = fontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
                 TextAlign = SKTextAlign.Center
             };

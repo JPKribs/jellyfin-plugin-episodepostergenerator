@@ -9,7 +9,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
     /// <summary>
     /// Generates episode posters featuring Roman numerals for episode numbers.
-    /// Uses 4-layer rendering: Canvas → Overlay → Graphics → Typography (Roman numerals + optional title)
     /// </summary>
     public class NumeralPosterGenerator : BasePosterGenerator
     {
@@ -53,6 +52,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             {
                 Color = ColorUtils.ParseHexColor(config.EpisodeFontColor),
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 TextSize = fontSize,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Center
@@ -62,9 +63,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             {
                 Color = SKColors.Black.WithAlpha(180),
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 TextSize = fontSize,
                 Typeface = typeface,
-                TextAlign = SKTextAlign.Center
+                TextAlign = SKTextAlign.Center,
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
             };
 
             // Center text in available area
@@ -89,6 +93,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = ColorUtils.ParseHexColor(config.TitleFontColor),
                 TextSize = fontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Center
             };
@@ -98,8 +104,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = SKColors.Black.WithAlpha(180),
                 TextSize = fontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = typeface,
-                TextAlign = SKTextAlign.Center
+                TextAlign = SKTextAlign.Center,
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
             };
 
             // Fit text to safe area width
@@ -132,7 +141,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             {
                 TextSize = fontSize,
                 Typeface = typeface,
-                TextAlign = SKTextAlign.Center
+                TextAlign = SKTextAlign.Center,
+                SubpixelText = true,
+                LcdRenderText = true
             };
 
             var availableWidth = safeArea.Width * 0.9f;

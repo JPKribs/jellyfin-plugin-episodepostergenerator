@@ -9,7 +9,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
     /// <summary>
     /// Generates frame-style posters with decorative border and episode information.
-    /// Uses 4-layer rendering: Canvas → Overlay → Graphics → Typography (frame lines + text)
     /// </summary>
     public class FramePosterGenerator : BasePosterGenerator
     {
@@ -59,6 +58,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = ColorUtils.ParseHexColor(config.TitleFontColor),
                 TextSize = fontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Center
             };
@@ -68,6 +69,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = SKColors.Black.WithAlpha(180),
                 TextSize = fontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Center
             };
@@ -118,6 +121,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = episodeColor,
                 TextSize = episodeFontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
                 TextAlign = SKTextAlign.Center
             };
@@ -127,6 +132,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = shadowColor,
                 TextSize = episodeFontSize,
                 IsAntialias = true,
+                SubpixelText = true,
+                LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
                 TextAlign = SKTextAlign.Center
             };
@@ -160,7 +167,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = SKColors.White,
                 StrokeWidth = 3f,
                 Style = SKPaintStyle.Stroke,
-                IsAntialias = true
+                IsAntialias = true,
+                StrokeCap = SKStrokeCap.Square,
+                StrokeJoin = SKStrokeJoin.Miter
             };
 
             using var shadowPaint = new SKPaint
@@ -168,7 +177,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Color = SKColors.Black.WithAlpha(180),
                 StrokeWidth = 5f,
                 Style = SKPaintStyle.Stroke,
-                IsAntialias = true
+                IsAntialias = true,
+                StrokeCap = SKStrokeCap.Square,
+                StrokeJoin = SKStrokeJoin.Miter
             };
 
             var topLineY = safeArea.Top + (titleInfo.Height / 2f);
@@ -181,7 +192,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 ? safeArea.Bottom - episodeInfo.Value.Height - spacing 
                 : safeArea.Bottom;
 
-            var overlap = 1.5f;
+            var overlap = 2.0f;
 
             canvas.DrawLine(safeArea.Left + 2, topLineY + 2 - overlap, safeArea.Left + 2, topTextBottom + 2, shadowPaint);
             canvas.DrawLine(safeArea.Left, topLineY - overlap, safeArea.Left, topTextBottom, borderPaint);

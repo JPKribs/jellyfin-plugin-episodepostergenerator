@@ -11,7 +11,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
     /// <summary>
     /// Defines the contract for generating poster images using a layered rendering approach.
-    /// Layers: Canvas (base) → Overlay (tinting) → Graphics (static images) → Typography (text/logos)
+    /// Layers: Canvas (base) â†’ Overlay (tinting) â†’ Graphics (static images) â†’ Typography (text/logos)
     /// </summary>
     public interface IPosterGenerator
     {
@@ -35,7 +35,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
     /// <summary>
     /// Base class for all poster generators providing the standard 4-layer rendering pipeline.
-    /// ALL posters use: Canvas → Overlay → Graphics → Typography
+    /// ALL posters use: Canvas â†’ Overlay â†’ Graphics â†’ Typography
     /// </summary>
     public abstract class BasePosterGenerator : IPosterGenerator
     {
@@ -60,7 +60,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 int width = canvas.Width;
                 int height = canvas.Height;
 
-                using var surface = SKSurface.Create(new SKImageInfo(width, height));
+                var imageInfo = new SKImageInfo(
+                    width, 
+                    height, 
+                    SKColorType.Rgba8888, 
+                    SKAlphaType.Premul,
+                    SKColorSpace.CreateSrgb());
+
+                using var surface = SKSurface.Create(imageInfo);
                 var skCanvas = surface.Canvas;
                 skCanvas.Clear(SKColors.Transparent);
 
@@ -92,7 +99,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         // MARK: RenderCanvas
         protected virtual void RenderCanvas(SKCanvas skCanvas, SKBitmap canvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
-            using var canvasPaint = new SKPaint { IsAntialias = true };
+            using var canvasPaint = new SKPaint 
+            { 
+                IsAntialias = true,
+                FilterQuality = SKFilterQuality.High
+            };
             skCanvas.DrawBitmap(canvas, 0, 0, canvasPaint);
         }
 
@@ -130,7 +141,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                     using var overlayPaint = new SKPaint
                     {
                         Shader = gradient,
-                        Style = SKPaintStyle.Fill
+                        Style = SKPaintStyle.Fill,
+                        IsDither = true
                     };
                     skCanvas.DrawRect(rect, overlayPaint);
                 }
@@ -147,22 +159,22 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 OverlayGradient.LeftToRight => SKShader.CreateLinearGradient(
                     new SKPoint(rect.Left, rect.MidY),
                     new SKPoint(rect.Right, rect.MidY),
-                    colors, null, SKShaderTileMode.Clamp),
+                    colors, null, SKShaderTileMode.Clamp, SKMatrix.Identity),
                     
                 OverlayGradient.BottomToTop => SKShader.CreateLinearGradient(
                     new SKPoint(rect.MidX, rect.Bottom),
                     new SKPoint(rect.MidX, rect.Top),
-                    colors, null, SKShaderTileMode.Clamp),
+                    colors, null, SKShaderTileMode.Clamp, SKMatrix.Identity),
                     
                 OverlayGradient.TopLeftCornerToBottomRightCorner => SKShader.CreateLinearGradient(
                     new SKPoint(rect.Left, rect.Top),
                     new SKPoint(rect.Right, rect.Bottom),
-                    colors, null, SKShaderTileMode.Clamp),
+                    colors, null, SKShaderTileMode.Clamp, SKMatrix.Identity),
                     
                 OverlayGradient.TopRightCornerToBottomLeftCorner => SKShader.CreateLinearGradient(
                     new SKPoint(rect.Right, rect.Top),
                     new SKPoint(rect.Left, rect.Bottom),
-                    colors, null, SKShaderTileMode.Clamp),
+                    colors, null, SKShaderTileMode.Clamp, SKMatrix.Identity),
                     
                 _ => null
             };
@@ -296,7 +308,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             };
 
             using var image = SKImage.FromBitmap(bitmap);
-            using var data = image.Encode(format, 95);
+            using var data = image.Encode(format, 100);
 
             var directory = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
@@ -328,7 +340,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         protected override void RenderCanvas(SKCanvas skCanvas, SKBitmap canvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             var processedCanvas = _croppingService.CropPoster(canvas, episodeMetadata.VideoMetadata, settings);
-            using var canvasPaint = new SKPaint { IsAntialias = true };
+            using var canvasPaint = new SKPaint 
+            { 
+                IsAntialias = true,
+                FilterQuality = SKFilterQuality.High
+            };
             skCanvas.DrawBitmap(processedCanvas, 0, 0, canvasPaint);
             
             if (processedCanvas != canvas)
