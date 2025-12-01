@@ -31,6 +31,19 @@ Classic episode posters with overlay text and episode information.
 - Customizable overlay tint
 - Support for graphic overlays
 
+### Brush Style  
+Large episode numbers displayed as transparent cutouts revealing the screenshot beneath.
+
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Brush Example 1](Examples/StandardBrush/Example1.png) | ![Brush Example 2](Examples/StandardBrush/Example2.png) | ![Brush Example 3](Examples/StandardBrush/Example3.png) |
+
+**Features:**
+- Transparent text cutout effect with a 'paint brush' style splatter
+- Background color overlay
+- Automatic font scaling
+- Support for graphic overlays
+
 ### Cutout Style  
 Large episode numbers displayed as transparent cutouts revealing the screenshot beneath.
 

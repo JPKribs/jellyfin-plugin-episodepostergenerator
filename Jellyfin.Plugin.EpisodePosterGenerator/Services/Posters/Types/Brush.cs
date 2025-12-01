@@ -35,9 +35,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var safeArea = GetSafeAreaBounds(width, height, settings);
             var textArea = CalculateTextKeepClearArea(safeArea, settings, height);
             
-            skCanvas.Save();
+            var strokeBuilder = new BrushStrokeUtil(episodeMetadata.EpisodeNumberStart ?? 1);
+            float baseWidth = height * 0.12f;
+            using var brushMask = strokeBuilder.BuildStrokePath(safeArea, textArea, baseWidth);
             
-            var brushMask = GenerateRandomBrushStrokes(width, height, safeArea, textArea, episodeMetadata.EpisodeNumberStart ?? 1);
+            skCanvas.Save();
             skCanvas.ClipPath(brushMask, SKClipOperation.Difference, antialias: true);
 
             if (settings.OverlayGradient == OverlayGradient.None)
@@ -70,13 +72,73 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             skCanvas.Restore();
         }
 
+        // MARK: GenerateBrushStrokePath
+        private SKPath GenerateBrushStrokePath(int width, int height, SKRect safeArea, SKRect textArea, int seed)
+        {
+            var random = new Random(seed);
+            
+            var centerPath = new SKPath();
+            
+            float textTop = textArea.Top;
+            float usableHeight = textTop - safeArea.Top - 100f;
+            float startY = safeArea.Top + (usableHeight * 0.3f) + (float)(random.NextDouble() - 0.5) * usableHeight * 0.2f;
+            float endY = safeArea.Top + (usableHeight * 0.7f) + (float)(random.NextDouble() - 0.5) * usableHeight * 0.2f;
+            
+            int segments = 150;
+            float frequency = 8f + (float)random.NextDouble() * 4f;
+            float tightAmplitude = usableHeight * 0.08f;
+            
+            for (int i = 0; i <= segments; i++)
+            {
+                float t = i / (float)segments;
+                float x = safeArea.Left + (t * safeArea.Width);
+                
+                float baseY = startY + (endY - startY) * t;
+                
+                float tightSwoop = (float)Math.Sin(t * Math.PI * frequency) * tightAmplitude;
+                
+                float wobble = (float)(random.NextDouble() - 0.5) * 8f;
+                
+                float y = baseY + tightSwoop + wobble;
+                
+                if (i == 0)
+                {
+                    centerPath.MoveTo(x, y);
+                }
+                else
+                {
+                    centerPath.LineTo(x, y);
+                }
+            }
+            
+            float baseWidth = width * 0.16f;
+            float widthVariation = (float)random.NextDouble() * 0.3f + 0.85f;
+            
+            using var strokePaint = new SKPaint
+            {
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = baseWidth * widthVariation,
+                StrokeCap = SKStrokeCap.Round,
+                StrokeJoin = SKStrokeJoin.Round,
+                IsAntialias = true
+            };
+            
+            var strokedPath = strokePaint.GetFillPath(centerPath);
+            centerPath.Dispose();
+            
+            return strokedPath;
+        }
+
         // MARK: CalculateTextKeepClearArea
         private SKRect CalculateTextKeepClearArea(SKRect safeArea, PosterSettings settings, int height)
         {
             var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(settings.EpisodeFontSize, height, settings.PosterSafeArea);
             var titleFontSize = FontUtils.CalculateFontSizeFromPercentage(settings.TitleFontSize, height, settings.PosterSafeArea);
             
-            var totalTextHeight = (episodeFontSize * 1.2f) + (titleFontSize * 2.5f);
+            var episodeHeight = episodeFontSize;
+            var spacing = episodeFontSize * 0.3f;
+            var titleHeight = titleFontSize * 2.5f;
+            var totalTextHeight = episodeHeight + spacing + titleHeight;
             
             var textWidth = safeArea.Width * 0.5f;
             
@@ -86,156 +148,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 safeArea.Left + textWidth,
                 safeArea.Bottom
             );
-        }
-
-        // MARK: GenerateRandomBrushStrokes
-        private SKPath GenerateRandomBrushStrokes(int width, int height, SKRect safeArea, SKRect textArea, int seed)
-        {
-            var random = new Random(seed);
-            var combinedPath = new SKPath();
-            
-            int strokeCount = random.Next(4, 8);
-            int maxAttempts = strokeCount * 3;
-            int successfulStrokes = 0;
-            
-            for (int attempt = 0; attempt < maxAttempts && successfulStrokes < strokeCount; attempt++)
-            {
-                var strokePath = GenerateSingleBrushStroke(width, height, safeArea, textArea, random);
-                
-                if (strokePath != null)
-                {
-                    combinedPath.AddPath(strokePath);
-                    successfulStrokes++;
-                }
-            }
-            
-            return combinedPath;
-        }
-
-        // MARK: GenerateSingleBrushStroke
-        private SKPath? GenerateSingleBrushStroke(int width, int height, SKRect safeArea, SKRect textArea, Random random)
-        {
-            var path = new SKPath();
-            
-            float startX = (float)(safeArea.Left + random.NextDouble() * safeArea.Width);
-            float startY = (float)(safeArea.Top + random.NextDouble() * safeArea.Height * 0.4);
-            
-            float endX = (float)(safeArea.Left + random.NextDouble() * safeArea.Width);
-            float endY = (float)(safeArea.Top + safeArea.Height * 0.6 + random.NextDouble() * safeArea.Height * 0.4);
-            
-            if (IsStrokeTooCloseToTextArea(startX, startY, endX, endY, textArea))
-            {
-                return null;
-            }
-            
-            float cp1X = startX + (float)((random.NextDouble() - 0.5) * safeArea.Width * 0.4);
-            float cp1Y = startY + (safeArea.Height * 0.25f) + (float)((random.NextDouble() - 0.5) * safeArea.Height * 0.2);
-            
-            float cp2X = endX + (float)((random.NextDouble() - 0.5) * safeArea.Width * 0.4);
-            float cp2Y = endY - (safeArea.Height * 0.25f) + (float)((random.NextDouble() - 0.5) * safeArea.Height * 0.2);
-            
-            int segments = 100;
-            var points = new List<SKPoint>();
-            var widths = new List<float>();
-            
-            for (int i = 0; i <= segments; i++)
-            {
-                float t = i / (float)segments;
-                
-                float x = CalculateCubicBezier(t, startX, cp1X, cp2X, endX);
-                float y = CalculateCubicBezier(t, startY, cp1Y, cp2Y, endY);
-                points.Add(new SKPoint(x, y));
-                
-                float baseWidth = width * 0.06f + (float)(random.NextDouble() * width * 0.03f);
-                float variationFactor = (float)(0.7 + random.NextDouble() * 0.6);
-                float pressureCurve = (float)(Math.Sin(t * Math.PI) * variationFactor);
-                widths.Add(baseWidth * pressureCurve);
-            }
-            
-            var leftPoints = new List<SKPoint>();
-            var rightPoints = new List<SKPoint>();
-            
-            for (int i = 0; i < points.Count; i++)
-            {
-                SKPoint point = points[i];
-                float strokeWidth = widths[i];
-                
-                SKPoint tangent;
-                if (i < points.Count - 1)
-                {
-                    tangent = new SKPoint(
-                        points[i + 1].X - point.X,
-                        points[i + 1].Y - point.Y
-                    );
-                }
-                else
-                {
-                    tangent = new SKPoint(
-                        point.X - points[i - 1].X,
-                        point.Y - points[i - 1].Y
-                    );
-                }
-                
-                float length = (float)Math.Sqrt(tangent.X * tangent.X + tangent.Y * tangent.Y);
-                if (length > 0)
-                {
-                    tangent.X /= length;
-                    tangent.Y /= length;
-                }
-                
-                SKPoint normal = new SKPoint(-tangent.Y, tangent.X);
-                
-                leftPoints.Add(new SKPoint(
-                    point.X + normal.X * strokeWidth,
-                    point.Y + normal.Y * strokeWidth
-                ));
-                rightPoints.Add(new SKPoint(
-                    point.X - normal.X * strokeWidth,
-                    point.Y - normal.Y * strokeWidth
-                ));
-            }
-            
-            path.MoveTo(leftPoints[0]);
-            for (int i = 1; i < leftPoints.Count; i++)
-            {
-                path.LineTo(leftPoints[i]);
-            }
-            
-            for (int i = rightPoints.Count - 1; i >= 0; i--)
-            {
-                path.LineTo(rightPoints[i]);
-            }
-            
-            path.Close();
-            return path;
-        }
-
-        // MARK: IsStrokeTooCloseToTextArea
-        private bool IsStrokeTooCloseToTextArea(float startX, float startY, float endX, float endY, SKRect textArea)
-        {
-            float buffer = 50f;
-            var expandedTextArea = new SKRect(
-                textArea.Left - buffer,
-                textArea.Top - buffer,
-                textArea.Right + buffer,
-                textArea.Bottom + buffer
-            );
-            
-            return expandedTextArea.Contains(startX, startY) || 
-                   expandedTextArea.Contains(endX, endY) ||
-                   (startY > expandedTextArea.Top && endY > expandedTextArea.Top);
-        }
-
-        // MARK: CalculateCubicBezier
-        private float CalculateCubicBezier(float t, float p0, float p1, float p2, float p3)
-        {
-            float u = 1 - t;
-            float tt = t * t;
-            float uu = u * u;
-            float uuu = uu * u;
-            float ttt = tt * t;
-            
-            return uuu * p0 + 3 * uu * t * p1 + 3 * u * tt * p2 + ttt * p3;
         }
 
         // MARK: RenderTypography
@@ -286,9 +198,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var metrics = textPaint.FontMetrics;
             var titleFontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height, config.PosterSafeArea);
             var titleHeight = titleFontSize * 2.5f;
+            var spacing = fontSize * 0.3f;
             
             float x = safeArea.Left;
-            float y = safeArea.Bottom - titleHeight - (fontSize * 0.2f) - metrics.Ascent;
+            float y = safeArea.Bottom - titleHeight - spacing - Math.Abs(metrics.Descent);
             
             canvas.DrawText(episodeCode, x + 2f, y + 2f, shadowPaint);
             canvas.DrawText(episodeCode, x, y, textPaint);
@@ -333,13 +246,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var metrics = titlePaint.FontMetrics;
             float lineHeight = fontSize * 1.2f;
             float x = safeArea.Left;
-            float y = safeArea.Bottom - metrics.Ascent;
+            float y = safeArea.Bottom - Math.Abs(metrics.Descent);
             
-            foreach (var line in lines)
+            for (int i = lines.Count - 1; i >= 0; i--)
             {
-                canvas.DrawText(line, x + 2f, y + 2f, shadowPaint);
-                canvas.DrawText(line, x, y, titlePaint);
-                y += lineHeight;
+                canvas.DrawText(lines[i], x + 2f, y + 2f, shadowPaint);
+                canvas.DrawText(lines[i], x, y, titlePaint);
+                y -= lineHeight;
             }
         }
 

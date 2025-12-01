@@ -148,6 +148,18 @@ Enhanced standard template with customizable gradient overlay effects and blue a
 
 ---
 
+## Standard Brush
+
+**Template:** [File](Examples/StandardBrush/Template.json)
+
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Example 1](Examples/StandardBrush/Example1.png) | ![Example 2](Examples/StandardBrush/Example2.png) | ![Example 3](Examples/StandardBrush/Example3.png) |
+
+A paint brush splatter on a white background with episode information in the bottom right.
+
+---
+
 ## Importing Templates
 
 To use any of these templates:
