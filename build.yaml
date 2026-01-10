@@ -1,7 +1,7 @@
 ---
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
-version: "10.11.3"
+version: "10.11.4"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Generate Custom Episode Posters"
@@ -12,36 +12,10 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
-  quality:
-  - Dramatically improved overall image quality with professional-grade rendering pipeline
-  - Enhanced text rendering with subpixel positioning and LCD rendering for crisp, clear typography
-  - Added professional soft shadow blur to all text elements for improved depth and readability
-  - Implemented explicit sRGB color space handling for consistent color accuracy across all output formats
-  - Increased image encoding quality to 100% for all output formats (JPEG, PNG, WEBP)
-  - Enhanced FFmpeg frame extraction quality from q:v 2 to q:v 1 (absolute highest quality)
-  - Added RGB24 pixel format specification for better color accuracy during frame extraction
-  - Implemented gradient dithering to eliminate color banding in overlay gradients
-  - Fixed Frame poster border corners to connect seamlessly without gaps
-  - Improved line rendering quality with proper stroke caps across all poster styles
-  intelligence:
-  - Implemented multi-quality frame analysis system combining brightness AND sharpness detection
-  - Added Laplacian variance blur detection to reject motion-blurred action shots
-  - Created intelligent quality scoring algorithm that weighs both brightness and sharpness
-  - Enhanced frame selection logic to find optimal frames instead of just brightest frames
-  - HDR-aware quality scoring (60% brightness, 40% sharpness for HDR; 40% brightness, 60% sharpness for SDR)
-  - Improved early exit logic for HDR content when quality score exceeds 0.6 threshold
-  - Added comprehensive quality metrics logging (brightness, sharpness, and combined score)
+  fixes:
+  - Comprehensive validation and fixes for all VideoRangeType variants in tone mapping
+  enhancements:
+  - Automated example file creation
+  - Migration to only public domain images for example files
   technical:
-  - Added FilterQuality.High to all bitmap drawing operations in CroppingService and poster generators
-  - Implemented SubpixelText and LcdRenderText properties for all text paint objects across 6 files
-  - Added MaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f) to all shadow paint objects for soft shadows
-  - Configured explicit SKImageInfo with RGBA8888, Premul alpha, and sRGB color space in surface creation
-  - Added SKMatrix.Identity to all gradient shader creation for proper dithering support
-  - Added IsDither = true to gradient overlay paint for smooth color transitions
-  - Implemented StrokeCap.Square and StrokeJoin.Miter to Frame border rendering for precise corner connections
-  - Updated Standard separator lines with StrokeCap.Square for cleaner rendering
-  - Enhanced Cutout border rendering with StrokeCap.Round and StrokeJoin.Round
-  - Added GetFrameSharpness() method using Laplacian operator for edge detection
-  - Added CalculateFrameQualityScore() method for combined brightness/sharpness scoring
-  - Updated TryExtractionStrategy() to track and compare quality scores instead of brightness alone
-  - Modified both SoftwareFFmpegService and HardwareFFmpegService with -q:v 1 -pix_fmt rgb24 parameters
+  - DV/HDR fixes for poster generation

@@ -44,10 +44,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             var args = $"-y -ss {actualSeekSeconds} -i \"{inputPath}\"";
 
-            if (!skipToneMapping && encodingOptions.EnableTonemapping && isHDR)
+            // Check if tone mapping is actually needed (handles both explicit HDR types and 10-bit content)
+            var is10Bit = video.VideoColorBits >= 10;
+            var shouldApplyToneMapping = !skipToneMapping && encodingOptions.EnableTonemapping && (isHDR || is10Bit);
+
+            if (shouldApplyToneMapping)
             {
                 try
                 {
+                    _logger.LogInformation("Requesting tone mapping filter for VideoRangeType={RangeType}, 10-bit={Is10Bit}, HDR={IsHDR}",
+                        video.VideoHdrType, is10Bit, isHDR);
+
                     // Use ToneMapFilterService for software path
                     var toneMapFilter = ToneMapFilterService.GetToneMapFilter(
                         encodingOptions,
@@ -58,26 +65,26 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                     if (!string.IsNullOrEmpty(toneMapFilter))
                     {
-                        args += $" -vf {toneMapFilter}";
-                        _logger.LogDebug("Applied software tone mapping filter for HDR content");
+                        args += $" -vf \"{toneMapFilter}\"";
+                        _logger.LogInformation("Applied software tone mapping filter: {Filter}", toneMapFilter);
                     }
                     else
                     {
-                        _logger.LogWarning("Software tone mapping filter was empty for HDR content");
+                        _logger.LogWarning("Software tone mapping filter was empty for VideoRangeType={RangeType}", video.VideoHdrType);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Software tone mapping filter generation failed; proceeding without tone mapping");
+                    _logger.LogError(ex, "Software tone mapping filter generation failed; proceeding without tone mapping");
                 }
             }
-            else if (skipToneMapping && isHDR)
+            else if (skipToneMapping && (isHDR || is10Bit))
             {
-                _logger.LogDebug("Tone mapping skipped for HDR content as requested");
+                _logger.LogDebug("Tone mapping skipped for HDR/10-bit content as requested");
             }
-            else if (!isHDR)
+            else if (!isHDR && !is10Bit)
             {
-                _logger.LogDebug("No tone mapping needed for SDR content");
+                _logger.LogDebug("No tone mapping needed for SDR/8-bit content");
             }
 
             args += $" -frames:v 1 -q:v 2 \"{outputPath}\"";

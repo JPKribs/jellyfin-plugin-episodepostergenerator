@@ -9,6 +9,7 @@ using Jellyfin.Plugin.EpisodePosterGenerator.Extensions;
 using MediaBrowser.Model.Configuration;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Common.Configuration;
+using MediaBrowser.Controller.MediaEncoding;
 using Microsoft.Extensions.Logging;
 using Jellyfin.Data.Enums;
 using SkiaSharp;
@@ -23,6 +24,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
         private readonly ILogger<FFmpegService> _logger;
         private readonly IServerConfigurationManager _configurationManager;
+        private readonly IMediaEncoder _mediaEncoder;
         private readonly IFFmpegService _hardwareService;
         private readonly IFFmpegService _softwareService;
         private readonly BrightnessService _brightnessService;
@@ -32,6 +34,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         public FFmpegService(
             ILogger<FFmpegService> logger,
             IServerConfigurationManager configurationManager,
+            IMediaEncoder mediaEncoder,
             HardwareFFmpegService hardwareService,
             SoftwareFFmpegService softwareService,
             BrightnessService brightnessService,
@@ -39,6 +42,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         {
             _logger = logger;
             _configurationManager = configurationManager;
+            _mediaEncoder = mediaEncoder;
             _hardwareService = hardwareService;
             _softwareService = softwareService;
             _brightnessService = brightnessService;
@@ -209,7 +213,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     break;
                 }
 
-                var ffmpegPath = string.IsNullOrWhiteSpace(encodingOptions.EncoderAppPath) ? "ffmpeg" : encodingOptions.EncoderAppPath;
+                var ffmpegPath = _mediaEncoder.EncoderPath;
+
+                if (string.IsNullOrWhiteSpace(ffmpegPath))
+                {
+                    _logger.LogWarning("MediaEncoder.EncoderPath is null or empty, falling back to system ffmpeg");
+                    ffmpegPath = "ffmpeg";
+                }
 
                 if (attempt == 0)
                 {

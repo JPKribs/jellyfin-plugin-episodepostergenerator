@@ -13,14 +13,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         {
             return videoRangeType switch
             {
-                VideoRangeType.HDR10 or 
-                VideoRangeType.HLG or 
-                VideoRangeType.HDR10Plus or 
-                VideoRangeType.DOVI or 
-                VideoRangeType.DOVIWithHDR10 or 
-                VideoRangeType.DOVIWithHLG or 
-                VideoRangeType.DOVIWithSDR => true,
-                _ => false
+                VideoRangeType.SDR or
+                VideoRangeType.Unknown => false,
+                _ => true
             };
         }
 
@@ -29,10 +24,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         {
             return videoRangeType switch
             {
-                VideoRangeType.DOVI or 
-                VideoRangeType.DOVIWithHDR10 or 
-                VideoRangeType.DOVIWithHLG or 
-                VideoRangeType.DOVIWithSDR => true,
+                VideoRangeType.DOVI or
+                VideoRangeType.DOVIWithHDR10 or
+                VideoRangeType.DOVIWithHLG or
+                VideoRangeType.DOVIWithEL or
+                VideoRangeType.DOVIWithELHDR10Plus or
+                VideoRangeType.DOVIWithHDR10Plus or
+                VideoRangeType.DOVIInvalid => true,
                 _ => false
             };
         }

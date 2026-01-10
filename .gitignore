@@ -3,5 +3,6 @@ obj/
 dist/
 .vs/
 .idea/
+.vscode/
 artifacts
 .DS_Store

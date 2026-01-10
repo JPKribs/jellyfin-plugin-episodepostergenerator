@@ -72,7 +72,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 SubpixelText = true,
                 LcdRenderText = true,
                 Typeface = typeface,
-                TextAlign = SKTextAlign.Center
+                TextAlign = SKTextAlign.Center,
+                TextEncoding = SKTextEncoding.Utf8
             };
 
             using var shadowPaint = new SKPaint
@@ -84,7 +85,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 LcdRenderText = true,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Center,
-                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f),
+                TextEncoding = SKTextEncoding.Utf8
             };
 
             var safeWidth = safeArea.Width * 0.9f;
@@ -152,7 +154,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 SubpixelText = true,
                 LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
-                TextAlign = SKTextAlign.Center
+                TextAlign = SKTextAlign.Center,
+                TextEncoding = SKTextEncoding.Utf8
             };
 
             using var shadowPaint = new SKPaint
@@ -164,7 +167,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
                 TextAlign = SKTextAlign.Center,
-                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f),
+                TextEncoding = SKTextEncoding.Utf8
             };
 
             using var bulletPaint = new SKPaint
@@ -175,7 +179,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 SubpixelText = true,
                 LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, SKFontStyle.Normal),
-                TextAlign = SKTextAlign.Center
+                TextAlign = SKTextAlign.Center,
+                TextEncoding = SKTextEncoding.Utf8
             };
 
             using var bulletShadowPaint = new SKPaint
@@ -187,12 +192,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, SKFontStyle.Normal),
                 TextAlign = SKTextAlign.Center,
-                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f),
+                TextEncoding = SKTextEncoding.Utf8
             };
 
             var seasonText = seasonNumber.ToString(CultureInfo.InvariantCulture);
             var episodeText = episodeNumber.ToString(CultureInfo.InvariantCulture);
-            var bulletText = " â€¢ ";
+            var bulletText = " • ";
 
             var fontMetrics = episodePaint.FontMetrics;
             var baselineY = bottomY - Math.Abs(fontMetrics.Descent);

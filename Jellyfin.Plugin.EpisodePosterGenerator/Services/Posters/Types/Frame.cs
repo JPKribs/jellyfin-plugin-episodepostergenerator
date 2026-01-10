@@ -84,7 +84,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             
             var fontMetrics = titlePaint.FontMetrics;
             var textActualHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent);
-            var startY = safeArea.Top + Math.Abs(fontMetrics.Ascent);
+            var textPadding = height * 0.01f;
+            var startY = safeArea.Top + textPadding + Math.Abs(fontMetrics.Ascent);
 
             float maxTextWidth = 0;
             for (int i = 0; i < lines.Count; i++)
@@ -92,7 +93,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 var lineY = startY + (i * lineHeight);
                 canvas.DrawText(lines[i], centerX + 2, lineY + 2, shadowPaint);
                 canvas.DrawText(lines[i], centerX, lineY, titlePaint);
-                
+
                 var textWidth = titlePaint.MeasureText(lines[i]);
                 if (textWidth > maxTextWidth)
                     maxTextWidth = textWidth;
@@ -105,7 +106,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Height = totalActualHeight,
                 Width = maxTextWidth,
                 CenterX = centerX,
-                Y = safeArea.Top
+                Y = safeArea.Top + textPadding
             };
         }
 
@@ -124,7 +125,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 SubpixelText = true,
                 LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
-                TextAlign = SKTextAlign.Center
+                TextAlign = SKTextAlign.Center,
+                TextEncoding = SKTextEncoding.Utf8
             };
 
             using var shadowPaint = new SKPaint
@@ -135,15 +137,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 SubpixelText = true,
                 LcdRenderText = true,
                 Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
-                TextAlign = SKTextAlign.Center
+                TextAlign = SKTextAlign.Center,
+                TextEncoding = SKTextEncoding.Utf8
             };
 
             var episodeText = EpisodeCodeUtil.FormatFullText(seasonNumber, episodeNumber, true, true);
             var centerX = safeArea.MidX;
-            
+
             var fontMetrics = episodePaint.FontMetrics;
             var textActualHeight = Math.Abs(fontMetrics.Ascent) + Math.Abs(fontMetrics.Descent);
-            var y = safeArea.Bottom - Math.Abs(fontMetrics.Descent);
+            var textPadding = height * 0.01f;
+            var y = safeArea.Bottom - textPadding - Math.Abs(fontMetrics.Descent);
 
             canvas.DrawText(episodeText, centerX + 2, y + 2, shadowPaint);
             canvas.DrawText(episodeText, centerX, y, episodePaint);
@@ -155,7 +159,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Height = textActualHeight,
                 Width = textWidth,
                 CenterX = centerX,
-                Y = safeArea.Bottom - textActualHeight
+                Y = safeArea.Bottom - textPadding - textActualHeight
             };
         }
 
@@ -165,84 +169,133 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             using var borderPaint = new SKPaint
             {
                 Color = SKColors.White,
-                StrokeWidth = 3f,
+                StrokeWidth = 4f,
                 Style = SKPaintStyle.Stroke,
                 IsAntialias = true,
-                StrokeCap = SKStrokeCap.Square,
-                StrokeJoin = SKStrokeJoin.Miter
+                StrokeCap = SKStrokeCap.Round,
+                StrokeJoin = SKStrokeJoin.Round
             };
 
             using var shadowPaint = new SKPaint
             {
-                Color = SKColors.Black.WithAlpha(180),
-                StrokeWidth = 5f,
+                Color = SKColors.Black.WithAlpha(200),
+                StrokeWidth = 6f,
                 Style = SKPaintStyle.Stroke,
                 IsAntialias = true,
-                StrokeCap = SKStrokeCap.Square,
-                StrokeJoin = SKStrokeJoin.Miter
+                StrokeCap = SKStrokeCap.Round,
+                StrokeJoin = SKStrokeJoin.Round
             };
 
-            var topLineY = safeArea.Top + (titleInfo.Height / 2f);
-            var topTextBottom = safeArea.Top + titleInfo.Height + spacing;
-            
-            var bottomLineY = episodeInfo.HasValue 
-                ? safeArea.Bottom - (episodeInfo.Value.Height / 2f)
-                : safeArea.Bottom;
-            var bottomTextTop = episodeInfo.HasValue 
-                ? safeArea.Bottom - episodeInfo.Value.Height - spacing 
-                : safeArea.Bottom;
+            var cornerRadius = 20f;
 
-            var overlap = 2.0f;
-
-            canvas.DrawLine(safeArea.Left + 2, topLineY + 2 - overlap, safeArea.Left + 2, topTextBottom + 2, shadowPaint);
-            canvas.DrawLine(safeArea.Left, topLineY - overlap, safeArea.Left, topTextBottom, borderPaint);
-
-            canvas.DrawLine(safeArea.Left + 2, topTextBottom + 2, safeArea.Left + 2, bottomTextTop + 2, shadowPaint);
-            canvas.DrawLine(safeArea.Left, topTextBottom, safeArea.Left, bottomTextTop, borderPaint);
-
-            if (episodeInfo.HasValue)
-            {
-                canvas.DrawLine(safeArea.Left + 2, bottomTextTop + 2, safeArea.Left + 2, bottomLineY + 2 + overlap, shadowPaint);
-                canvas.DrawLine(safeArea.Left, bottomTextTop, safeArea.Left, bottomLineY + overlap, borderPaint);
-            }
-
-            canvas.DrawLine(safeArea.Right + 2, topLineY + 2 - overlap, safeArea.Right + 2, topTextBottom + 2, shadowPaint);
-            canvas.DrawLine(safeArea.Right, topLineY - overlap, safeArea.Right, topTextBottom, borderPaint);
-
-            canvas.DrawLine(safeArea.Right + 2, topTextBottom + 2, safeArea.Right + 2, bottomTextTop + 2, shadowPaint);
-            canvas.DrawLine(safeArea.Right, topTextBottom, safeArea.Right, bottomTextTop, borderPaint);
-
-            if (episodeInfo.HasValue)
-            {
-                canvas.DrawLine(safeArea.Right + 2, bottomTextTop + 2, safeArea.Right + 2, bottomLineY + 2 + overlap, shadowPaint);
-                canvas.DrawLine(safeArea.Right, bottomTextTop, safeArea.Right, bottomLineY + overlap, borderPaint);
-            }
-
+            // Calculate text bounds - border should align exactly with text edges
             var titleLeftEdge = titleInfo.CenterX - (titleInfo.Width / 2f) - spacing;
             var titleRightEdge = titleInfo.CenterX + (titleInfo.Width / 2f) + spacing;
+            var titleBottom = titleInfo.Y + titleInfo.Height;
 
-            canvas.DrawLine(safeArea.Left + 2 - overlap, topLineY + 2, titleLeftEdge + 2, topLineY + 2, shadowPaint);
-            canvas.DrawLine(safeArea.Left - overlap, topLineY, titleLeftEdge, topLineY, borderPaint);
-
-            canvas.DrawLine(titleRightEdge + 2, topLineY + 2, safeArea.Right + 2 + overlap, topLineY + 2, shadowPaint);
-            canvas.DrawLine(titleRightEdge, topLineY, safeArea.Right + overlap, topLineY, borderPaint);
+            float episodeLeftEdge = 0;
+            float episodeRightEdge = 0;
+            float episodeTop = 0;
 
             if (episodeInfo.HasValue)
             {
-                var episodeLeftEdge = episodeInfo.Value.CenterX - (episodeInfo.Value.Width / 2f) - spacing;
-                var episodeRightEdge = episodeInfo.Value.CenterX + (episodeInfo.Value.Width / 2f) + spacing;
+                episodeLeftEdge = episodeInfo.Value.CenterX - (episodeInfo.Value.Width / 2f) - spacing;
+                episodeRightEdge = episodeInfo.Value.CenterX + (episodeInfo.Value.Width / 2f) + spacing;
+                episodeTop = episodeInfo.Value.Y;
+            }
 
-                canvas.DrawLine(safeArea.Left + 2 - overlap, bottomLineY + 2, episodeLeftEdge + 2, bottomLineY + 2, shadowPaint);
-                canvas.DrawLine(safeArea.Left - overlap, bottomLineY, episodeLeftEdge, bottomLineY, borderPaint);
+            // Draw the complete rounded rectangle border in segments
+            using var path = new SKPath();
 
-                canvas.DrawLine(episodeRightEdge + 2, bottomLineY + 2, safeArea.Right + 2 + overlap, bottomLineY + 2, shadowPaint);
-                canvas.DrawLine(episodeRightEdge, bottomLineY, safeArea.Right + overlap, bottomLineY, borderPaint);
+            // Top-left corner arc
+            path.AddArc(
+                new SKRect(safeArea.Left, safeArea.Top, safeArea.Left + cornerRadius * 2, safeArea.Top + cornerRadius * 2),
+                180, 90);
+
+            // Top horizontal line (left side) - stopping before title
+            path.MoveTo(safeArea.Left + cornerRadius, safeArea.Top);
+            path.LineTo(titleLeftEdge, safeArea.Top);
+
+            // Top horizontal line (right side) - starting after title
+            path.MoveTo(titleRightEdge, safeArea.Top);
+            path.LineTo(safeArea.Right - cornerRadius, safeArea.Top);
+
+            // Top-right corner arc
+            path.AddArc(
+                new SKRect(safeArea.Right - cornerRadius * 2, safeArea.Top, safeArea.Right, safeArea.Top + cornerRadius * 2),
+                270, 90);
+
+            // Right vertical line (top section) - from corner to title area
+            path.MoveTo(safeArea.Right, safeArea.Top + cornerRadius);
+            path.LineTo(safeArea.Right, titleBottom);
+
+            if (episodeInfo.HasValue)
+            {
+                // Right vertical line (middle section) - between title and episode
+                path.LineTo(safeArea.Right, episodeTop);
+
+                // Right vertical line (bottom section) - from episode to corner
+                path.MoveTo(safeArea.Right, episodeTop);
+                path.LineTo(safeArea.Right, safeArea.Bottom - cornerRadius);
+
+                // Bottom-right corner arc
+                path.AddArc(
+                    new SKRect(safeArea.Right - cornerRadius * 2, safeArea.Bottom - cornerRadius * 2, safeArea.Right, safeArea.Bottom),
+                    0, 90);
+
+                // Bottom horizontal line (right side) - stopping before episode
+                path.MoveTo(safeArea.Right - cornerRadius, safeArea.Bottom);
+                path.LineTo(episodeRightEdge, safeArea.Bottom);
+
+                // Bottom horizontal line (left side) - starting after episode
+                path.MoveTo(episodeLeftEdge, safeArea.Bottom);
+                path.LineTo(safeArea.Left + cornerRadius, safeArea.Bottom);
+
+                // Bottom-left corner arc
+                path.AddArc(
+                    new SKRect(safeArea.Left, safeArea.Bottom - cornerRadius * 2, safeArea.Left + cornerRadius * 2, safeArea.Bottom),
+                    90, 90);
+
+                // Left vertical line (bottom section) - from corner to episode
+                path.MoveTo(safeArea.Left, safeArea.Bottom - cornerRadius);
+                path.LineTo(safeArea.Left, episodeTop);
+
+                // Left vertical line (middle section) - between episode and title
+                path.MoveTo(safeArea.Left, episodeTop);
+                path.LineTo(safeArea.Left, titleBottom);
             }
             else
             {
-                canvas.DrawLine(safeArea.Left + 2 - overlap, bottomLineY + 2, safeArea.Right + 2 + overlap, bottomLineY + 2, shadowPaint);
-                canvas.DrawLine(safeArea.Left - overlap, bottomLineY, safeArea.Right + overlap, bottomLineY, borderPaint);
+                // Right vertical line continues to bottom corner
+                path.LineTo(safeArea.Right, safeArea.Bottom - cornerRadius);
+
+                // Bottom-right corner arc
+                path.AddArc(
+                    new SKRect(safeArea.Right - cornerRadius * 2, safeArea.Bottom - cornerRadius * 2, safeArea.Right, safeArea.Bottom),
+                    0, 90);
+
+                // Bottom horizontal line (full width)
+                path.MoveTo(safeArea.Right - cornerRadius, safeArea.Bottom);
+                path.LineTo(safeArea.Left + cornerRadius, safeArea.Bottom);
+
+                // Bottom-left corner arc
+                path.AddArc(
+                    new SKRect(safeArea.Left, safeArea.Bottom - cornerRadius * 2, safeArea.Left + cornerRadius * 2, safeArea.Bottom),
+                    90, 90);
+
+                // Left vertical line (from bottom corner to title)
+                path.MoveTo(safeArea.Left, safeArea.Bottom - cornerRadius);
+                path.LineTo(safeArea.Left, titleBottom);
             }
+
+            // Left vertical line (top section) - from title to top corner
+            path.LineTo(safeArea.Left, safeArea.Top + cornerRadius);
+
+            // Draw shadow first (for depth)
+            canvas.DrawPath(path, shadowPaint);
+
+            // Draw border on top
+            canvas.DrawPath(path, borderPaint);
         }
     }
 }
