@@ -171,18 +171,28 @@ main() {
     # Copy DLL to temp directory
     log "INFO" "Copying DLL to package directory"
     cp "$dll_path" "$temp_dir/"
-    
+
+    # Copy Assets directory if it exists
+    local assets_path="$PROJECT_DIR/bin/$CONFIGURATION/net9.0/Assets"
+    if [[ -d "$assets_path" ]]; then
+        log "INFO" "Copying Assets directory to package"
+        cp -r "$assets_path" "$temp_dir/"
+    fi
+
     # Create ZIP with all files in temp directory
     log "INFO" "Creating ZIP archive"
     if command -v zip >/dev/null 2>&1; then
-        (cd "$temp_dir" && zip -q "../$zip_name" *)
+        (cd "$temp_dir" && zip -qr "../$zip_name" .)
     elif command -v python3 >/dev/null 2>&1; then
         python3 -c "
 import zipfile
 import os
 with zipfile.ZipFile('$zip_path', 'w') as zf:
-    for file in os.listdir('$temp_dir'):
-        zf.write(os.path.join('$temp_dir', file), file)
+    for root, dirs, files in os.walk('$temp_dir'):
+        for file in files:
+            file_path = os.path.join(root, file)
+            arcname = os.path.relpath(file_path, '$temp_dir')
+            zf.write(file_path, arcname)
 "
     else
         log "ERROR" "No zip utility found (zip or python3 required)"

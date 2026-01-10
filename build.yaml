@@ -13,9 +13,14 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   fixes:
-  - Comprehensive validation and fixes for all VideoRangeType variants in tone mapping
+  - Fixed UTF-8 encoding for bullet characters and special text
+  - Fixed Frame poster text alignment with borders
+  - Fixed all VideoRangeType variants in HDR/DV tone mapping
   enhancements:
-  - Automated example file creation
-  - Migration to only public domain images for example files
+  - Redesigned StandardBrush with realistic paint strokes
+  - Added smooth bezier curves and Perlin noise for organic edges
+  - Added paint splatters and edge texture for realism
   technical:
-  - DV/HDR fixes for poster generation
+  - Added UTF-8 text encoding to all poster types
+  - Implemented Perlin noise brush stroke generation
+  - Added natural brush tapering with bezier curves

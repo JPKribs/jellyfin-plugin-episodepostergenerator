@@ -58,32 +58,33 @@ jobs:
         if: steps.release.outputs.release_tag != ''
         run: |
           CORRECT_TAG="v${{ steps.build_info.outputs.build_version }}"
-          
-          # Extract structured changelog from build.yaml and convert to markdown
-          CHANGELOG=$(awk '
-          /^changelog:/ { in_changelog=1; next }
-          /^[a-zA-Z][^:]*:/ && in_changelog==0 { next }
-          /^[a-zA-Z][^:]*:/ && in_changelog==1 && !/^  / { 
-            if($0 !~ /^changelog:/) {
-              gsub(/:/, "", $1)
-              category = toupper(substr($1,1,1)) tolower(substr($1,2))
-              print "\n## " category
-            }
-            next 
-          }
-          /^  - / && in_changelog==1 { 
-            gsub(/^  - /, "* ")
-            print $0
-          }
-          /^[a-zA-Z][^:]*:/ && in_changelog==1 && /^[^ ]/ && !/^changelog:/ { in_changelog=0 }
-          ' build.yaml | sed '/^$/d' | sed '1d')
-          
+
+          # Extract changelog using Python for better YAML parsing
+          CHANGELOG=$(python3 << 'PYEOF'
+          import yaml
+
+          with open('build.yaml', 'r') as f:
+              data = yaml.safe_load(f)
+
+          changelog = data.get('changelog', {})
+          output = []
+
+          for category, items in changelog.items():
+              if isinstance(items, list):
+                  output.append(f"\n## {category.capitalize()}")
+                  for item in items:
+                      output.append(f"- {item}")
+
+          print('\n'.join(output))
+          PYEOF
+          )
+
           # Use gh release edit
           gh release edit "${{ steps.release.outputs.release_tag }}" \
             --tag "${CORRECT_TAG}" \
             --title "${CORRECT_TAG}" \
             --notes "${CHANGELOG}"
-          
+
           echo "Updated release tag to: ${CORRECT_TAG}"
           echo "updated_tag=${CORRECT_TAG}" >> $GITHUB_OUTPUT
         env:
@@ -95,9 +96,19 @@ jobs:
         run: |
           # Use the updated tag name
           UPLOAD_TAG="${{ steps.update_release.outputs.updated_tag || steps.release.outputs.release_tag }}"
-          
+
+          # Delete old assets if they exist to avoid conflicts
+          gh release view "${UPLOAD_TAG}" --json assets --jq '.assets[].name' | while read asset; do
+            if [[ "$asset" == *"jellyfin-plugin-episodepostergenerator"* ]]; then
+              echo "Deleting old asset: $asset"
+              gh release delete-asset "${UPLOAD_TAG}" "$asset" -y || true
+            fi
+          done
+
+          # Upload new assets
           gh release upload "${UPLOAD_TAG}" \
             ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.build_info.outputs.build_version }}.zip \
-            ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.build_info.outputs.build_version }}.zip.md5
+            ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.build_info.outputs.build_version }}.zip.md5 \
+            --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
