@@ -1,4 +1,4 @@
-name: '📝 Create/Update Release Draft & Release Bump PR'
+name: '📝 Create/Update Release Draft'
 
 on:
   push:
@@ -16,29 +16,18 @@ permissions:
   pull-requests: write
 
 jobs:
-  call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/changelog.yaml@master
-    with:
-      repository-name: JPKribs/jellyfin-plugin-episodepostergenerator
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
-
-  build-and-attach:
-    needs: call
+  build-and-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
-
-      - name: Build Plugin
-        run: |
-          chmod +x build.sh
-          ./build.sh
 
       - name: Get Build Info
         id: build_info
@@ -46,19 +35,63 @@ jobs:
           BUILD_VERSION=$(grep '^version:' build.yaml | sed 's/version: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
           echo "build_version=${BUILD_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Get Latest Draft Release
-        id: release
+      - name: Check Existing Releases
+        id: check_releases
         run: |
-          RELEASE_TAG=$(gh release list --limit 1 --json tagName,isDraft --jq '.[] | select(.isDraft == true) | .tagName')
-          echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          VERSION="${{ steps.build_info.outputs.build_version }}"
+          TAG="v${VERSION}"
+
+          # Check if any release (draft or published) exists with this tag
+          RELEASE_INFO=$(gh release view "${TAG}" --json isDraft 2>/dev/null || echo "not_found")
+
+          if [ "$RELEASE_INFO" = "not_found" ]; then
+            echo "No existing release for ${TAG} - will create new draft"
+            echo "action=create" >> $GITHUB_OUTPUT
+            echo "final_version=${VERSION}" >> $GITHUB_OUTPUT
+          else
+            IS_DRAFT=$(echo "$RELEASE_INFO" | jq -r '.isDraft')
+            if [ "$IS_DRAFT" = "true" ]; then
+              echo "Draft ${TAG} exists - will update it"
+              echo "action=update" >> $GITHUB_OUTPUT
+              echo "final_version=${VERSION}" >> $GITHUB_OUTPUT
+            else
+              # Published release exists - need to increment version
+              MAJOR=$(echo $VERSION | cut -d. -f1)
+              MINOR=$(echo $VERSION | cut -d. -f2)
+              PATCH=$(echo $VERSION | cut -d. -f3)
+              NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+              echo "Published ${TAG} exists - incrementing to v${NEW_VERSION}"
+              echo "action=increment" >> $GITHUB_OUTPUT
+              echo "final_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+            fi
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update Release Tag and Body
-        if: steps.release.outputs.release_tag != ''
+      - name: Update Version (if incrementing)
+        if: steps.check_releases.outputs.action == 'increment'
         run: |
-          CORRECT_TAG="v${{ steps.build_info.outputs.build_version }}"
+          NEW_VERSION="${{ steps.check_releases.outputs.final_version }}"
 
+          echo "Updating build.yaml version to ${NEW_VERSION}"
+
+          # Update build.yaml (single source of truth for version)
+          sed -i "s/^version: .*/version: \"${NEW_VERSION}\"/" build.yaml
+
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add build.yaml
+          git commit -m "Auto-increment version to ${NEW_VERSION}"
+          git push
+
+      - name: Build Plugin
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Extract Changelog
+        id: changelog
+        run: |
           # Extract changelog using Python for better YAML parsing
           CHANGELOG=$(python3 << 'PYEOF'
           import yaml
@@ -79,36 +112,43 @@ jobs:
           PYEOF
           )
 
-          # Use gh release edit
-          gh release edit "${{ steps.release.outputs.release_tag }}" \
-            --tag "${CORRECT_TAG}" \
-            --title "${CORRECT_TAG}" \
-            --notes "${CHANGELOG}"
+          # Save changelog to file to avoid shell escaping issues
+          echo "$CHANGELOG" > /tmp/changelog.md
 
-          echo "Updated release tag to: ${CORRECT_TAG}"
-          echo "updated_tag=${CORRECT_TAG}" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        id: update_release
-
-      - name: Upload Assets to Draft Release
-        if: steps.release.outputs.release_tag != ''
+      - name: Create or Update Draft Release
         run: |
-          # Use the updated tag name
-          UPLOAD_TAG="${{ steps.update_release.outputs.updated_tag || steps.release.outputs.release_tag }}"
+          FINAL_VERSION="${{ steps.check_releases.outputs.final_version }}"
+          TAG="v${FINAL_VERSION}"
+          ACTION="${{ steps.check_releases.outputs.action }}"
+          CHANGELOG=$(cat /tmp/changelog.md)
 
-          # Delete old assets if they exist to avoid conflicts
-          gh release view "${UPLOAD_TAG}" --json assets --jq '.assets[].name' | while read asset; do
-            if [[ "$asset" == *"jellyfin-plugin-episodepostergenerator"* ]]; then
-              echo "Deleting old asset: $asset"
-              gh release delete-asset "${UPLOAD_TAG}" "$asset" -y || true
-            fi
-          done
+          if [ "$ACTION" = "update" ]; then
+            echo "Updating existing draft release ${TAG}"
+
+            # Delete old assets if they exist
+            gh release view "${TAG}" --json assets --jq '.assets[].name' | while read asset; do
+              if [[ "$asset" == *"jellyfin-plugin-episodepostergenerator"* ]]; then
+                echo "Deleting old asset: $asset"
+                gh release delete-asset "${TAG}" "$asset" -y || true
+              fi
+            done
+
+            # Update release notes
+            gh release edit "${TAG}" --notes "${CHANGELOG}"
+          else
+            echo "Creating new draft release ${TAG}"
+            gh release create "${TAG}" \
+              --draft \
+              --title "${TAG}" \
+              --notes "${CHANGELOG}"
+          fi
 
           # Upload new assets
-          gh release upload "${UPLOAD_TAG}" \
-            ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.build_info.outputs.build_version }}.zip \
-            ./dist/jellyfin-plugin-episodepostergenerator-${{ steps.build_info.outputs.build_version }}.zip.md5 \
+          gh release upload "${TAG}" \
+            ./dist/jellyfin-plugin-episodepostergenerator-${FINAL_VERSION}.zip \
+            ./dist/jellyfin-plugin-episodepostergenerator-${FINAL_VERSION}.zip.md5 \
             --clobber
+
+          echo "Successfully uploaded assets to ${TAG}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

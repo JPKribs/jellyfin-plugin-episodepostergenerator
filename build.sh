@@ -28,19 +28,19 @@ log() {
     esac
 }
 
-# MARK: Get version from Directory.Build.props
+# MARK: Get version from build.yaml (single source of truth)
 get_plugin_version() {
-    local props_file="Directory.Build.props"
-    
-    if [[ -f "$props_file" ]]; then
-        local version=$(grep '<Version>' "$props_file" | sed 's/.*<Version>\(.*\)<\/Version>.*/\1/' | tr -d ' ')
+    local build_file="build.yaml"
+
+    if [[ -f "$build_file" ]]; then
+        local version=$(grep '^version:' "$build_file" | sed 's/version: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
         if [[ -n "$version" ]]; then
             echo "$version"
             return
         fi
     fi
-    
-    echo "10.10.X"
+
+    echo "0.0.0"
 }
 
 # MARK: Get plugin info from build.yaml  
@@ -96,7 +96,7 @@ main() {
     log "INFO" "Starting Episode Poster Generator Plugin build"
     
     # Get version and plugin info once at the start
-    log "INFO" "Reading version from Directory.Build.props"
+    log "INFO" "Reading version from build.yaml"
     VERSION=$(get_plugin_version)
     log "SUCCESS" "Version: $VERSION"
     
@@ -141,9 +141,9 @@ main() {
     fi
     log "SUCCESS" "Package restore completed"
     
-    # Build the project
-    log "INFO" "Building project with configuration: $CONFIGURATION"
-    if ! dotnet build "$PROJECT_FILE" --configuration "$CONFIGURATION" --no-restore --verbosity minimal; then
+    # Build the project with version from build.yaml
+    log "INFO" "Building project with configuration: $CONFIGURATION, version: $VERSION"
+    if ! dotnet build "$PROJECT_FILE" --configuration "$CONFIGURATION" --no-restore --verbosity minimal -p:Version="$VERSION"; then
         log "ERROR" "Build failed"
         exit 1
     fi

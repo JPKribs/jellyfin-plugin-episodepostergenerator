@@ -1201,7 +1201,7 @@
                 Dashboard.showLoadingMsg();
 
                 ApiClient.getPluginConfiguration(this.pluginId).then(function(pluginConfig) {
-                    const pluginVersion = pluginConfig.Version || '10.11.2';
+                    const pluginVersion = pluginConfig.Version;
 
                     const template = {
                         name: config.Name,
