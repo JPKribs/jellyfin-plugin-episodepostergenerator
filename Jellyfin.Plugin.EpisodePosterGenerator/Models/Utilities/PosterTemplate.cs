@@ -3,9 +3,6 @@ using System.Text.Json.Serialization;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 {
-    /// <summary>
-    /// Exportable poster template for sharing configurations
-    /// </summary>
     public class PosterTemplate
     {
         [JsonPropertyName("name")]

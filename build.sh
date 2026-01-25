@@ -33,7 +33,8 @@ get_plugin_version() {
     local build_file="build.yaml"
 
     if [[ -f "$build_file" ]]; then
-        local version=$(grep '^version:' "$build_file" | sed 's/version: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
+        # Extract version value, handling both quoted and unquoted formats
+        local version=$(grep '^version:' "$build_file" | cut -d':' -f2 | tr -d ' "')
         if [[ -n "$version" ]]; then
             echo "$version"
             return
@@ -43,20 +44,20 @@ get_plugin_version() {
     echo "0.0.0"
 }
 
-# MARK: Get plugin info from build.yaml  
+# MARK: Get plugin info from build.yaml
 get_plugin_info() {
     local build_file="build.yaml"
     local name="Episode Poster Generator"
     local guid="b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
-    
+
     if [[ -f "$build_file" ]]; then
-        local extracted_name=$(grep '^name:' "$build_file" | sed 's/name: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
-        local extracted_guid=$(grep '^guid:' "$build_file" | sed 's/guid: *"\?\([^"]*\)"\?.*/\1/' | tr -d '"')
-        
+        local extracted_name=$(grep '^name:' "$build_file" | cut -d':' -f2 | tr -d ' "')
+        local extracted_guid=$(grep '^guid:' "$build_file" | cut -d':' -f2 | tr -d ' "')
+
         [[ -n "$extracted_name" ]] && name="$extracted_name"
         [[ -n "$extracted_guid" ]] && guid="$extracted_guid"
     fi
-    
+
     echo "$name|$guid"
 }
 

@@ -1,8 +1,5 @@
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 {
-    /// <summary>
-    /// Media container formats for episode processing
-    /// </summary>
     public enum MediaContainer
     {
         Unknown,
@@ -19,12 +16,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         WEBM
     }
 
-    /// <summary>
-    /// Extension methods for MediaContainer enum
-    /// </summary>
     public static class MediaContainerExtensions
     {
-        // MARK: FromString
+        // FromString
+        // Converts a container format string to the corresponding MediaContainer enum value.
         public static MediaContainer FromString(string? containerString)
         {
             if (string.IsNullOrEmpty(containerString))
@@ -47,14 +42,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             };
         }
 
-        // MARK: FromFileExtension
+        // FromFileExtension
+        // Determines the media container type from a file path's extension.
         public static MediaContainer FromFileExtension(string? filePath)
         {
             if (string.IsNullOrEmpty(filePath))
                 return MediaContainer.Unknown;
 
             var extension = System.IO.Path.GetExtension(filePath).TrimStart('.').ToLowerInvariant();
-            
+
             return extension switch
             {
                 "avi" => MediaContainer.AVI,

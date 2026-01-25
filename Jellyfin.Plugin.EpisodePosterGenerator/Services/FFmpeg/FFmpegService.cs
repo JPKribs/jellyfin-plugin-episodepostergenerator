@@ -30,7 +30,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private readonly BrightnessService _brightnessService;
         private readonly HardwareValidationService _validationService;
 
-        // MARK: Constructor
+        // Constructor
+        // Initializes FFmpeg service with hardware and software extraction strategies.
         public FFmpegService(
             ILogger<FFmpegService> logger,
             IServerConfigurationManager configurationManager,
@@ -49,7 +50,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             _validationService = validationService;
         }
 
-        // MARK: ExtractSceneAsync
+        // ExtractSceneAsync
+        // Extracts a high-quality frame from video using a fallback strategy chain.
         public async Task<string?> ExtractSceneAsync(
             EpisodeMetadata metadata,
             PosterSettings config,
@@ -90,6 +92,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             string? bestFramePath = null;
 
+            // Strategy 1: HWA + Tone Mapping (best quality for HDR content)
             if (config.EnableHWA && hardwareValidated && encodingOptions.EnableTonemapping && needsToneMapping)
             {
                 _logger.LogInformation("Attempting to use HWA with tone mapping");
@@ -105,6 +108,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 _logger.LogWarning("HWA with tone mapping failed, falling back to HWA without tone mapping");
             }
 
+            // Strategy 2: HWA only (fast, no tone mapping)
             if (config.EnableHWA && hardwareValidated)
             {
                 if (needsToneMapping)
@@ -136,6 +140,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 _logger.LogInformation("Hardware acceleration disabled, using software");
             }
 
+            // Strategy 3: Software + Tone Mapping (slower but reliable for HDR)
             if (encodingOptions.EnableTonemapping && needsToneMapping)
             {
                 _logger.LogInformation("Attempting software with tone mapping");
@@ -151,6 +156,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 _logger.LogWarning("Software with tone mapping failed, falling back to software without tone mapping");
             }
 
+            // Strategy 4: Software only (final fallback)
             if (needsToneMapping)
             {
                 _logger.LogInformation("Final fallback to software without tone mapping");
@@ -174,7 +180,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return null;
         }
 
-        // MARK: TryExtractionStrategy
+        // TryExtractionStrategy
+        // Attempts frame extraction with specified hardware/tone mapping settings, tracking best quality frame.
         private async Task<string?> TryExtractionStrategy(
             EpisodeMetadata metadata,
             PosterSettings config,
@@ -232,6 +239,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 {
                     if (File.Exists(outputPath)) File.Delete(outputPath);
 
+                    // Hardware failures are usually systemic - give up early
                     if (useHardware && attempt < 3)
                     {
                         _logger.LogWarning("{Method}: Failed on attempt {Attempt} - hardware likely not working, giving up", methodName, attempt + 1);
@@ -248,7 +256,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 var actualBrightness = GetFrameBrightness(outputPath);
                 var actualSharpness = GetFrameSharpness(outputPath);
                 var qualityScore = CalculateFrameQualityScore(actualBrightness, actualSharpness, isHDR);
-                
+
                 var brightnessOk = _brightnessService.IsFrameBrightEnough(outputPath, brightnessThreshold);
                 var sharpnessOk = actualSharpness >= SharpnessThreshold;
                 var qualityOk = brightnessOk && sharpnessOk;
@@ -259,6 +267,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                         methodName, attempt + 1, actualBrightness, brightnessOk, actualSharpness, sharpnessOk, qualityScore);
                 }
 
+                // Found a frame meeting both brightness and sharpness thresholds
                 if (qualityOk)
                 {
                     if (bestFramePath != null && File.Exists(bestFramePath))
@@ -268,6 +277,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     return outputPath;
                 }
 
+                // Track best frame seen so far
                 if (qualityScore > bestQualityScore)
                 {
                     if (bestFramePath != null && File.Exists(bestFramePath))
@@ -282,6 +292,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     if (File.Exists(outputPath)) File.Delete(outputPath);
                 }
 
+                // Early exit for HDR content if we have a reasonably good frame
                 if (isHDR && qualityScore > 0.6 && attempt > 5)
                 {
                     _logger.LogInformation("{Method}: Found reasonably good HDR frame after {Attempts} attempts (score: {Score:F3}), stopping search",
@@ -301,7 +312,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return null;
         }
 
-        // MARK: ApplyFinalProcessing
+        // ApplyFinalProcessing
+        // Applies HDR brightness adjustment if configured.
         private Task<string> ApplyFinalProcessing(string framePath, PosterSettings config, bool isHDR)
         {
             if (isHDR && config.BrightenHDR > 0)
@@ -313,7 +325,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return Task.FromResult(framePath);
         }
 
-        // MARK: GenerateSeekTime
+        // GenerateSeekTime
+        // Generates a random seek time within the configured extraction window.
         private int GenerateSeekTime(double videoDurationSeconds, int attempt, PosterSettings config)
         {
             var random = new Random();
@@ -333,7 +346,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return (int)(random.NextDouble() * (endTime - startTime) + startTime);
         }
 
-        // MARK: GetFrameBrightness
+        // GetFrameBrightness
+        // Calculates average brightness of an image using luminance formula.
         private double GetFrameBrightness(string filePath)
         {
             try
@@ -351,6 +365,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     for (int x = 0; x < bitmap.Width; x += stepSize)
                     {
                         var pixel = bitmap.GetPixel(x, y);
+                        // ITU-R BT.709 luminance coefficients
                         var brightness = (0.2126 * pixel.Red + 0.7152 * pixel.Green + 0.0722 * pixel.Blue) / 255.0;
                         totalBrightness += brightness;
                         sampleCount++;
@@ -365,7 +380,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: GetFrameSharpness
+        // GetFrameSharpness
+        // Calculates sharpness using Laplacian variance to detect motion blur.
         private double GetFrameSharpness(string filePath)
         {
             try
@@ -379,6 +395,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 double sumLaplacian = 0;
                 int count = 0;
 
+                // Laplacian kernel: detects edges by measuring second derivative
                 for (int y = 1; y < height - 1; y++)
                 {
                     for (int x = 1; x < width - 1; x++)
@@ -395,6 +412,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                         double leftGray = 0.2126 * left.Red + 0.7152 * left.Green + 0.0722 * left.Blue;
                         double rightGray = 0.2126 * right.Red + 0.7152 * right.Green + 0.0722 * right.Blue;
 
+                        // Laplacian = 4*center - neighbors (measures edge intensity)
                         double laplacian = Math.Abs(4 * centerGray - topGray - bottomGray - leftGray - rightGray);
                         sumLaplacian += laplacian * laplacian;
                         count++;
@@ -409,19 +427,22 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: CalculateFrameQualityScore
+        // CalculateFrameQualityScore
+        // Combines brightness and sharpness into a weighted quality score.
         private double CalculateFrameQualityScore(double brightness, double sharpness, bool isHDR)
         {
             double normalizedBrightness = Math.Min(brightness / BrightnessThreshold, 1.0);
             double normalizedSharpness = Math.Min(sharpness / SharpnessThreshold, 1.0);
-            
+
+            // HDR content prioritizes brightness; SDR prioritizes sharpness
             double brightnessWeight = isHDR ? 0.6 : 0.4;
             double sharpnessWeight = 1.0 - brightnessWeight;
-            
+
             return (normalizedBrightness * brightnessWeight) + (normalizedSharpness * sharpnessWeight);
         }
 
-        // MARK: RunFFmpegAsync
+        // RunFFmpegAsync
+        // Executes FFmpeg process and validates output file was created.
         private async Task<bool> RunFFmpegAsync(string ffmpegPath, string arguments, string outputPath, CancellationToken cancellationToken)
         {
             try
@@ -467,14 +488,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: AnalyzeFFmpegError
+        // AnalyzeFFmpegError
+        // Categorizes FFmpeg stderr output into known error types for better diagnostics.
         private string AnalyzeFFmpegError(string stderr)
         {
             if (string.IsNullOrWhiteSpace(stderr))
                 return "Unknown";
-            
+
             var lower = stderr.ToLowerInvariant();
-            
+
             if (lower.Contains("cannot load opencl", StringComparison.Ordinal) || lower.Contains("failed to set value 'opencl", StringComparison.Ordinal))
                 return "OpenCL unavailable";
             if (lower.Contains("cannot load cuda", StringComparison.Ordinal) || lower.Contains("cuda", StringComparison.Ordinal))
@@ -493,7 +515,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 return "File access error";
             if (lower.Contains("invalid", StringComparison.Ordinal) && lower.Contains("codec", StringComparison.Ordinal))
                 return "Unsupported codec";
-            
+
             return "Unknown FFmpeg error";
         }
     }

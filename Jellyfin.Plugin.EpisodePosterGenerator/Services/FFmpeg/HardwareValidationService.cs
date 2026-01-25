@@ -18,12 +18,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private readonly SemaphoreSlim _cacheLock = new(1, 1);
         private bool _disposed;
 
+        // HardwareValidationService
+        // Initializes the hardware validation service with a logger.
         public HardwareValidationService(ILogger<HardwareValidationService> logger)
         {
             _logger = logger;
         }
 
-        // MARK: ValidateHardwareAcceleration
+        // ValidateHardwareAcceleration
+        // Checks if the specified hardware acceleration type is available and functional.
         public async Task<bool> ValidateHardwareAcceleration(
             HardwareAccelerationType hwAccel,
             EncodingOptions encodingOptions,
@@ -48,7 +51,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: TestHardwareDevice
+        // TestHardwareDevice
+        // Runs a test FFmpeg command to verify hardware device availability.
         private async Task<bool> TestHardwareDevice(
             HardwareAccelerationType hwAccel,
             EncodingOptions encodingOptions,
@@ -62,6 +66,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             if (string.IsNullOrEmpty(initArgs))
                 return false;
 
+            // FFmpeg test command: init hardware device then encode 1 frame from null source to verify device works
             var testArgs = $"{initArgs} -f lavfi -i nullsrc=s=64x64:d=0.1 -frames:v 1 -f null -";
 
             try
@@ -98,7 +103,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: GetHardwareInitArgs
+        // GetHardwareInitArgs
+        // Returns FFmpeg hardware device initialization arguments for the specified acceleration type.
         private string GetHardwareInitArgs(HardwareAccelerationType hwAccel)
         {
             return hwAccel switch
@@ -112,7 +118,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             };
         }
 
-        // MARK: ClearCache
+        // ClearCache
+        // Clears the cached hardware validation results.
         public async Task ClearCache()
         {
             await _cacheLock.WaitAsync().ConfigureAwait(false);
@@ -126,13 +133,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: Dispose
+        // Dispose
+        // Releases managed resources used by the service.
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
+        // Dispose
+        // Releases managed resources if disposing is true.
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed)

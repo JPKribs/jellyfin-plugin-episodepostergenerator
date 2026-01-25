@@ -1,8 +1,5 @@
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 {
-    /// <summary>
-    /// Supported file formats for generated posters
-    /// </summary>
     public enum PosterFileType
     {
         JPEG,
@@ -10,12 +7,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         WEBP
     }
 
-    /// <summary>
-    /// Extension methods for PosterFileType enum
-    /// </summary>
     public static class PosterFileTypeExtensions
     {
-        // MARK: GetFileExtension
+        // GetFileExtension
+        // Returns the file extension for the specified poster file type.
         public static string GetFileExtension(this PosterFileType fileType)
         {
             return fileType switch
@@ -27,7 +22,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             };
         }
 
-        // MARK: GetMimeType
+        // GetMimeType
+        // Returns the MIME type for the specified poster file type.
         public static string GetMimeType(this PosterFileType fileType)
         {
             return fileType switch
@@ -39,14 +35,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             };
         }
 
-        // MARK: FromFileExtension
+        // FromFileExtension
+        // Converts a file extension to the corresponding PosterFileType.
         public static PosterFileType FromFileExtension(string? extension)
         {
             if (string.IsNullOrEmpty(extension))
                 return PosterFileType.JPEG;
 
             var ext = extension.TrimStart('.').ToLowerInvariant();
-            
+
             return ext switch
             {
                 "jpg" or "jpeg" => PosterFileType.JPEG,
@@ -56,7 +53,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             };
         }
 
-        // MARK: FromMimeType
+        // FromMimeType
+        // Converts a MIME type to the corresponding PosterFileType.
         public static PosterFileType FromMimeType(string? mimeType)
         {
             if (string.IsNullOrEmpty(mimeType))
@@ -71,7 +69,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             };
         }
 
-        // MARK: IsLossless
+        // IsLossless
+        // Determines if the specified file type uses lossless compression.
         public static bool IsLossless(this PosterFileType fileType)
         {
             return fileType switch
@@ -81,7 +80,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             };
         }
 
-        // MARK: SupportsTransparency
+        // SupportsTransparency
+        // Determines if the specified file type supports transparency.
         public static bool SupportsTransparency(this PosterFileType fileType)
         {
             return fileType switch

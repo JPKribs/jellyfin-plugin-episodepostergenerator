@@ -1,8 +1,5 @@
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 {
-    /// <summary>
-    /// Video codecs for episode processing
-    /// </summary>
     public enum VideoCodec
     {
         Unknown,
@@ -32,12 +29,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         WMV3
     }
 
-    /// <summary>
-    /// Extension methods for VideoCodec enum
-    /// </summary>
     public static class VideoCodecExtensions
     {
-        // MARK: FromString
+        // FromString
+        // Converts a codec string identifier to the corresponding VideoCodec enum value.
         public static VideoCodec FromString(string? codecString)
         {
             if (string.IsNullOrEmpty(codecString))

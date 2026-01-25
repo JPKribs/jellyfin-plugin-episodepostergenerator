@@ -10,58 +10,40 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Database;
 
-/// <summary>
-/// SQLite database service for persistent episode tracking storage
-/// </summary>
 public sealed class EpisodeTrackingDatabase : IDisposable
 {
-    /// <summary>
-    /// Logger for database operations and error reporting
-    /// </summary>
     private readonly ILogger<EpisodeTrackingDatabase> _logger;
-
-    /// <summary>
-    /// File path to the SQLite database
-    /// </summary>
     private readonly string _databasePath;
-
-    /// <summary>
-    /// SQLite connection for database operations
-    /// </summary>
     private SqliteConnection? _connection;
-
-    /// <summary>
-    /// Tracks disposal state to prevent multiple disposal
-    /// </summary>
     private bool _disposed;
 
-    /// <summary>
-    /// Gets the database file path for administrative purposes
-    /// </summary>
     public string DatabasePath => _databasePath;
 
-    // MARK: Constructor
+    // EpisodeTrackingDatabase
+    // Initializes the database service with the path to the SQLite database file.
     public EpisodeTrackingDatabase(ILogger<EpisodeTrackingDatabase> logger, IApplicationPaths appPaths)
     {
         _logger = logger;
-        
+
         var dataPath = Path.Combine(appPaths.DataPath, "episodeposter");
         Directory.CreateDirectory(dataPath);
         _databasePath = Path.Combine(dataPath, "episode_tracking.db");
     }
 
-    // MARK: InitializeAsync
+    // InitializeAsync
+    // Opens the database connection and creates required tables.
     public async Task InitializeAsync()
     {
         _connection = new SqliteConnection($"Data Source={_databasePath}");
         await _connection.OpenAsync().ConfigureAwait(false);
-        
+
         await CreateTablesAsync().ConfigureAwait(false);
-        
+
         _logger.LogInformation("Episode tracking database initialized at: {DatabasePath}", _databasePath);
     }
 
-    // MARK: CreateTablesAsync
+    // CreateTablesAsync
+    // Creates the ProcessedEpisodes table if it does not exist.
     private async Task CreateTablesAsync()
     {
         const string createTableSql = """
@@ -79,12 +61,13 @@ public sealed class EpisodeTrackingDatabase : IDisposable
         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
-    // MARK: GetProcessedEpisodeAsync
+    // GetProcessedEpisodeAsync
+    // Retrieves a processed episode record by its ID from the database.
     public async Task<ProcessedEpisodeRecord?> GetProcessedEpisodeAsync(Guid episodeId)
     {
         const string sql = """
             SELECT EpisodeId, LastProcessed, VideoFilePath, VideoFileSize, VideoFileLastModified, ConfigurationHash
-            FROM ProcessedEpisodes 
+            FROM ProcessedEpisodes
             WHERE EpisodeId = @episodeId
             """;
 
@@ -108,11 +91,12 @@ public sealed class EpisodeTrackingDatabase : IDisposable
         return null;
     }
 
-    // MARK: SaveProcessedEpisodeAsync
+    // SaveProcessedEpisodeAsync
+    // Saves or updates a processed episode record in the database.
     public async Task SaveProcessedEpisodeAsync(ProcessedEpisodeRecord record)
     {
         const string sql = """
-            INSERT OR REPLACE INTO ProcessedEpisodes 
+            INSERT OR REPLACE INTO ProcessedEpisodes
             (EpisodeId, LastProcessed, VideoFilePath, VideoFileSize, VideoFileLastModified, ConfigurationHash)
             VALUES (@episodeId, @lastProcessed, @videoFilePath, @videoFileSize, @videoFileLastModified, @configurationHash)
             """;
@@ -128,7 +112,8 @@ public sealed class EpisodeTrackingDatabase : IDisposable
         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
-    // MARK: RemoveProcessedEpisodeAsync
+    // RemoveProcessedEpisodeAsync
+    // Removes a processed episode record from the database by ID.
     public async Task RemoveProcessedEpisodeAsync(Guid episodeId)
     {
         const string sql = "DELETE FROM ProcessedEpisodes WHERE EpisodeId = @episodeId";
@@ -139,18 +124,20 @@ public sealed class EpisodeTrackingDatabase : IDisposable
         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
-    // MARK: GetProcessedCountAsync
+    // GetProcessedCountAsync
+    // Returns the total count of processed episodes in the database.
     public async Task<int> GetProcessedCountAsync()
     {
         const string sql = "SELECT COUNT(*) FROM ProcessedEpisodes";
 
         using var command = new SqliteCommand(sql, _connection);
         var result = await command.ExecuteScalarAsync().ConfigureAwait(false);
-        
+
         return Convert.ToInt32(result, CultureInfo.InvariantCulture);
     }
 
-    // MARK: ClearAllProcessedEpisodesAsync
+    // ClearAllProcessedEpisodesAsync
+    // Deletes all processed episode records from the database.
     public async Task ClearAllProcessedEpisodesAsync()
     {
         const string sql = "DELETE FROM ProcessedEpisodes";
@@ -159,7 +146,8 @@ public sealed class EpisodeTrackingDatabase : IDisposable
         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
-    // MARK: GetAllProcessedEpisodesAsync
+    // GetAllProcessedEpisodesAsync
+    // Retrieves all processed episode records from the database.
     public async Task<List<ProcessedEpisodeRecord>> GetAllProcessedEpisodesAsync()
     {
         const string sql = """
@@ -188,7 +176,8 @@ public sealed class EpisodeTrackingDatabase : IDisposable
         return records;
     }
 
-    // MARK: Dispose
+    // Dispose
+    // Releases database resources and closes the connection.
     public void Dispose()
     {
         if (!_disposed)

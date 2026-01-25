@@ -8,68 +8,70 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
-    /// <summary>
-    /// Generates logo-style episode posters with series logo and episode information.
-    /// </summary>
     public class LogoPosterGenerator : BasePosterGenerator
     {
         private readonly ILogger<LogoPosterGenerator> _logger;
 
+        // LogoPosterGenerator
+        // Initializes a new instance of the logo poster generator with logging support.
         public LogoPosterGenerator(ILogger<LogoPosterGenerator> logger)
         {
             _logger = logger;
         }
 
-        // MARK: RenderGraphics
+        // RenderGraphics
+        // Renders configured graphics and the series logo on the poster.
         protected override void RenderGraphics(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
-            // First try to render any configured graphic path (base implementation)
             base.RenderGraphics(skCanvas, episodeMetadata, settings, width, height);
 
-            // Then render the series logo
             RenderSeriesLogo(skCanvas, episodeMetadata, settings, width, height);
         }
 
-        // MARK: RenderTypography
+        // RenderTypography
+        // Renders episode title and code text on the poster.
         protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             var safeArea = GetSafeAreaBounds(width, height, settings);
             float spacing = height * 0.02f;
             float currentY = safeArea.Bottom;
 
-            // Draw episode title if enabled
             if (settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
             {
                 var titleHeight = DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, settings, width, height, currentY, safeArea);
                 currentY -= titleHeight + spacing;
             }
 
-            // Draw episode code if enabled
             if (settings.ShowEpisode)
             {
                 DrawEpisodeCode(skCanvas, episodeMetadata.SeasonNumber ?? 0, episodeMetadata.EpisodeNumberStart ?? 0, settings, width, height, currentY);
             }
         }
 
-        // MARK: LogError
+        // LogError
+        // Logs an error that occurred during logo poster generation.
         protected override void LogError(Exception ex, string? episodeName)
         {
             _logger.LogError(ex, "Failed to generate logo poster for {EpisodeName}", episodeName);
         }
 
-        // MARK: RenderSeriesLogo
+        // RenderSeriesLogo
+        // Renders the series logo image or falls back to text if no logo is available.
         private void RenderSeriesLogo(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, int width, int height)
         {
             var seriesName = episodeMetadata.SeriesName ?? "Unknown Series";
             var logoPath = GetSeriesLogoPath(episodeMetadata);
 
+            // Logo image available
             if (!string.IsNullOrEmpty(logoPath))
                 DrawSeriesLogoImage(canvas, logoPath, config.LogoPosition, config.LogoAlignment, config, width, height);
+            // Fall back to text
             else
                 DrawSeriesLogoText(canvas, seriesName, config.LogoPosition, config.LogoAlignment, config, width, height);
         }
 
-        // MARK: GetSeriesLogoPath
+        // GetSeriesLogoPath
+        // Returns the path to the series logo file if it exists.
         private string? GetSeriesLogoPath(EpisodeMetadata episodeMetadata)
         {
             try
@@ -82,7 +84,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             catch { return null; }
         }
 
-        // MARK: DrawSeriesLogoImage
+        // DrawSeriesLogoImage
+        // Draws the series logo image at the specified position and alignment.
         private void DrawSeriesLogoImage(SKCanvas canvas, string logoPath, Position position, Alignment alignment, PosterSettings config, int width, int height)
         {
             try
@@ -113,7 +116,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             catch { }
         }
 
-        // MARK: DrawSeriesLogoText
+        // DrawSeriesLogoText
+        // Draws the series name as text when no logo image is available.
         private void DrawSeriesLogoText(SKCanvas canvas, string seriesName, Position position, Alignment alignment, PosterSettings config, int width, int height)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize * 1.2f, height);
@@ -160,7 +164,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             }
         }
 
-        // MARK: DrawEpisodeTitle
+        // DrawEpisodeTitle
+        // Draws the episode title with shadow effect and returns the total height used.
         private float DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int width, int height, float bottomY, SKRect safeArea)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
@@ -206,7 +211,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             return totalHeight;
         }
 
-        // MARK: DrawEpisodeCode
+        // DrawEpisodeCode
+        // Draws the formatted episode code with shadow effect.
         private void DrawEpisodeCode(SKCanvas canvas, int seasonNumber, int episodeNumber, PosterSettings config, int width, int height, float bottomY)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, height);
@@ -238,12 +244,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var safeArea = GetSafeAreaBounds(width, height, config);
             var code = EpisodeCodeUtil.FormatEpisodeCode(seasonNumber, episodeNumber);
             var centerX = safeArea.MidX;
-            
+
             canvas.DrawText(code, centerX + 2, bottomY + 2, shadowPaint);
             canvas.DrawText(code, centerX, bottomY, paint);
         }
 
-        // MARK: CalculateLogoX
+        // CalculateLogoX
+        // Calculates the horizontal position for the logo based on alignment.
         private float CalculateLogoX(Alignment alignment, SKRect safeArea, float logoWidth) => alignment switch
         {
             Alignment.Left => safeArea.Left,
@@ -252,7 +259,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             _ => safeArea.Left + (safeArea.Width - logoWidth) / 2f
         };
 
-        // MARK: CalculateLogoY
+        // CalculateLogoY
+        // Calculates the vertical position for the logo based on position.
         private float CalculateLogoY(Position position, SKRect safeArea, float logoHeight) => position switch
         {
             Position.Top => safeArea.Top,
@@ -261,7 +269,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             _ => safeArea.Top + (safeArea.Height - logoHeight) / 2f
         };
 
-        // MARK: GetSKTextAlign
+        // GetSKTextAlign
+        // Converts an Alignment enum value to the corresponding SKTextAlign.
         private SKTextAlign GetSKTextAlign(Alignment alignment) => alignment switch
         {
             Alignment.Left => SKTextAlign.Left,

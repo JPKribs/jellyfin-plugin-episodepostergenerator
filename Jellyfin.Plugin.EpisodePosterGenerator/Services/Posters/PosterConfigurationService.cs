@@ -8,28 +8,28 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
-    /// <summary>
-    /// Manages poster configuration lookup and validation
-    /// </summary>
     public class PosterConfigurationService
     {
         private readonly ILogger<PosterConfigurationService> _logger;
         private Dictionary<Guid, PosterSettings> _seriesLookup = new Dictionary<Guid, PosterSettings>();
         private PosterSettings? _defaultSettings;
 
+        // PosterConfigurationService
+        // Initializes the poster configuration service with logging support.
         public PosterConfigurationService(ILogger<PosterConfigurationService> logger)
         {
             _logger = logger;
         }
 
-        // MARK: Initialize
+        // Initialize
+        // Builds the series-to-settings lookup from the plugin configuration.
         public void Initialize(PluginConfiguration config)
         {
             _seriesLookup.Clear();
             _defaultSettings = null;
 
             var defaults = config.PosterConfigurations.Where(c => c.IsDefault).ToList();
-            
+
             if (defaults.Count == 0)
             {
                 _logger.LogInformation("No default poster configuration found, creating one");
@@ -40,7 +40,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 };
                 config.PosterConfigurations.Insert(0, newDefault);
                 _defaultSettings = newDefault.Settings;
-                
+
                 Plugin.Instance?.SaveConfiguration();
             }
             else if (defaults.Count > 1)
@@ -54,7 +54,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
 
             var duplicates = new List<Guid>();
-            
+
             foreach (var posterConfig in config.PosterConfigurations.Where(c => !c.IsDefault))
             {
                 foreach (var seriesId in posterConfig.SeriesIds)
@@ -71,30 +71,32 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 }
             }
 
-            _logger.LogInformation("Poster configuration initialized: {Count} series-specific configs, {DuplicateCount} duplicates ignored", 
+            _logger.LogInformation("Poster configuration initialized: {Count} series-specific configs, {DuplicateCount} duplicates ignored",
                 _seriesLookup.Count, duplicates.Count);
         }
 
-        // MARK: GetSettingsForEpisode
+        // GetSettingsForEpisode
+        // Returns the poster settings for the episode's series or the default settings.
         public PosterSettings GetSettingsForEpisode(Episode episode)
         {
             if (episode?.Series?.Id == null)
             {
                 _logger.LogDebug("Episode has no series, using default settings");
-                
+
                 if (_defaultSettings == null)
                 {
                     _logger.LogError("Default settings are null, this should never happen. Creating fallback settings.");
                     return new PosterSettings();
                 }
-                
+
                 return _defaultSettings;
             }
 
             return GetSettingsForSeries(episode.Series.Id);
         }
 
-        // MARK: GetSettingsForSeries
+        // GetSettingsForSeries
+        // Returns the poster settings for the specified series ID or the default settings.
         public PosterSettings GetSettingsForSeries(Guid seriesId)
         {
             if (_seriesLookup.TryGetValue(seriesId, out var settings))

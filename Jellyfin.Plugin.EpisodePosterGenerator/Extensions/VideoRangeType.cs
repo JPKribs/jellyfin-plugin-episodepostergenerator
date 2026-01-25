@@ -3,12 +3,10 @@ using Jellyfin.Data.Enums;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 {
-    /// <summary>
-    /// Extension methods for Jellyfin's VideoRangeType enum
-    /// </summary>
     public static class VideoRangeTypeExtensions
     {
-        // MARK: IsHDR
+        // IsHDR
+        // Determines if the video range type represents HDR content.
         public static bool IsHDR(this VideoRangeType videoRangeType)
         {
             return videoRangeType switch
@@ -19,7 +17,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             };
         }
 
-        // MARK: IsDolbyVision
+        // IsDolbyVision
+        // Determines if the video range type is a Dolby Vision variant.
         public static bool IsDolbyVision(this VideoRangeType videoRangeType)
         {
             return videoRangeType switch
@@ -35,7 +34,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             };
         }
 
-        // MARK: FromColorTransferAndPrimaries
+        // FromColorTransferAndPrimaries
+        // Infers the video range type from color transfer and primaries metadata.
         public static VideoRangeType FromColorTransferAndPrimaries(string? colorTransfer, string? colorPrimaries)
         {
             if (string.IsNullOrEmpty(colorTransfer) && string.IsNullOrEmpty(colorPrimaries))
@@ -44,23 +44,18 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             var transfer = colorTransfer?.ToLowerInvariant() ?? string.Empty;
             var primaries = colorPrimaries?.ToLowerInvariant() ?? string.Empty;
 
-            // Check for Dolby Vision first
             if (transfer.Contains("dovi", StringComparison.OrdinalIgnoreCase) || primaries.Contains("dovi", StringComparison.OrdinalIgnoreCase))
                 return VideoRangeType.DOVI;
 
-            // Check for HDR10+
             if (transfer.Contains("smpte428", StringComparison.OrdinalIgnoreCase) || transfer.Contains("hdr10+", StringComparison.OrdinalIgnoreCase))
                 return VideoRangeType.HDR10Plus;
 
-            // Check for HDR10
             if (transfer.Contains("smpte2084", StringComparison.OrdinalIgnoreCase) || transfer.Contains("pq", StringComparison.OrdinalIgnoreCase) || primaries.Contains("bt2020", StringComparison.OrdinalIgnoreCase))
                 return VideoRangeType.HDR10;
 
-            // Check for HLG
             if (transfer.Contains("arib-std-b67", StringComparison.OrdinalIgnoreCase) || transfer.Contains("hlg", StringComparison.OrdinalIgnoreCase))
                 return VideoRangeType.HLG;
 
-            // Default to SDR if no HDR indicators found
             return VideoRangeType.SDR;
         }
     }

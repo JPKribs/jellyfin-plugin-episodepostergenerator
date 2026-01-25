@@ -8,20 +8,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
-    /// <summary>
-    /// Poster with random paintbrush strokes cut out from the overlay layer, revealing the canvas beneath.
-    /// Features episode code and title in the bottom-left corner with brush strokes avoiding that area.
-    /// </summary>
     public class BrushPosterGenerator : BasePosterGenerator
     {
         private readonly ILogger<BrushPosterGenerator> _logger;
 
+        // BrushPosterGenerator
+        // Initializes a new instance of the brush poster generator with logging support.
         public BrushPosterGenerator(ILogger<BrushPosterGenerator> logger)
         {
             _logger = logger;
         }
 
-        // MARK: RenderOverlay
+        // RenderOverlay
+        // Creates an overlay with brush stroke cutouts revealing the canvas beneath.
         protected override void RenderOverlay(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             if (string.IsNullOrEmpty(settings.OverlayColor))
@@ -72,7 +71,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             skCanvas.Restore();
         }
 
-        // MARK: GenerateBrushStrokePath
+        // GenerateBrushStrokePath
+        // Generates a random brush stroke path that avoids the text area.
         private SKPath GenerateBrushStrokePath(int width, int height, SKRect safeArea, SKRect textArea, int seed)
         {
             var random = new Random(seed);
@@ -129,7 +129,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             return strokedPath;
         }
 
-        // MARK: CalculateTextKeepClearArea
+        // CalculateTextKeepClearArea
+        // Calculates the area that should remain clear for text elements.
         private SKRect CalculateTextKeepClearArea(SKRect safeArea, PosterSettings settings, int height)
         {
             var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(settings.EpisodeFontSize, height, settings.PosterSafeArea);
@@ -150,7 +151,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             );
         }
 
-        // MARK: RenderTypography
+        // RenderTypography
+        // Renders the episode code and title text on the poster.
         protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             var safeArea = GetSafeAreaBounds(width, height, settings);
@@ -159,7 +161,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             DrawTitle(skCanvas, episodeMetadata, settings, safeArea, height);
         }
 
-        // MARK: DrawEpisodeCode
+        // DrawEpisodeCode
+        // Draws the episode code in the bottom-left corner of the poster.
         private void DrawEpisodeCode(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, SKRect safeArea, int height)
         {
             var episodeCode = EpisodeCodeUtil.FormatEpisodeCode(
@@ -207,7 +210,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             canvas.DrawText(episodeCode, x, y, textPaint);
         }
 
-        // MARK: DrawTitle
+        // DrawTitle
+        // Draws the episode title in the bottom-left corner of the poster.
         private void DrawTitle(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, SKRect safeArea, int height)
         {
             var title = episodeMetadata.EpisodeName;
@@ -256,7 +260,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             }
         }
 
-        // MARK: LogError
+        // LogError
+        // Logs an error that occurred during brush poster generation.
         protected override void LogError(Exception ex, string? episodeName)
         {
             _logger.LogError(ex, "Failed to generate Brush poster for episode {EpisodeName}", episodeName);

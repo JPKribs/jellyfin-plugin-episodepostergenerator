@@ -3,10 +3,6 @@ using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
 {
-    /// <summary>
-    /// Generates realistic paint brush stroke paths programmatically.
-    /// Creates organic, rough-edged strokes that mimic real paint brush textures.
-    /// </summary>
     public class BrushStrokeUtil
     {
         private readonly Random _random;
@@ -16,12 +12,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
             _random = new Random(seed);
         }
 
-        // MARK: BuildStrokePath
+        // BuildStrokePath
+        // Builds a complete brush stroke path with multiple strokes, edge textures, and splatters.
         public SKPath BuildStrokePath(SKRect bounds, SKRect textArea, float baseWidth)
         {
             var combinedPath = new SKPath();
 
-            // Expand text area with buffer zone
             var textBuffer = bounds.Height * 0.08f;
             var textKeepClear = new SKRect(
                 textArea.Left - textBuffer,
@@ -30,7 +26,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
                 textArea.Bottom + textBuffer
             );
 
-            // Create 2-3 major brush strokes
             int strokeCount = 2 + _random.Next(2);
 
             for (int i = 0; i < strokeCount; i++)
@@ -43,7 +38,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
                 }
             }
 
-            // Add edge texture - smaller strokes at the main stroke edges
             int edgeStrokeCount = 5 + _random.Next(10);
             for (int i = 0; i < edgeStrokeCount; i++)
             {
@@ -55,7 +49,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
                 }
             }
 
-            // Add paint splatters
             int splatCount = 20 + _random.Next(30);
             for (int i = 0; i < splatCount; i++)
             {
@@ -70,33 +63,27 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
             return combinedPath;
         }
 
-        // MARK: CreateBrushStroke
+        // CreateBrushStroke
+        // Creates a single organic brush stroke path using bezier curves and wave modulation.
         private SKPath CreateBrushStroke(SKRect bounds, SKRect textArea, int index, int total)
         {
             var path = new SKPath();
 
-            // Position stroke vertically, staggered
             float baseY = bounds.Top + (bounds.Height * 0.25f) + (index / (float)total) * (bounds.Height * 0.2f);
-
-            // Vary position randomly
             baseY += (float)(_random.NextDouble() - 0.5) * bounds.Height * 0.15f;
 
-            // Avoid text area
             if (baseY + bounds.Height * 0.12f > textArea.Top)
             {
                 baseY = textArea.Top - bounds.Height * 0.15f;
             }
 
-            // Stroke extends beyond bounds for natural look
             float startX = bounds.Left - bounds.Width * 0.05f;
             float endX = bounds.Right + bounds.Width * 0.05f;
 
-            // Create stroke using bezier curves for smoothness
             int segments = 40;
             var topPoints = new SKPoint[segments + 1];
             var bottomPoints = new SKPoint[segments + 1];
 
-            // Random stroke characteristics
             float verticalWave = bounds.Height * (0.02f + (float)_random.NextDouble() * 0.04f);
             float baseHeight = bounds.Height * (0.06f + (float)_random.NextDouble() * 0.04f);
 
@@ -105,7 +92,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
                 float t = i / (float)segments;
                 float x = startX + (endX - startX) * t;
 
-                // Smooth wave using multiple sine waves
+                // Create smooth wave using multiple sine waves for organic variation
                 float wave = (float)(
                     Math.Sin(t * Math.PI * 2.3) * 0.5 +
                     Math.Sin(t * Math.PI * 4.7) * 0.3 +
@@ -113,11 +100,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
                 );
                 float y = baseY + wave * verticalWave;
 
-                // Width variation with natural tapering
                 float widthMult = CalculateNaturalWidth(t);
                 float halfHeight = baseHeight * widthMult * 0.5f;
 
-                // Add organic edge variation using smooth noise
+                // Add organic edge variation using perlin noise for natural brush texture
                 float topEdge = PerlinNoise(t * 10f + index) * halfHeight * 0.3f;
                 float bottomEdge = PerlinNoise(t * 10f + index + 100) * halfHeight * 0.3f;
 
@@ -125,10 +111,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
                 bottomPoints[i] = new SKPoint(x, y + halfHeight + bottomEdge);
             }
 
-            // Build path with smooth curves
             path.MoveTo(topPoints[0]);
 
-            // Use quadratic bezier for smoother curves
             for (int i = 1; i < topPoints.Length; i++)
             {
                 if (i % 3 == 0 && i < topPoints.Length - 1)
@@ -141,7 +125,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
                 }
             }
 
-            // Add bottom edge in reverse
             for (int i = bottomPoints.Length - 1; i >= 0; i--)
             {
                 if (i % 3 == 0 && i > 0)
@@ -158,10 +141,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
             return path;
         }
 
-        // MARK: CreateEdgeStroke
+        // CreateEdgeStroke
+        // Creates a small irregular shape for edge texture effects.
         private SKPath? CreateEdgeStroke(SKRect bounds, SKRect textArea)
         {
-            // Small jagged pieces at the edges for texture
             float x = bounds.Left + (float)_random.NextDouble() * bounds.Width;
             float y = bounds.Top + (float)_random.NextDouble() * (textArea.Top - bounds.Top);
 
@@ -174,7 +157,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
             float height = bounds.Height * (0.005f + (float)_random.NextDouble() * 0.02f);
             float angle = (float)_random.NextDouble() * 360f;
 
-            // Create small irregular shape
             int points = 6 + _random.Next(6);
             for (int i = 0; i < points; i++)
             {
@@ -194,7 +176,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
             return path;
         }
 
-        // MARK: CreatePaintSplatter
+        // CreatePaintSplatter
+        // Creates an irregular paint splatter blob with optional satellite drops.
         private SKPath? CreatePaintSplatter(SKRect bounds, SKRect textArea)
         {
             float x = bounds.Left + (float)_random.NextDouble() * bounds.Width;
@@ -203,16 +186,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
             if (y > textArea.Top - bounds.Height * 0.08f)
                 return null;
 
-            // Most splatters are tiny
             float baseSize = bounds.Height * (0.002f + (float)_random.NextDouble() * 0.006f);
 
-            // Occasional larger splatters
             if (_random.NextDouble() < 0.15)
                 baseSize *= 2f;
 
             var path = new SKPath();
 
-            // Irregular blob shape
             int points = 5 + _random.Next(4);
             for (int i = 0; i < points; i++)
             {
@@ -229,7 +209,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
             }
             path.Close();
 
-            // Add tiny satellite drops
             if (_random.NextDouble() < 0.25)
             {
                 float dropX = x + (float)(_random.NextDouble() - 0.5) * baseSize * 4f;
@@ -240,49 +219,48 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
             return path;
         }
 
-        // MARK: CalculateNaturalWidth
+        // CalculateNaturalWidth
+        // Calculates natural brush width tapering based on stroke position.
         private float CalculateNaturalWidth(float t)
         {
-            // More natural tapering - gradual at start, sharper at end
+            // Gradual fade in at stroke start, sharper fade out at end to simulate brush lift
             if (t < 0.08f)
             {
-                // Gradual fade in
                 return (float)Math.Pow(t / 0.08f, 0.7) * 0.5f;
             }
             else if (t > 0.92f)
             {
-                // Sharp fade out like brush lift
                 return (float)Math.Pow((1f - t) / 0.08f, 1.3) * 0.6f;
             }
             else
             {
-                // Middle section with subtle variation
+                // Middle section with subtle sinusoidal variation for natural brush texture
                 float variation = (float)Math.Sin(t * Math.PI * 3.7) * 0.12f;
                 return 1f + variation;
             }
         }
 
-        // MARK: PerlinNoise
+        // PerlinNoise
+        // Generates simplified Perlin-like noise for smooth organic variation.
         private float PerlinNoise(float x)
         {
-            // Simplified Perlin-like noise for smooth organic variation
             int xi = (int)Math.Floor(x);
             float xf = x - xi;
 
-            // Smoothstep interpolation
+            // Smoothstep interpolation for natural transitions
             float u = xf * xf * (3f - 2f * xf);
 
-            // Hash function for pseudo-random values
             float a = Hash(xi);
             float b = Hash(xi + 1);
 
             return a * (1f - u) + b * u;
         }
 
-        // MARK: Hash
+        // Hash
+        // Generates a pseudo-random hash value for consistent noise generation.
         private float Hash(int x)
         {
-            // Simple hash for consistent pseudo-random values
+            // Integer hash function for deterministic pseudo-random values
             x = (x << 13) ^ x;
             return ((x * (x * x * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0f - 1f;
         }

@@ -3,23 +3,19 @@ using System.Globalization;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils;
 
-/// <summary>
-/// Number to text conversion utility for poster generation.
-/// </summary>
 public static class NumberUtils
 {
-    /// <summary>Numbers 0-19 in uppercase English</summary>
     private static readonly string[] UnitsMap = {
         "ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE",
         "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN"
     };
 
-    /// <summary>Tens values (0, 10, 20, ..., 90) in uppercase English</summary>
     private static readonly string[] TensMap = {
         "ZERO", "TEN", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"
     };
 
-    // MARK: NumberToWords
+    // NumberToWords
+    // Converts a number to its uppercase English word representation.
     public static string NumberToWords(int number)
     {
         if (number < 0)
@@ -38,7 +34,8 @@ public static class NumberUtils
         return number.ToString(CultureInfo.InvariantCulture);
     }
 
-    // MARK: NumberToRomanNumeral
+    // NumberToRomanNumeral
+    // Converts a number to its Roman numeral representation.
     public static string NumberToRomanNumeral(int number)
     {
         if (number <= 0 || number > 3999)

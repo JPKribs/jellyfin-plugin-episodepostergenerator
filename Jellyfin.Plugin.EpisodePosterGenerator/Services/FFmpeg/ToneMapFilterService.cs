@@ -12,13 +12,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
     {
         private readonly ILogger<ToneMapFilterService> _logger;
 
-        // MARK: Constructor
         public ToneMapFilterService(ILogger<ToneMapFilterService> logger)
         {
             _logger = logger;
         }
 
-        // MARK: GetToneMapFilter
+        // GetToneMapFilter
+        // Returns the appropriate FFmpeg tone mapping filter chain for the video's HDR type and hardware.
         public static string GetToneMapFilter(
             EncodingOptions options,
             VideoMetadata video,
@@ -31,14 +31,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 return string.Empty;
             }
 
-            // Detect HDR if unknown but characteristics suggest HDR
+            // Infer HDR10 from video characteristics when VideoRangeType is Unknown
             if (video.VideoHdrType == VideoRangeType.Unknown && IsLikelyHDR(video))
             {
                 logger.LogWarning("HDR detected by video characteristics (Unknown VideoRangeType but 10-bit/BT.2020), inferring HDR10");
                 video.VideoHdrType = VideoRangeType.HDR10;
             }
 
-            // Check if tone mapping is needed based on VideoRangeType
             if (!RequiresToneMapping(video.VideoHdrType))
             {
                 logger.LogDebug("VideoRangeType {RangeType} does not require tone mapping", video.VideoHdrType);
@@ -56,21 +55,22 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             };
         }
 
-        // MARK: RequiresToneMapping
+        // RequiresToneMapping
+        // Determines if a VideoRangeType needs HDR-to-SDR tone mapping.
         private static bool RequiresToneMapping(VideoRangeType rangeType)
         {
             return rangeType switch
             {
-                // SDR content - NO tone mapping needed
+                // SDR content - no tone mapping
                 VideoRangeType.SDR => false,
                 VideoRangeType.Unknown => false,
 
-                // Pure HDR content - tone mapping REQUIRED
+                // Pure HDR - requires tone mapping
                 VideoRangeType.HDR10 => true,
                 VideoRangeType.HDR10Plus => true,
                 VideoRangeType.HLG => true,
 
-                // Dolby Vision variants - tone mapping REQUIRED
+                // Dolby Vision variants - requires tone mapping
                 VideoRangeType.DOVI => true,
                 VideoRangeType.DOVIWithHDR10 => true,
                 VideoRangeType.DOVIWithHDR10Plus => true,
@@ -78,88 +78,89 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 VideoRangeType.DOVIWithEL => true,
                 VideoRangeType.DOVIWithELHDR10Plus => true,
 
-                // Dolby Vision with SDR fallback - NO tone mapping needed (already has SDR layer)
+                // DV with SDR fallback already has SDR layer
                 VideoRangeType.DOVIWithSDR => false,
 
-                // Invalid DV configuration - treat as HDR10, tone mapping REQUIRED
+                // Invalid DV - treat as HDR10
                 VideoRangeType.DOVIInvalid => true,
 
                 _ => false
             };
         }
 
-        // MARK: IsLikelyHDR
+        // IsLikelyHDR
+        // Detects HDR by checking bit depth and color space when VideoRangeType is unknown.
         private static bool IsLikelyHDR(VideoMetadata video)
         {
-            return video.VideoColorBits >= 10 || 
+            return video.VideoColorBits >= 10 ||
                 video.VideoColorSpace?.Contains("2020", StringComparison.OrdinalIgnoreCase) == true ||
                 video.VideoColorSpace?.Contains("2100", StringComparison.OrdinalIgnoreCase) == true;
         }
 
-        // MARK: GetVppToneMapFilter
+        // GetVppToneMapFilter
+        // Builds QSV/VAAPI hardware tone mapping filter using tonemap_vaapi.
         private static string GetVppToneMapFilter(EncodingOptions options, VideoRangeType rangeType, ILogger logger)
         {
-            // QSV/VAAPI hardware tone mapping
             var transferFunction = GetTransferFunction(rangeType);
             logger.LogDebug("Using VPP tone mapping with transfer function: {Transfer}", transferFunction);
 
+            // setparams sets input color characteristics, tonemap_vaapi converts to BT.709 SDR
             return $"setparams=color_primaries=bt2020:color_trc={transferFunction}:colorspace=bt2020nc," +
                    "tonemap_vaapi=format=nv12:p=bt709:t=bt709:m=bt709";
         }
 
-        // MARK: GetVideoToolboxToneMapFilter
+        // GetVideoToolboxToneMapFilter
+        // Builds Apple VideoToolbox tone mapping filter using scale_vt.
         private static string GetVideoToolboxToneMapFilter(EncodingOptions options, VideoRangeType rangeType, ILogger logger)
         {
-            // VideoToolbox handles tone mapping through scale_vt
             logger.LogDebug("Using VideoToolbox tone mapping for {RangeType}", rangeType);
 
+            // scale_vt handles tone mapping and color space conversion on Apple hardware
             return "scale_vt=format=nv12:color_matrix=bt709:color_primaries=bt709:color_transfer=bt709";
         }
 
-        // MARK: GetSoftwareToneMapFilter
+        // GetSoftwareToneMapFilter
+        // Builds software tone mapping filter chain using zscale and tonemapx.
         private static string GetSoftwareToneMapFilter(EncodingOptions options, VideoRangeType rangeType, ILogger logger)
         {
             var algorithm = GetToneMappingAlgorithm(options);
             var npl = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
 
-            // Use proper zscale conversion chain before tonemapx (matches Jellyfin mainline)
-            // This is critical for proper color space conversion from HDR to SDR
+            // zscale chain: convert color space, then tonemapx applies the tone curve
+            // tin=transfer input, pin=primaries input, min=matrix input
+            // t=linear converts to linear light for proper tone mapping math
 
-            // For Dolby Vision content, we need to explicitly set input parameters
             if (IsDolbyVision(rangeType))
             {
                 logger.LogDebug("Using Dolby Vision-aware tone mapping with tonemapx for {RangeType}", rangeType);
 
-                // For DV content, we need to explicitly specify input color parameters
-                // to ensure proper interpretation of the BL (base layer) which is HDR10-compatible
-                // tin=smpte2084 explicitly sets input transfer to PQ
-                // pin=bt2020 explicitly sets input primaries
-                // min=bt2020nc explicitly sets input matrix
+                // DV base layer is HDR10-compatible, explicitly set PQ transfer
                 return $"zscale=tin=smpte2084:pin=bt2020:min=bt2020nc:t=linear:npl={npl}," +
                        $"format=gbrpf32le,zscale=p=bt709," +
                        $"tonemapx=tonemap={algorithm}:desat=0:peak={npl}:t=bt709:m=bt709:p=bt709:format=yuv420p";
             }
             else if (rangeType == VideoRangeType.HLG)
             {
-                // HLG uses different transfer function (arib-std-b67)
                 logger.LogDebug("Using HLG-specific tone mapping");
 
+                // HLG uses arib-std-b67 transfer function instead of smpte2084 (PQ)
                 return $"zscale=tin=arib-std-b67:pin=bt2020:min=bt2020nc:t=linear:npl={npl}," +
                        $"format=gbrpf32le,zscale=p=bt709," +
                        $"tonemapx=tonemap={algorithm}:desat=0:peak={npl}:t=bt709:m=bt709:p=bt709:format=yuv420p";
             }
             else
             {
-                // Standard HDR10/HDR10+ tone mapping
                 logger.LogDebug("Using standard HDR10 tone mapping with zscale chain for {RangeType}", rangeType);
 
+                // Standard HDR10/HDR10+ uses PQ (smpte2084) transfer
                 return $"zscale=tin=smpte2084:pin=bt2020:min=bt2020nc:t=linear:npl={npl}," +
                        $"format=gbrpf32le,zscale=p=bt709," +
                        $"tonemapx=tonemap={algorithm}:desat=0:peak={npl}:t=bt709:m=bt709:p=bt709:format=yuv420p";
             }
         }
 
-        // MARK: GetTransferFunction
+        // GetTransferFunction
+        // Returns the FFmpeg transfer function name for the HDR type.
         private static string GetTransferFunction(VideoRangeType rangeType)
         {
             return rangeType switch
@@ -169,7 +170,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             };
         }
 
-        // MARK: IsDolbyVision
+        // IsDolbyVision
+        // Checks if the VideoRangeType is any Dolby Vision variant.
         private static bool IsDolbyVision(VideoRangeType rangeType)
         {
             return rangeType switch
@@ -185,14 +187,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             };
         }
 
-        // MARK: GetToneMappingAlgorithm
+        // GetToneMappingAlgorithm
+        // Converts Jellyfin's TonemappingAlgorithm enum to FFmpeg filter name.
         private static string GetToneMappingAlgorithm(EncodingOptions options)
         {
             return options.TonemappingAlgorithm switch
             {
                 TonemappingAlgorithm.hable => "hable",
                 TonemappingAlgorithm.reinhard => "reinhard",
-                TonemappingAlgorithm.mobius => "mobius", 
+                TonemappingAlgorithm.mobius => "mobius",
                 TonemappingAlgorithm.bt2390 => "bt2390",
                 _ => "hable"
             };

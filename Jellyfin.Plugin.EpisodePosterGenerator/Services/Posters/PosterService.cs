@@ -12,9 +12,6 @@ using MediaBrowser.Common.Configuration;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
-    /// <summary>
-    /// Main service for generating episode posters from video content
-    /// </summary>
     public class PosterService
     {
         private readonly ILogger<PosterService> _logger;
@@ -22,10 +19,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private readonly IServerConfigurationManager _configurationManager;
         private readonly ILoggerFactory _loggerFactory;
 
-        // MARK: Constructor
+        // PosterService
+        // Initializes the poster service with canvas and configuration dependencies.
         public PosterService(
-            ILogger<PosterService> logger, 
-            CanvasService canvasService, 
+            ILogger<PosterService> logger,
+            CanvasService canvasService,
             IServerConfigurationManager configurationManager,
             ILoggerFactory loggerFactory)
         {
@@ -35,7 +33,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             _loggerFactory = loggerFactory;
         }
 
-        // MARK: GeneratePosterAsync
+        // GeneratePosterAsync
+        // Generates a poster for an episode and returns the path to the generated file.
         public async Task<string?> GeneratePosterAsync(Episode episode)
         {
             if (Plugin.Instance == null)
@@ -73,7 +72,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 return null;
             }
 
-            // MARK: Select Poster Generator
             IPosterGenerator generator = posterSettings.PosterStyle switch
             {
                 PosterStyle.Logo => new LogoPosterGenerator(_loggerFactory.CreateLogger<LogoPosterGenerator>()),
@@ -88,7 +86,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             var tempFilePath = GetTemporaryPosterPath(episode.Id, posterSettings.PosterFileType);
 
             var generatedPath = generator.Generate(bitmap, episodeMetadata, posterSettings, tempFilePath);
-            
+
             if (generatedPath == null)
             {
                 _logger.LogError("Failed to generate poster for episode: {EpisodeName}", episode.Name);
@@ -102,7 +100,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return generatedPath;
         }
 
-        // MARK: GetTemporaryPosterPath
+        // GetTemporaryPosterPath
+        // Constructs the temporary file path for the generated poster.
         private string GetTemporaryPosterPath(Guid episodeId, PosterFileType fileType)
         {
             var tempDir = _configurationManager.GetTranscodePath();

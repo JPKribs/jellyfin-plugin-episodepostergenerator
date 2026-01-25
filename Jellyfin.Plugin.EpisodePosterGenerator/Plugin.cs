@@ -16,9 +16,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator
 {
-    /// <summary>
-    /// Main plugin class for Episode Poster Generator
-    /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IDisposable
     {
         public override string Name => "Episode Poster Generator";
@@ -43,7 +40,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
 
         private bool _disposed;
 
-        // MARK: Constructor
+        // Plugin
+        // Initializes the plugin with all required services and dependencies.
         public Plugin(
             IApplicationPaths applicationPaths,
             IXmlSerializer xmlSerializer,
@@ -137,7 +135,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public TemplateExportService TemplateExportService => _templateExportService;
 
 
-        // MARK: GetPages
+        // GetPages
+        // Returns the plugin configuration page information.
         public IEnumerable<PluginPageInfo> GetPages()
         {
             yield return new PluginPageInfo
@@ -149,13 +148,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             };
         }
 
-        // MARK: Dispose
+        // Dispose
+        // Releases resources used by the plugin.
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
+        // Dispose
+        // Releases managed resources when disposing is true.
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed && disposing)
@@ -166,6 +168,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             }
         }
 
+        // UpdateConfiguration
+        // Updates the configuration and reinitializes the poster configuration service.
         public override void UpdateConfiguration(BasePluginConfiguration configuration)
         {
             base.UpdateConfiguration(configuration);

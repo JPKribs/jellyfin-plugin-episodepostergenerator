@@ -14,7 +14,8 @@ public class ConfigurationHashService
         WriteIndented = false
     };
 
-    // MARK: ComputeHash
+    // ComputeHash
+    // Computes a SHA256 hash of the poster settings for change detection.
     public string ComputeHash(PosterSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -64,7 +65,8 @@ public class ConfigurationHashService
         return Convert.ToHexString(hashBytes);
     }
 
-    // MARK: HasConfigurationChanged
+    // HasConfigurationChanged
+    // Determines if the configuration has changed by comparing hashes.
     public bool HasConfigurationChanged(PosterSettings settings, string previousHash)
     {
         if (string.IsNullOrEmpty(previousHash))
@@ -74,7 +76,8 @@ public class ConfigurationHashService
         return !string.Equals(currentHash, previousHash, StringComparison.OrdinalIgnoreCase);
     }
 
-    // MARK: GetCurrentHash
+    // GetCurrentHash
+    // Returns the current hash for the provided poster settings.
     public string GetCurrentHash(PosterSettings settings)
     {
         return ComputeHash(settings);

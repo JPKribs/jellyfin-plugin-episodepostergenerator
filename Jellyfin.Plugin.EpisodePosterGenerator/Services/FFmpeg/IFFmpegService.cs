@@ -6,29 +6,24 @@ using MediaBrowser.Model.Configuration;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
-    /// <summary>
-    /// Interface for FFmpeg-based scene extraction services
-    /// </summary>
+    // IFFmpegService
+    // Defines the contract for FFmpeg-based scene extraction services.
     public interface IFFmpegService
     {
-        /// <summary>
-        /// Extract a scene frame from video at specified timestamp
-        /// </summary>
+        // ExtractSceneAsync
+        // Extracts a scene frame from video at the specified timestamp.
         Task<string?> ExtractSceneAsync(
             string outputPath,
             EpisodeMetadata metadata,
             EncodingOptions encodingOptions,
             CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Check if this service can handle the given video metadata
-        /// </summary>
+        // CanProcess
+        // Checks if this service can handle the given video metadata.
         bool CanProcess(EpisodeMetadata metadata, EncodingOptions encodingOptions);
 
-        /// <summary>
-        /// Optionally build FFmpeg command arguments without executing.
-        /// Useful for hardware services that want the controller to run FFmpeg.
-        /// </summary>
+        // BuildFFmpegArgs
+        // Builds FFmpeg command arguments without executing.
         string? BuildFFmpegArgs(
                 string outputPath,
                 EpisodeMetadata metadata,

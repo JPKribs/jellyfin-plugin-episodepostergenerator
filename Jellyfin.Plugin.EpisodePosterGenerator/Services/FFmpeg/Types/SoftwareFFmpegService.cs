@@ -14,13 +14,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
     {
         private readonly ILogger<SoftwareFFmpegService> _logger;
 
-        // MARK: Constructor
+        // SoftwareFFmpegService
+        // Initializes the software FFmpeg service with a logger.
         public SoftwareFFmpegService(ILogger<SoftwareFFmpegService> logger)
         {
             _logger = logger;
         }
 
-        // MARK: BuildFFmpegArgs
+        // BuildFFmpegArgs
+        // Constructs FFmpeg command-line arguments for software-based frame extraction with optional tone mapping.
         public string? BuildFFmpegArgs(
             string outputPath,
             EpisodeMetadata metadata,
@@ -44,10 +46,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             var args = $"-y -ss {actualSeekSeconds} -i \"{inputPath}\"";
 
-            // Check if tone mapping is actually needed (handles both explicit HDR types and 10-bit content)
             var is10Bit = video.VideoColorBits >= 10;
             var shouldApplyToneMapping = !skipToneMapping && encodingOptions.EnableTonemapping && (isHDR || is10Bit);
 
+            // Tone mapping branch: applies zscale/tonemap filters for HDR or 10-bit content
             if (shouldApplyToneMapping)
             {
                 try
@@ -55,7 +57,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     _logger.LogInformation("Requesting tone mapping filter for VideoRangeType={RangeType}, 10-bit={Is10Bit}, HDR={IsHDR}",
                         video.VideoHdrType, is10Bit, isHDR);
 
-                    // Use ToneMapFilterService for software path
                     var toneMapFilter = ToneMapFilterService.GetToneMapFilter(
                         encodingOptions,
                         video,
@@ -78,10 +79,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     _logger.LogError(ex, "Software tone mapping filter generation failed; proceeding without tone mapping");
                 }
             }
+            // Skip branch: tone mapping explicitly disabled for HDR/10-bit content
             else if (skipToneMapping && (isHDR || is10Bit))
             {
                 _logger.LogDebug("Tone mapping skipped for HDR/10-bit content as requested");
             }
+            // SDR branch: no tone mapping needed for standard content
             else if (!isHDR && !is10Bit)
             {
                 _logger.LogDebug("No tone mapping needed for SDR/8-bit content");
@@ -92,13 +95,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return args;
         }
 
-        // MARK: CanProcess
+        // CanProcess
+        // Returns true because software decoding can handle any video format.
         public bool CanProcess(EpisodeMetadata metadata, EncodingOptions encodingOptions)
         {
             return true;
         }
 
-        // MARK: ExtractSceneAsync
+        // ExtractSceneAsync
+        // Returns null because this service only builds arguments; execution is handled externally.
         public Task<string?> ExtractSceneAsync(
             string outputPath,
             EpisodeMetadata metadata,

@@ -7,62 +7,30 @@ using MediaBrowser.Model.Entities;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 {
-    /// <summary>
-    /// Video-specific metadata extracted from episode files for poster generation
-    /// </summary>
     public class VideoMetadata
     {
-        /// <summary>
-        /// Path to series logo file for poster overlay
-        /// </summary>
         public string? SeriesLogoFilePath { get; set; }
 
-        /// <summary>
-        /// Path to the episode video file
-        /// </summary>
         public string? EpisodeFilePath { get; set; }
 
-        /// <summary>
-        /// Video width in pixels
-        /// </summary>
         public int VideoWidth { get; set; }
 
-        /// <summary>
-        /// Video height in pixels
-        /// </summary>
         public int VideoHeight { get; set; }
 
-        /// <summary>
-        /// Video container format (MP4, MKV, etc)
-        /// </summary>
         public MediaContainer VideoContainer { get; set; } = MediaContainer.Unknown;
 
-        /// <summary>
-        /// Video compression codec (AV1, HEVC, H264, etc)
-        /// </summary>
         public VideoCodec VideoCodec { get; set; } = VideoCodec.Unknown;
 
-        /// <summary>
-        /// Video duration in ticks
-        /// </summary>
         public long VideoLengthTicks { get; set; }
 
-        /// <summary>
-        /// Video color space information
-        /// </summary>
         public string VideoColorSpace { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Video color bit depth (8, 10, 12)
-        /// </summary>
         public int VideoColorBits { get; set; }
 
-        /// <summary>
-        /// HDR type if video contains HDR content
-        /// </summary>
         public VideoRangeType VideoHdrType { get; set; } = VideoRangeType.Unknown;
 
-        // MARK: CreateFromEpisode
+        // CreateFromEpisode
+        // Creates a VideoMetadata instance by extracting video information from an Episode.
         public static VideoMetadata CreateFromEpisode(Episode episode)
         {
             var metadata = new VideoMetadata
@@ -70,7 +38,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
                 EpisodeFilePath = episode.Path
             };
 
-            // Get series logo path if available
             var series = episode.Series;
             if (series != null)
             {
@@ -78,7 +45,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
                 metadata.SeriesLogoFilePath = logoPath;
             }
 
-            // Extract video stream information
             var mediaStreams = episode.GetMediaStreams();
             var videoStream = mediaStreams?.FirstOrDefault(s => s.Type == MediaStreamType.Video);
 
@@ -94,7 +60,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             }
             else
             {
-                // Fallback values if no video stream info available
                 metadata.VideoWidth = 1920;
                 metadata.VideoHeight = 1080;
                 metadata.VideoContainer = MediaContainerExtensions.FromFileExtension(episode.Path);
@@ -104,27 +69,27 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
                 metadata.VideoHdrType = VideoRangeType.Unknown;
             }
 
-            // Get video duration
             metadata.VideoLengthTicks = episode.RunTimeTicks ?? 0;
 
             return metadata;
         }
 
-        // MARK: GetSeriesLogoPath
+        // GetSeriesLogoPath
+        // Retrieves the file path of the series logo image if available.
         private static string? GetSeriesLogoPath(Series series)
         {
             var logoImage = series.GetImages(ImageType.Logo).FirstOrDefault();
             return logoImage?.Path;
         }
 
-        // MARK: ExtractColorBits
+        // ExtractColorBits
+        // Extracts the color bit depth from the video stream metadata.
         private static int ExtractColorBits(MediaStream videoStream)
         {
             var bitDepth = videoStream.BitDepth;
             if (bitDepth.HasValue)
                 return bitDepth.Value;
 
-            // Try to extract from codec profile
             var profile = videoStream.Profile?.ToLowerInvariant();
             if (!string.IsNullOrEmpty(profile))
             {
@@ -134,19 +99,18 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
                     return 12;
             }
 
-            return 8; // Default fallback
+            return 8;
         }
 
-        // MARK: ExtractVideoRangeType
+        // ExtractVideoRangeType
+        // Determines the video range type (HDR/SDR) from the video stream metadata.
         private static VideoRangeType ExtractVideoRangeType(MediaStream videoStream)
         {
-            // First check if Jellyfin already provided the VideoRangeType
             if (videoStream.VideoRangeType != VideoRangeType.Unknown)
                 return videoStream.VideoRangeType;
 
-            // Fallback to analyzing color transfer and primaries
             return VideoRangeTypeExtensions.FromColorTransferAndPrimaries(
-                videoStream.ColorTransfer, 
+                videoStream.ColorTransfer,
                 videoStream.ColorPrimaries);
         }
     }

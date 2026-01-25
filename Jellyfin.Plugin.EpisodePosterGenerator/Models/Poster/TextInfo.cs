@@ -2,32 +2,18 @@ using System;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 {
-    /// <summary>
-    /// Text rendering information for frame border calculations.
-    /// </summary>
     public struct TextInfo : IEquatable<TextInfo>
     {
-        /// <summary>
-        /// Total height of the text block.
-        /// </summary>
         public float Height { get; set; }
 
-        /// <summary>
-        /// Width of the widest text line.
-        /// </summary>
         public float Width { get; set; }
 
-        /// <summary>
-        /// Horizontal center position of the text.
-        /// </summary>
         public float CenterX { get; set; }
 
-        /// <summary>
-        /// Vertical position of the text.
-        /// </summary>
         public float Y { get; set; }
 
-        // MARK: Equals
+        // Equals
+        // Compares this TextInfo with another for value equality.
         public readonly bool Equals(TextInfo other)
         {
             return Height == other.Height &&
@@ -36,25 +22,25 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
                    Y == other.Y;
         }
 
-        // MARK: Equals
+        // Equals
+        // Compares this TextInfo with an object for value equality.
         public override readonly bool Equals(object? obj)
         {
             return obj is TextInfo other && Equals(other);
         }
 
-        // MARK: GetHashCode
+        // GetHashCode
+        // Returns a hash code based on the TextInfo properties.
         public override readonly int GetHashCode()
         {
             return HashCode.Combine(Height, Width, CenterX, Y);
         }
 
-        // MARK: ==
         public static bool operator ==(TextInfo left, TextInfo right)
         {
             return left.Equals(right);
         }
 
-        // MARK: !=
         public static bool operator !=(TextInfo left, TextInfo right)
         {
             return !left.Equals(right);

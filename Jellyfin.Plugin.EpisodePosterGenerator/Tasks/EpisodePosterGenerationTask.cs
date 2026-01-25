@@ -18,28 +18,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
 {
-    /// <summary>
-    /// Scheduled task trigger for batch episode poster generation.
-    /// Gets episodes from Jellyfin, filters by tracking database, passes to PosterService.
-    /// </summary>
     public class EpisodePosterGenerationTask : IScheduledTask
     {
-        /// <summary>
-        /// Logger for task execution monitoring
-        /// </summary>
         private readonly ILogger<EpisodePosterGenerationTask> _logger;
-
-        /// <summary>
-        /// Jellyfin's library manager for episode discovery
-        /// </summary>
         private readonly ILibraryManager _libraryManager;
-
-        /// <summary>
-        /// Jellyfin's provider manager for image upload operations
-        /// </summary>
         private readonly IProviderManager _providerManager;
 
-        // MARK: Constructor
+        // EpisodePosterGenerationTask
+        // Initializes the scheduled task with required Jellyfin services.
         public EpisodePosterGenerationTask(
             ILogger<EpisodePosterGenerationTask> logger,
             ILibraryManager libraryManager,
@@ -64,13 +50,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
 
         public bool IsLogged => true;
 
-        // MARK: GetDefaultTriggers
+        // GetDefaultTriggers
+        // Returns an empty collection of task triggers.
         public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
         {
             return Array.Empty<TaskTriggerInfo>();
         }
 
-        // MARK: ExecuteAsync
+        // ExecuteAsync
+        // Processes all episodes that need poster generation.
         public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
         {
             var config = Plugin.Instance?.Configuration;
@@ -90,10 +78,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
 
             try
             {
-                // Get all episodes from Jellyfin
                 var allEpisodes = GetAllEpisodesFromJellyfin();
-                
-                // Filter episodes that need processing using tracking database
+
                 var episodesToProcess = await FilterEpisodesThatNeedProcessing(allEpisodes, config, trackingService, cancellationToken).ConfigureAwait(false);
 
                 _logger.LogInformation("{ProcessCount} items need a poster", episodesToProcess.Length);
@@ -104,7 +90,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                     return;
                 }
 
-                // Process episodes using PosterService
                 var successCount = 0;
                 var failureCount = 0;
 
@@ -114,7 +99,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                         break;
 
                     var episode = episodesToProcess[i];
-                    
+
                     try
                     {
                         _logger.LogDebug("Processing episode {Current}/{Total}: {SeriesName} - {EpisodeName}",
@@ -122,7 +107,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                             episode.Series?.Name ?? "Unknown Series",
                             episode.Name ?? "Unknown Episode");
 
-                        // Generate poster using PosterService
                         var posterPath = await posterService.GeneratePosterAsync(episode).ConfigureAwait(false);
 
                         if (!string.IsNullOrEmpty(posterPath) && File.Exists(posterPath))
@@ -138,7 +122,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                                 }
 
                                 using var imageStream = File.OpenRead(posterPath);
-                                                                
+
                                 await _providerManager.SaveImage(
                                     episode,
                                     imageStream,
@@ -148,11 +132,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                                     CancellationToken.None).ConfigureAwait(false);
 
                                 await episode.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, CancellationToken.None).ConfigureAwait(false);
-                                
+
                                 successCount++;
-                                
+
                                 await trackingService.MarkEpisodeProcessedAsync(episode, config).ConfigureAwait(false);
-                                
+
                                 _logger.LogInformation("Successfully processed and saved poster for: {SeriesName} - {EpisodeName}",
                                     episode.Series?.Name ?? "Unknown Series",
                                     episode.Name ?? "Unknown Episode");
@@ -181,12 +165,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                             episode.Name ?? "Unknown Episode");
                     }
 
-                    // Update progress
                     var progressPercent = (double)(i + 1) / episodesToProcess.Length * 100;
                     progress?.Report(progressPercent);
                 }
 
-                // Log final results
                 _logger.LogInformation("Poster generation completed. {SuccessCount} succeeded, {FailureCount} failed",
                     successCount, failureCount);
             }
@@ -197,7 +179,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
             }
         }
 
-        // MARK: GetAllEpisodesFromJellyfin
+        // GetAllEpisodesFromJellyfin
+        // Queries Jellyfin for all episodes with valid video files.
         private Episode[] GetAllEpisodesFromJellyfin()
         {
             var query = new InternalItemsQuery
@@ -213,9 +196,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                        .ToArray();
         }
 
-        // MARK: FilterEpisodesThatNeedProcessing
+        // FilterEpisodesThatNeedProcessing
+        // Filters episodes based on tracking database to find those needing processing.
         private async Task<Episode[]> FilterEpisodesThatNeedProcessing(
-            Episode[] allEpisodes, 
+            Episode[] allEpisodes,
             Configuration.PluginConfiguration config,
             EpisodeTrackingService trackingService,
             CancellationToken cancellationToken)

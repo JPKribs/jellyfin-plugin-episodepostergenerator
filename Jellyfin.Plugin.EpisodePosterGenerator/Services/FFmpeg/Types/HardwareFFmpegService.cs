@@ -16,7 +16,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private readonly ILogger<HardwareFFmpegService> _logger;
         private readonly HardwareValidationService _validationService;
 
-        // MARK: Constructor
+        // HardwareFFmpegService
+        // Initializes the hardware FFmpeg service with required dependencies.
         public HardwareFFmpegService(
             ILogger<HardwareFFmpegService> logger,
             HardwareValidationService validationService)
@@ -25,7 +26,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             _validationService = validationService;
         }
 
-        // MARK: BuildFFmpegArgs
+        // BuildFFmpegArgs
+        // Constructs FFmpeg command-line arguments for hardware-accelerated frame extraction.
         public string? BuildFFmpegArgs(
             string outputPath,
             EpisodeMetadata metadata,
@@ -66,15 +68,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 filterChain = ToneMapFilterService.GetToneMapFilter(encodingOptions, video, hwAccel, _logger);
             }
 
-            // All hardware acceleration needs hwdownload to convert GPU frames to CPU for PNG encoding
+            // hwdownload converts GPU frames to CPU memory for PNG encoding since hardware decoders output to GPU surfaces
             if (hwAccel != HardwareAccelerationType.none)
             {
-                string downloadFilter = hwAccel == HardwareAccelerationType.videotoolbox 
-                    ? "hwdownload,format=nv12" 
+                string downloadFilter = hwAccel == HardwareAccelerationType.videotoolbox
+                    ? "hwdownload,format=nv12"
                     : "hwdownload,format=yuv420p";
-                
-                filterChain = string.IsNullOrEmpty(filterChain) 
-                    ? downloadFilter 
+
+                filterChain = string.IsNullOrEmpty(filterChain)
+                    ? downloadFilter
                     : $"{filterChain},{downloadFilter}";
             }
 
@@ -89,7 +91,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return args;
         }
 
-        // MARK: GetHardwareInitArgs
+        // GetHardwareInitArgs
+        // Returns FFmpeg hardware device initialization arguments for the specified acceleration type.
         private string GetHardwareInitArgs(HardwareAccelerationType hwAccel)
         {
             return hwAccel switch
@@ -103,7 +106,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             };
         }
 
-        // MARK: GetHardwareAccelArgs
+        // GetHardwareAccelArgs
+        // Returns FFmpeg hardware acceleration selection arguments for the specified type.
         private string GetHardwareAccelArgs(HardwareAccelerationType hwAccel)
         {
             return hwAccel switch
@@ -117,7 +121,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             };
         }
 
-        // MARK: CanProcess
+        // CanProcess
+        // Determines if this service can handle the given video based on codec support and HDR capabilities.
         public bool CanProcess(EpisodeMetadata metadata, EncodingOptions encodingOptions)
         {
             var video = metadata.VideoMetadata;
@@ -130,6 +135,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             if (!codecSupported) return false;
 
+            // HDR content requires tone mapping support from the hardware acceleration type
             if (video.VideoHdrType.IsHDR() && encodingOptions.EnableTonemapping)
             {
                 return hwAccel switch
@@ -146,7 +152,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return true;
         }
 
-        // MARK: ExtractSceneAsync
+        // ExtractSceneAsync
+        // Returns null because this service only builds arguments; execution is handled externally.
         public Task<string?> ExtractSceneAsync(
             string outputPath,
             EpisodeMetadata metadata,

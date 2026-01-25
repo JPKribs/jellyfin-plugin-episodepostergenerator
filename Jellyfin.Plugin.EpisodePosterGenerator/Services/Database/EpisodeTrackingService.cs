@@ -17,9 +17,10 @@ public class EpisodeTrackingService
     private readonly EpisodeTrackingDatabase _database;
     private readonly ConfigurationHashService _configHashService;
 
-    // MARK: Constructor
+    // EpisodeTrackingService
+    // Initializes the tracking service with database and configuration hash dependencies.
     public EpisodeTrackingService(
-        ILogger<EpisodeTrackingService> logger, 
+        ILogger<EpisodeTrackingService> logger,
         EpisodeTrackingDatabase database,
         ConfigurationHashService configHashService)
     {
@@ -28,7 +29,8 @@ public class EpisodeTrackingService
         _configHashService = configHashService;
     }
 
-    // MARK: ShouldProcessEpisodeAsync
+    // ShouldProcessEpisodeAsync
+    // Determines if an episode needs to be processed based on file and config changes.
     public async Task<bool> ShouldProcessEpisodeAsync(Episode episode, PluginConfiguration config)
     {
         if (episode?.Id == null || string.IsNullOrEmpty(episode.Path))
@@ -50,7 +52,7 @@ public class EpisodeTrackingService
 
         var posterSettings = Plugin.Instance!.PosterConfigService.GetSettingsForEpisode(episode);
         var currentConfigHash = _configHashService.GetCurrentHash(posterSettings);
-        
+
         if (record.ConfigurationHash != currentConfigHash)
         {
             _logger.LogDebug("Configuration changed for episode {EpisodeId}, requires reprocessing", episode.Id);
@@ -66,7 +68,8 @@ public class EpisodeTrackingService
         return false;
     }
 
-    // MARK: MarkEpisodeProcessedAsync
+    // MarkEpisodeProcessedAsync
+    // Records that an episode has been successfully processed with current settings.
     public async Task MarkEpisodeProcessedAsync(Episode episode, PluginConfiguration config)
     {
         if (string.IsNullOrEmpty(episode.Path) || !File.Exists(episode.Path))
@@ -91,25 +94,29 @@ public class EpisodeTrackingService
         await _database.SaveProcessedEpisodeAsync(record).ConfigureAwait(false);
     }
 
-    // MARK: GetProcessedCountAsync
+    // GetProcessedCountAsync
+    // Returns the total number of processed episodes.
     public async Task<int> GetProcessedCountAsync()
     {
         return await _database.GetProcessedCountAsync().ConfigureAwait(false);
     }
 
-    // MARK: ClearAllProcessedEpisodesAsync
+    // ClearAllProcessedEpisodesAsync
+    // Clears all processed episode tracking records.
     public async Task ClearAllProcessedEpisodesAsync()
     {
         await _database.ClearAllProcessedEpisodesAsync().ConfigureAwait(false);
     }
 
-    // MARK: RemoveProcessedEpisodeAsync
+    // RemoveProcessedEpisodeAsync
+    // Removes the tracking record for a specific episode.
     public async Task RemoveProcessedEpisodeAsync(Guid episodeId)
     {
         await _database.RemoveProcessedEpisodeAsync(episodeId).ConfigureAwait(false);
     }
 
-    // MARK: HasVideoFileChanged
+    // HasVideoFileChanged
+    // Checks if the video file has been modified since last processing.
     private bool HasVideoFileChanged(Episode episode, ProcessedEpisodeRecord record)
     {
         if (!File.Exists(episode.Path))
@@ -118,13 +125,14 @@ public class EpisodeTrackingService
         }
 
         var fileInfo = new FileInfo(episode.Path);
-        
+
         return record.VideoFilePath != episode.Path ||
                record.VideoFileSize != fileInfo.Length ||
                record.VideoFileLastModified != fileInfo.LastWriteTime;
     }
 
-    // MARK: IsImageModifiedAfterProcessing
+    // IsImageModifiedAfterProcessing
+    // Checks if the episode image was manually modified after processing.
     private bool IsImageModifiedAfterProcessing(Episode episode, ProcessedEpisodeRecord record)
     {
         try

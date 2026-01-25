@@ -9,19 +9,15 @@ using MediaBrowser.Model.Entities;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
 {
-    /// <summary>
-    /// Utility for extracting detailed video metadata from Jellyfin BaseItems.
-    /// </summary>
     public static class BaseItemVideoDetails
     {
-        /// <summary>
-        /// Get detailed media information for a given BaseItem, focusing on video metadata.
-        /// </summary>
+        // GetMediaDetails
+        // Extracts detailed media information from a Jellyfin BaseItem.
         public static MediaDetails GetMediaDetails(BaseItem item)
         {
             var mediaSources = item.GetMediaSources(false);
             var mediaSource = mediaSources.Count > 0 ? mediaSources[0] : null;
-            
+
             MediaStream? videoStream = null;
             if (mediaSource?.MediaStreams != null)
             {
@@ -48,7 +44,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
             return details;
         }
 
-        // MARK: GetDuration
+        // GetDuration
+        // Returns the duration of a media item as a TimeSpan.
         private static TimeSpan? GetDuration(BaseItem item)
         {
             return item.RunTimeTicks.HasValue
@@ -56,7 +53,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
                 : null;
         }
 
-        // MARK: GetFileSize
+        // GetFileSize
+        // Returns the file size in bytes for a media item.
         private static long? GetFileSize(BaseItem item)
         {
             try
@@ -68,16 +66,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
             }
             catch
             {
-                // Ignore file access errors in utility
             }
 
             return null;
         }
     }
 
-    /// <summary>
-    /// Simplified media details container focused on video metadata.
-    /// </summary>
     public class MediaDetails
     {
         public Guid ItemId { get; }
@@ -107,9 +101,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
         }
     }
 
-    /// <summary>
-    /// Detailed video metadata for poster generation.
-    /// </summary>
     public class VideoDetails
     {
         public string? Codec { get; }

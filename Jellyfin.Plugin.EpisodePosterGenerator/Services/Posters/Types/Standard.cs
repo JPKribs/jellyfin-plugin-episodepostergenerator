@@ -8,19 +8,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
-    /// <summary>
-    /// Generates standard-style episode posters with bottom-aligned text elements.
-    /// </summary>
     public class StandardPosterGenerator : BasePosterGenerator
     {
         private readonly ILogger<StandardPosterGenerator> _logger;
 
+        // StandardPosterGenerator
+        // Initializes a new instance of the standard poster generator with logging support.
         public StandardPosterGenerator(ILogger<StandardPosterGenerator> logger)
         {
             _logger = logger;
         }
 
-        // MARK: RenderTypography
+        // RenderTypography
+        // Renders episode title and info text at the bottom of the poster.
         protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             var seasonNumber = episodeMetadata.SeasonNumber ?? 0;
@@ -31,7 +31,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             float spacingHeight = height * 0.02f;
             float currentBottomY = safeArea.Bottom;
 
-            // Build text stack from bottom to top: episode info, separator line, episode title
+            // Both title and episode info enabled
             if (settings.ShowTitle && settings.ShowEpisode)
             {
                 var titleHeight = DrawEpisodeTitle(skCanvas, episodeTitle, settings, width, height, currentBottomY, safeArea);
@@ -42,23 +42,27 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
                 DrawEpisodeInfo(skCanvas, seasonNumber, episodeNumber, settings, width, height, currentBottomY, safeArea);
             }
+            // Only title enabled
             else if (settings.ShowTitle)
             {
                 DrawEpisodeTitle(skCanvas, episodeTitle, settings, width, height, currentBottomY, safeArea);
             }
+            // Only episode info enabled
             else if (settings.ShowEpisode)
             {
                 DrawEpisodeInfo(skCanvas, seasonNumber, episodeNumber, settings, width, height, currentBottomY, safeArea);
             }
         }
 
-        // MARK: LogError
+        // LogError
+        // Logs an error that occurred during standard poster generation.
         protected override void LogError(Exception ex, string? episodeName)
         {
             _logger.LogError(ex, "Failed to generate standard poster for {EpisodeName}", episodeName);
         }
 
-        // MARK: DrawEpisodeTitle
+        // DrawEpisodeTitle
+        // Draws the episode title with shadow effect and returns the total height used.
         private float DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int canvasWidth, int canvasHeight, float bottomY, SKRect safeArea)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight);
@@ -108,7 +112,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             return totalHeight;
         }
 
-        // MARK: DrawSeparatorLine
+        // DrawSeparatorLine
+        // Draws a horizontal separator line with shadow effect.
         private float DrawSeparatorLine(PosterSettings config, SKCanvas canvas, int canvasWidth, float y, SKRect safeArea)
         {
             var startX = safeArea.Left;
@@ -139,7 +144,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             return 4f;
         }
 
-        // MARK: DrawEpisodeInfo
+        // DrawEpisodeInfo
+        // Draws the season and episode numbers with a bullet separator.
         private void DrawEpisodeInfo(SKCanvas canvas, int seasonNumber, int episodeNumber, PosterSettings config, int canvasWidth, int canvasHeight, float bottomY, SKRect safeArea)
         {
             var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, canvasHeight);

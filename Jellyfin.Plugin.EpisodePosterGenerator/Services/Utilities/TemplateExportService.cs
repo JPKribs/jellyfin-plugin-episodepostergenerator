@@ -16,12 +16,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             WriteIndented = true
         };
 
+        // TemplateExportService
+        // Initializes the template export service with logging support.
         public TemplateExportService(ILogger<TemplateExportService> logger)
         {
             _logger = logger;
         }
 
-        // MARK: ExportTemplate
+        // ExportTemplate
+        // Exports a poster configuration to a JSON file at the specified path.
         public string? ExportTemplate(PosterConfiguration configuration, string exportPath, string? description = null, string? author = null)
         {
             try
@@ -49,7 +52,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: ExportTemplateAsString
+        // ExportTemplateAsString
+        // Serializes a poster configuration to a JSON string.
         public string? ExportTemplateAsString(PosterConfiguration configuration, string? description = null, string? author = null)
         {
             try
@@ -73,7 +77,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: ImportTemplate
+        // ImportTemplate
+        // Creates a poster configuration from a JSON template string.
         public PosterConfiguration? ImportTemplate(string json, string? customName = null)
         {
             try
@@ -105,7 +110,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: ImportTemplateFromFile
+        // ImportTemplateFromFile
+        // Creates a poster configuration from a JSON template file.
         public PosterConfiguration? ImportTemplateFromFile(string filePath, string? customName = null)
         {
             try

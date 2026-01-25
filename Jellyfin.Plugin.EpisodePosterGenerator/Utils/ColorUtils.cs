@@ -4,12 +4,10 @@ using System.Globalization;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils;
 
-/// <summary>
-/// Color parsing and conversion utility for poster generation.
-/// </summary>
 public static class ColorUtils
 {
-    // MARK: ParseHexColor
+    // ParseHexColor
+    // Parses a hex color string and returns an SKColor.
     public static SKColor ParseHexColor(string hex)
     {
         if (string.IsNullOrWhiteSpace(hex))
@@ -28,13 +26,13 @@ public static class ColorUtils
                 byte.Parse(span.Slice(6, 2), style, culture),
                 byte.Parse(span.Slice(0, 2), style, culture)
             ),
-            
+
             6 => new SKColor(
                 byte.Parse(span.Slice(0, 2), style, culture),
                 byte.Parse(span.Slice(2, 2), style, culture),
                 byte.Parse(span.Slice(4, 2), style, culture)
             ),
-            
+
             _ => SKColors.White
         };
     }

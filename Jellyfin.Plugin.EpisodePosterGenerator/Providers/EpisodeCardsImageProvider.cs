@@ -18,7 +18,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
         private readonly ILogger<EpisodePosterImageProvider> _logger;
         private readonly IApplicationPaths _appPaths;
 
-        // MARK: Constructor
+        // EpisodePosterImageProvider
+        // Initializes the image provider with logging and application paths.
         public EpisodePosterImageProvider(
             ILogger<EpisodePosterImageProvider> logger,
             IApplicationPaths appPaths)
@@ -29,13 +30,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
 
         public string Name => "Episode Poster Generator";
 
-        // MARK: Supports
+        // Supports
+        // Returns true if the item is an Episode.
         public bool Supports(BaseItem item)
         {
             return item is Episode;
         }
 
-        // MARK: GetSupportedImages
+        // GetSupportedImages
+        // Returns the Primary image type for episodes.
         public IEnumerable<ImageType> GetSupportedImages(BaseItem item)
         {
             if (item is Episode)
@@ -44,7 +47,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
             }
         }
 
-        // MARK: GetImage
+        // GetImage
+        // Generates and returns a poster image for the episode.
         public async Task<DynamicImageResponse> GetImage(BaseItem item, ImageType type, CancellationToken cancellationToken)
         {
             var config = Plugin.Instance?.Configuration;
@@ -80,7 +84,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                 _logger.LogInformation("Starting to create poster for {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
 
                 var posterPath = await posterService.GeneratePosterAsync(episode).ConfigureAwait(false);
-                
+
                 if (string.IsNullOrEmpty(posterPath) || !File.Exists(posterPath))
                 {
                     _logger.LogWarning("Failed to generate image for episode: {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);

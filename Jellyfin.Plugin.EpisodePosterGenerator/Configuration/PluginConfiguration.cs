@@ -15,6 +15,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
         [SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "Setter required for XML serialization")]
         public List<PosterConfiguration> PosterConfigurations { get; set; }
 
+        // PluginConfiguration
+        // Initializes the plugin configuration with default values.
         public PluginConfiguration()
         {
             PosterConfigurations = new List<PosterConfiguration>();

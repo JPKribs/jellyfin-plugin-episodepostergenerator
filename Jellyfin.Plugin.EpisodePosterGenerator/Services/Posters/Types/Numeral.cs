@@ -7,40 +7,40 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
-    /// <summary>
-    /// Generates episode posters featuring Roman numerals for episode numbers.
-    /// </summary>
     public class NumeralPosterGenerator : BasePosterGenerator
     {
         private readonly ILogger<NumeralPosterGenerator> _logger;
 
+        // NumeralPosterGenerator
+        // Initializes a new instance of the numeral poster generator with logging support.
         public NumeralPosterGenerator(ILogger<NumeralPosterGenerator> logger)
         {
             _logger = logger;
         }
 
-        // MARK: RenderTypography
+        // RenderTypography
+        // Renders the Roman numeral and optional episode title centered on the poster.
         protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             var safeArea = GetSafeAreaBounds(width, height, settings);
 
-            // Always draw Roman numeral centered in full safe area
             DrawRomanNumeral(skCanvas, episodeMetadata, settings, safeArea);
 
-            // Draw title overlapping on top of the Roman numeral if enabled
             if (settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
             {
                 DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, settings, width, height, safeArea);
             }
         }
 
-        // MARK: LogError
+        // LogError
+        // Logs an error that occurred during numeral poster generation.
         protected override void LogError(Exception ex, string? episodeName)
         {
             _logger.LogError(ex, "Failed to generate numeral poster for {EpisodeName}", episodeName);
         }
 
-        // MARK: DrawRomanNumeral
+        // DrawRomanNumeral
+        // Draws the episode number as a Roman numeral centered in the safe area.
         private void DrawRomanNumeral(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, SKRect area)
         {
             var numeralText = NumberUtils.NumberToRomanNumeral(episodeMetadata.EpisodeNumberStart ?? 0);
@@ -71,18 +71,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
             };
 
-            // Center text in available area
             float centerX = area.MidX;
             var bounds = FontUtils.MeasureTextDimensions(numeralText, typeface, fontSize);
             float centerY = area.MidY + (bounds.Height / 2f);
 
-            // Draw shadow
             canvas.DrawText(numeralText, centerX + 2, centerY + 2, shadowPaint);
-            // Draw main text
             canvas.DrawText(numeralText, centerX, centerY, numeralPaint);
         }
 
-        // MARK: DrawEpisodeTitle
+        // DrawEpisodeTitle
+        // Draws the episode title centered and overlapping the Roman numeral.
         private void DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int width, int height, SKRect safeArea)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
@@ -111,18 +109,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
             };
 
-            // Fit text to safe area width
             var availableWidth = safeArea.Width * 0.9f;
             var lines = TextUtils.FitTextToWidth(title, titlePaint, availableWidth);
 
             var lineHeight = fontSize * 1.2f;
             var totalHeight = (lines.Count - 1) * lineHeight + fontSize;
             var centerX = safeArea.MidX;
-            
-            // Position title at center of safe area, overlapping the Roman numeral
+
             var startY = safeArea.MidY - (totalHeight / 2f) + fontSize;
 
-            // Draw each line with shadow, overlapping the Roman numeral at center
             for (int i = 0; i < lines.Count; i++)
             {
                 var lineY = startY + (i * lineHeight);
@@ -131,7 +126,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             }
         }
 
-        // MARK: CalculateTitleHeight
+        // CalculateTitleHeight
+        // Calculates the total height needed for the episode title text.
         private float CalculateTitleHeight(string title, PosterSettings config, int height, SKRect safeArea)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
@@ -149,7 +145,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var availableWidth = safeArea.Width * 0.9f;
             var lines = TextUtils.FitTextToWidth(title, paint, availableWidth);
             var lineHeight = fontSize * 1.2f;
-            
+
             return (lines.Count - 1) * lineHeight + fontSize;
         }
     }

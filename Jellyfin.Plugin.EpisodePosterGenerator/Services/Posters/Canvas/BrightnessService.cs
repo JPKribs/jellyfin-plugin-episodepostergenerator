@@ -6,21 +6,22 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
-    /// <summary>
-    /// Handles brightness analysis and HDR brightening operations on images.
-    /// </summary>
+    // BrightnessService
+    // Handles brightness analysis and brightening operations on images.
     public class BrightnessService
     {
         private readonly ILogger<BrightnessService> _logger;
-        private const double DefaultBrightnessThreshold = 0.05; // 5% brightness threshold
+        private const double DefaultBrightnessThreshold = 0.05;
 
-        // MARK: Constructor
+        // BrightnessService
+        // Initializes the brightness service with a logger.
         public BrightnessService(ILogger<BrightnessService> logger)
         {
             _logger = logger;
         }
 
-        // MARK: IsFrameBrightEnough (SKBitmap overload)
+        // IsFrameBrightEnough
+        // Determines if a bitmap meets the minimum brightness threshold.
         public bool IsFrameBrightEnough(SKBitmap bitmap, double threshold = DefaultBrightnessThreshold)
         {
             if (bitmap == null) return false;
@@ -30,7 +31,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 var brightness = CalculateAverageBrightness(bitmap);
                 var isBrightEnough = brightness > threshold;
 
-                _logger.LogDebug("Frame brightness: {Brightness:F3}, threshold: {Threshold:F3}, sufficient: {IsBright}", 
+                _logger.LogDebug("Frame brightness: {Brightness:F3}, threshold: {Threshold:F3}, sufficient: {IsBright}",
                     brightness, threshold, isBrightEnough);
 
                 return isBrightEnough;
@@ -42,7 +43,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: IsFrameBrightEnough (file path overload)  
+        // IsFrameBrightEnough
+        // Determines if an image file meets the minimum brightness threshold.
         public bool IsFrameBrightEnough(string filePath, double threshold = DefaultBrightnessThreshold)
         {
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
@@ -61,7 +63,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: BrightenBitmap
+        // BrightenBitmap
+        // Increases the brightness of a bitmap by the specified percentage.
         public void BrightenBitmap(SKBitmap bitmap, double brightnessIncrease)
         {
             if (bitmap == null) return;
@@ -73,12 +76,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                 var multiplier = 1.0f + (float)(brightnessIncrease / 100.0);
 
-                // Process pixels in-place
                 var pixels = bitmap.Pixels;
                 for (int i = 0; i < pixels.Length; i++)
                 {
                     var pixel = pixels[i];
-                    
+
                     var newRed = Math.Min(255, (int)(pixel.Red * multiplier));
                     var newGreen = Math.Min(255, (int)(pixel.Green * multiplier));
                     var newBlue = Math.Min(255, (int)(pixel.Blue * multiplier));
@@ -94,7 +96,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: Brighten (file path overload)
+        // Brighten
+        // Loads an image file, increases its brightness, and saves it back.
         public void Brighten(string filePath, double brightnessIncrease, PosterFileType fileType)
         {
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
@@ -114,7 +117,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                 BrightenBitmap(bitmap, brightnessIncrease);
 
-                // Save back to the same file
                 SaveBitmap(bitmap, filePath, fileType);
             }
             catch (Exception ex)
@@ -123,7 +125,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
-        // MARK: CalculateAverageBrightness
+        // CalculateAverageBrightness
+        // Computes the average brightness of a bitmap using ITU-R BT.709 luma coefficients.
         private double CalculateAverageBrightness(SKBitmap bitmap)
         {
             if (bitmap == null) return 0;
@@ -131,7 +134,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             double totalBrightness = 0;
             int sampleCount = 0;
 
-            // Sample every 4th pixel for performance
             var stepSize = Math.Max(1, Math.Min(bitmap.Width, bitmap.Height) / 100);
 
             for (int y = 0; y < bitmap.Height; y += stepSize)
@@ -139,7 +141,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 for (int x = 0; x < bitmap.Width; x += stepSize)
                 {
                     var pixel = bitmap.GetPixel(x, y);
-                    // Use ITU-R BT.709 luma coefficients
+                    // ITU-R BT.709 luma: Y = 0.2126*R + 0.7152*G + 0.0722*B
                     var brightness = (0.2126 * pixel.Red + 0.7152 * pixel.Green + 0.0722 * pixel.Blue) / 255.0;
                     totalBrightness += brightness;
                     sampleCount++;
@@ -149,12 +151,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return sampleCount > 0 ? totalBrightness / sampleCount : 0;
         }
 
-        // MARK: SaveBitmap
+        // SaveBitmap
+        // Saves a bitmap to a file in PNG format.
         private void SaveBitmap(SKBitmap bitmap, string filePath, PosterFileType fileType)
         {
             using var image = SKImage.FromBitmap(bitmap);
             using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-            
+
             if (data != null)
             {
                 File.WriteAllBytes(filePath, data.ToArray());
