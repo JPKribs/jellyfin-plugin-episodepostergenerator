@@ -14,3 +14,4 @@ artifacts:
 changelog:
   fixes:
   - Poster generation on 10.11's version of FFmpeg
+  - Alter sharpness check
