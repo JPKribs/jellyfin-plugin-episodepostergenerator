@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.11.7",
+        "changelog": "## Fixes\r\n- Poster generation on 10.11's version of FFmpeg\r\n- Alter sharpness check",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.7/jellyfin-plugin-episodepostergenerator-10.11.7.zip",
+        "checksum": "607d20a670021b4240405237626a82bd",
+        "timestamp": "2026-01-25T08:53:35Z"
+      },
+      {
         "version": "10.11.6",
         "changelog": "## Fixes\r\n- Poster generation on 10.11",
         "targetAbi": "10.11.0.0",
