@@ -406,7 +406,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             int width = analysis.Width;
             int height = analysis.Height;
-
             var pixels = analysis.Pixels;
             if (pixels == null || pixels.Length == 0)
                 return 0.0;
