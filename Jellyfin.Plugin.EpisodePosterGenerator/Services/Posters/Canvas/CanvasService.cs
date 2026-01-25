@@ -35,7 +35,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
         // GenerateCanvasAsync
         // Generates a poster canvas by extracting a frame, cropping, and brightening it.
-        public async Task<SKBitmap?> GenerateCanvasAsync(EpisodeMetadata metadata, PosterSettings config)
+        public async Task<SKBitmap?> GenerateCanvasAsync(EpisodeMetadata metadata, PosterSettings config, CancellationToken cancellationToken = default)
         {
             if (metadata?.VideoMetadata == null)
             {
@@ -55,7 +55,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     ffmpegOutputPath = await _ffmpegService.ExtractSceneAsync(
                         metadata,
                         config,
-                        CancellationToken.None
+                        cancellationToken
                     ).ConfigureAwait(false);
 
                     if (string.IsNullOrEmpty(ffmpegOutputPath) || !File.Exists(ffmpegOutputPath))

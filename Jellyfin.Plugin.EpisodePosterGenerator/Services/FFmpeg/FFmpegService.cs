@@ -22,6 +22,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private const double BrightnessThreshold = 0.05;
         private const double SharpnessThreshold = 100.0;
 
+        // Shared Random instance for thread-safe random number generation
+        private static readonly Random SharedRandom = new Random();
+
         private readonly ILogger<FFmpegService> _logger;
         private readonly IServerConfigurationManager _configurationManager;
         private readonly IMediaEncoder _mediaEncoder;
@@ -262,8 +265,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     continue;
                 }
 
-                var actualBrightness = GetFrameBrightness(frameBitmap);
-                var actualSharpness = GetFrameSharpness(frameBitmap);
+                // Create single downscaled bitmap for all quality analysis (eliminates duplicate downscaling)
+                using var analysisBitmap = CreateAnalysisBitmap(frameBitmap);
+                var actualBrightness = analysisBitmap != null ? GetFrameBrightnessFromAnalysis(analysisBitmap) : 0.0;
+                var actualSharpness = analysisBitmap != null ? GetFrameSharpnessFromAnalysis(analysisBitmap) : 0.0;
                 var qualityScore = CalculateFrameQualityScore(actualBrightness, actualSharpness, isHDR);
 
                 var brightnessOk = _brightnessService.IsFrameBrightEnough(frameBitmap, brightnessThreshold);
@@ -333,7 +338,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         // Generates a random seek time within the configured extraction window.
         private int GenerateSeekTime(double videoDurationSeconds, int attempt, PosterSettings config)
         {
-            var random = new Random();
             var startPercent = config.ExtractWindowStart / 100.0;
             var endPercent = config.ExtractWindowEnd / 100.0;
 
@@ -347,7 +351,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             var startTime = videoDurationSeconds * startPercent;
             var endTime = videoDurationSeconds * endPercent;
-            return (int)(random.NextDouble() * (endTime - startTime) + startTime);
+            return (int)(SharedRandom.NextDouble() * (endTime - startTime) + startTime);
         }
 
         // AnalysisSize
@@ -373,14 +377,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return resized;
         }
 
-        // GetFrameBrightness
-        // Calculates average brightness using raw pixel buffer access on downscaled bitmap.
-        private double GetFrameBrightness(SKBitmap bitmap)
+        // GetFrameBrightnessFromAnalysis
+        // Calculates average brightness from a pre-downscaled analysis bitmap.
+        private static double GetFrameBrightnessFromAnalysis(SKBitmap analysis)
         {
-            using var analysis = CreateAnalysisBitmap(bitmap);
-            if (analysis == null)
-                return 0.0;
-
             var pixels = analysis.Pixels;
             if (pixels == null || pixels.Length == 0)
                 return 0.0;
@@ -396,14 +396,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return total / pixels.Length;
         }
 
-        // GetFrameSharpness
-        // Calculates sharpness using Laplacian variance on downscaled bitmap with raw buffer access.
-        private double GetFrameSharpness(SKBitmap bitmap)
+        // GetFrameSharpnessFromAnalysis
+        // Calculates sharpness using Laplacian variance from a pre-downscaled analysis bitmap.
+        private static double GetFrameSharpnessFromAnalysis(SKBitmap analysis)
         {
-            using var analysis = CreateAnalysisBitmap(bitmap);
-            if (analysis == null)
-                return 0.0;
-
             int width = analysis.Width;
             int height = analysis.Height;
             var pixels = analysis.Pixels;

@@ -33,7 +33,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             var safeArea = GetSafeAreaBounds(width, height, settings);
-            float spacing = height * 0.02f;
+            float spacing = height * RenderConstants.DefaultSpacingRatio;
             float currentY = safeArea.Bottom;
 
             if (settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
@@ -81,7 +81,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                     return path;
                 return null;
             }
-            catch { return null; }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error checking series logo path");
+                return null;
+            }
         }
 
         // DrawSeriesLogoImage
@@ -113,44 +117,29 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 using var paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
                 canvas.DrawBitmap(bitmap, rect, paint);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to draw series logo image: {Path}", logoPath);
+            }
         }
 
         // DrawSeriesLogoText
         // Draws the series name as text when no logo image is available.
         private void DrawSeriesLogoText(SKCanvas canvas, string seriesName, Position position, Alignment alignment, PosterSettings config, int width, int height)
         {
-            var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize * 1.2f, height);
+            var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize * RenderConstants.LineHeightMultiplier, height);
             var color = ColorUtils.ParseHexColor(config.EpisodeFontColor ?? "#FFFFFF");
-            var shadowColor = SKColors.Black.WithAlpha(180);
+            var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
+            var textAlign = GetSKTextAlign(alignment);
 
-            using var paint = new SKPaint
-            {
-                Color = color,
-                TextSize = fontSize,
-                IsAntialias = true,
-                SubpixelText = true,
-                LcdRenderText = true,
-                Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
-                TextAlign = GetSKTextAlign(alignment)
-            };
-
-            using var shadowPaint = new SKPaint
-            {
-                Color = shadowColor,
-                TextSize = fontSize,
-                IsAntialias = true,
-                SubpixelText = true,
-                LcdRenderText = true,
-                Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
-                TextAlign = GetSKTextAlign(alignment)
-            };
+            using var paint = PaintFactory.CreateTextPaint(color, fontSize, typeface, textAlign);
+            using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface, textAlign);
 
             var safeArea = GetSafeAreaBounds(width, height, config);
-            var availableWidth = safeArea.Width * 0.9f;
+            var availableWidth = safeArea.Width * RenderConstants.TextWidthMultiplier;
             var lines = TextUtils.FitTextToWidth(seriesName, paint, availableWidth);
 
-            var lineHeight = fontSize * 1.2f;
+            var lineHeight = fontSize * RenderConstants.LineHeightMultiplier;
             var totalHeight = (lines.Count - 1) * lineHeight + fontSize;
 
             var x = CalculateLogoX(alignment, safeArea, 0);
@@ -159,8 +148,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             for (int i = 0; i < lines.Count; i++)
             {
                 var lineY = y + fontSize + (i * lineHeight);
-                canvas.DrawText(lines[i], x + 2, lineY + 2, shadowPaint);
-                canvas.DrawText(lines[i], x, lineY, paint);
+                PaintFactory.DrawTextWithShadow(canvas, lines[i], x, lineY, paint, shadowPaint);
             }
         }
 
@@ -170,33 +158,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
             var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
+            var titleColor = ColorUtils.ParseHexColor(config.TitleFontColor);
 
-            using var titlePaint = new SKPaint
-            {
-                Color = ColorUtils.ParseHexColor(config.TitleFontColor),
-                TextSize = fontSize,
-                IsAntialias = true,
-                SubpixelText = true,
-                LcdRenderText = true,
-                Typeface = typeface,
-                TextAlign = SKTextAlign.Center
-            };
+            using var titlePaint = PaintFactory.CreateTextPaint(titleColor, fontSize, typeface);
+            using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface);
 
-            using var shadowPaint = new SKPaint
-            {
-                Color = SKColors.Black.WithAlpha(180),
-                TextSize = fontSize,
-                IsAntialias = true,
-                SubpixelText = true,
-                LcdRenderText = true,
-                Typeface = typeface,
-                TextAlign = SKTextAlign.Center
-            };
-
-            var availableWidth = safeArea.Width * 0.9f;
+            var availableWidth = safeArea.Width * RenderConstants.TextWidthMultiplier;
             var lines = TextUtils.FitTextToWidth(title, titlePaint, availableWidth);
 
-            var lineHeight = fontSize * 1.2f;
+            var lineHeight = fontSize * RenderConstants.LineHeightMultiplier;
             var totalHeight = (lines.Count - 1) * lineHeight + fontSize;
             var centerX = safeArea.MidX;
             var startY = bottomY - totalHeight + fontSize;
@@ -204,8 +174,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             for (int i = 0; i < lines.Count; i++)
             {
                 var lineY = startY + (i * lineHeight);
-                canvas.DrawText(lines[i], centerX + 2, lineY + 2, shadowPaint);
-                canvas.DrawText(lines[i], centerX, lineY, titlePaint);
+                PaintFactory.DrawTextWithShadow(canvas, lines[i], centerX, lineY, titlePaint, shadowPaint);
             }
 
             return totalHeight;
@@ -217,36 +186,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, height);
             var color = ColorUtils.ParseHexColor(config.EpisodeFontColor ?? "#FFFFFF");
-            var shadowColor = SKColors.Black.WithAlpha(180);
+            var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
 
-            using var paint = new SKPaint
-            {
-                Color = color,
-                TextSize = fontSize,
-                IsAntialias = true,
-                SubpixelText = true,
-                LcdRenderText = true,
-                Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
-                TextAlign = SKTextAlign.Center
-            };
-
-            using var shadowPaint = new SKPaint
-            {
-                Color = shadowColor,
-                TextSize = fontSize,
-                IsAntialias = true,
-                SubpixelText = true,
-                LcdRenderText = true,
-                Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
-                TextAlign = SKTextAlign.Center
-            };
+            using var paint = PaintFactory.CreateTextPaint(color, fontSize, typeface);
+            using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface);
 
             var safeArea = GetSafeAreaBounds(width, height, config);
             var code = EpisodeCodeUtil.FormatEpisodeCode(seasonNumber, episodeNumber);
             var centerX = safeArea.MidX;
 
-            canvas.DrawText(code, centerX + 2, bottomY + 2, shadowPaint);
-            canvas.DrawText(code, centerX, bottomY, paint);
+            PaintFactory.DrawTextWithShadow(canvas, code, centerX, bottomY, paint, shadowPaint);
         }
 
         // CalculateLogoX
