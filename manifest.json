@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.11.8",
+        "changelog": "## Improvements\r\n- Optimized frame quality analysis with downscaled processing\r\n- Added font caching for faster poster rendering\r\n- Reduced memory overhead by eliminating encode/decode cycles\r\n\r\n## Fixes\r\n- SkiaSharp API compatibility with Jellyfin's bundled version",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.8/jellyfin-plugin-episodepostergenerator-10.11.8.zip",
+        "checksum": "f4a83956403e2fab94a198b6dcce2c01",
+        "timestamp": "2026-01-25T10:39:12Z"
+      },
+      {
         "version": "10.11.7",
         "changelog": "## Fixes\r\n- Poster generation on 10.11's version of FFmpeg\r\n- Alter sharpness check",
         "targetAbi": "10.11.0.0",
