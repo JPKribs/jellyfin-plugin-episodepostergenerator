@@ -1,7 +1,7 @@
 ---
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
-version: "10.11.5"
+version: "10.11.6"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Generate Custom Episode Posters"
@@ -13,10 +13,4 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   fixes:
-  - Remove temporary file creation
-  enhancements:
-  - Cache fonts to reduce idle time on slower disks
-  technical:
-  - Batch frame extractions to reduce calls to FFmpeg
-  documentation:
-  - Standardized commenting accross all classes
+  - Poster generation on 10.11

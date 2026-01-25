@@ -384,7 +384,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 using var analysis = CreateAnalysisBitmap(bitmap);
                 if (analysis == null) return 0.0;
 
-                var pixels = analysis.GetPixelSpan();
+                var pixmap = analysis.PeekPixels();
+
+                if (pixmap == null)
+                    return 0.0;
+
+                var pixels = pixmap.GetPixelSpan();
+
                 if (pixels.IsEmpty) return 0.0;
 
                 double totalBrightness = 0;
@@ -421,7 +427,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                 int width = analysis.Width;
                 int height = analysis.Height;
-                var pixels = analysis.GetPixelSpan();
+
+                var pixmap = analysis.PeekPixels();
+                if (pixmap == null)
+                    return 0.0;
+
+                var pixels = pixmap.GetPixelSpan();
+
                 if (pixels.IsEmpty) return 0.0;
 
                 double sumLaplacian = 0;
