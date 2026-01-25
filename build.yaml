@@ -13,4 +13,4 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   fixes:
-  - Poster generation on 10.11
+  - Poster generation on 10.11's version of FFmpeg
