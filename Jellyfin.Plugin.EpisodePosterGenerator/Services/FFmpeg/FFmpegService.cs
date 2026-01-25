@@ -377,100 +377,66 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         // Calculates average brightness using raw pixel buffer access on downscaled bitmap.
         private double GetFrameBrightness(SKBitmap bitmap)
         {
-            if (bitmap == null) return 0.0;
-
-            try
-            {
-                using var analysis = CreateAnalysisBitmap(bitmap);
-                if (analysis == null) return 0.0;
-
-                var pixmap = analysis.PeekPixels();
-
-                if (pixmap == null)
-                    return 0.0;
-
-                var pixels = pixmap.GetPixelSpan();
-
-                if (pixels.IsEmpty) return 0.0;
-
-                double totalBrightness = 0;
-                int pixelCount = pixels.Length / 4;
-
-                // Raw RGBA buffer access - 4 bytes per pixel
-                for (int i = 0; i < pixels.Length; i += 4)
-                {
-                    byte r = pixels[i];
-                    byte g = pixels[i + 1];
-                    byte b = pixels[i + 2];
-                    // ITU-R BT.709 luminance coefficients
-                    totalBrightness += (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
-                }
-
-                return pixelCount > 0 ? totalBrightness / pixelCount : 0.0;
-            }
-            catch
-            {
+            using var analysis = CreateAnalysisBitmap(bitmap);
+            if (analysis == null)
                 return 0.0;
+
+            var pixels = analysis.Pixels;
+            if (pixels == null || pixels.Length == 0)
+                return 0.0;
+
+            double total = 0;
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                var c = pixels[i];
+                total += (0.2126 * c.Red + 0.7152 * c.Green + 0.0722 * c.Blue) / 255.0;
             }
+
+            return total / pixels.Length;
         }
 
         // GetFrameSharpness
         // Calculates sharpness using Laplacian variance on downscaled bitmap with raw buffer access.
         private double GetFrameSharpness(SKBitmap bitmap)
         {
-            if (bitmap == null) return 0.0;
-
-            try
-            {
-                using var analysis = CreateAnalysisBitmap(bitmap);
-                if (analysis == null) return 0.0;
-
-                int width = analysis.Width;
-                int height = analysis.Height;
-
-                var pixmap = analysis.PeekPixels();
-                if (pixmap == null)
-                    return 0.0;
-
-                var pixels = pixmap.GetPixelSpan();
-
-                if (pixels.IsEmpty) return 0.0;
-
-                double sumLaplacian = 0;
-                int count = 0;
-                int stride = width * 4;
-
-                // Laplacian kernel: detects edges by measuring second derivative
-                for (int y = 1; y < height - 1; y++)
-                {
-                    for (int x = 1; x < width - 1; x++)
-                    {
-                        int centerIdx = (y * width + x) * 4;
-                        int topIdx = ((y - 1) * width + x) * 4;
-                        int bottomIdx = ((y + 1) * width + x) * 4;
-                        int leftIdx = (y * width + (x - 1)) * 4;
-                        int rightIdx = (y * width + (x + 1)) * 4;
-
-                        // Calculate grayscale using ITU-R BT.709 coefficients
-                        double centerGray = 0.2126 * pixels[centerIdx] + 0.7152 * pixels[centerIdx + 1] + 0.0722 * pixels[centerIdx + 2];
-                        double topGray = 0.2126 * pixels[topIdx] + 0.7152 * pixels[topIdx + 1] + 0.0722 * pixels[topIdx + 2];
-                        double bottomGray = 0.2126 * pixels[bottomIdx] + 0.7152 * pixels[bottomIdx + 1] + 0.0722 * pixels[bottomIdx + 2];
-                        double leftGray = 0.2126 * pixels[leftIdx] + 0.7152 * pixels[leftIdx + 1] + 0.0722 * pixels[leftIdx + 2];
-                        double rightGray = 0.2126 * pixels[rightIdx] + 0.7152 * pixels[rightIdx + 1] + 0.0722 * pixels[rightIdx + 2];
-
-                        // Laplacian = 4*center - neighbors (measures edge intensity)
-                        double laplacian = Math.Abs(4 * centerGray - topGray - bottomGray - leftGray - rightGray);
-                        sumLaplacian += laplacian * laplacian;
-                        count++;
-                    }
-                }
-
-                return count > 0 ? sumLaplacian / count : 0.0;
-            }
-            catch
-            {
+            using var analysis = CreateAnalysisBitmap(bitmap);
+            if (analysis == null)
                 return 0.0;
+
+            int width = analysis.Width;
+            int height = analysis.Height;
+
+            var pixels = analysis.Pixels;
+            if (pixels == null || pixels.Length == 0)
+                return 0.0;
+
+            double sum = 0;
+            int count = 0;
+
+            for (int y = 1; y < height - 1; y++)
+            {
+                for (int x = 1; x < width - 1; x++)
+                {
+                    int c = y * width + x;
+                    int t = (y - 1) * width + x;
+                    int b = (y + 1) * width + x;
+                    int l = y * width + (x - 1);
+                    int r = y * width + (x + 1);
+
+                    double center = 0.2126 * pixels[c].Red + 0.7152 * pixels[c].Green + 0.0722 * pixels[c].Blue;
+                    double top    = 0.2126 * pixels[t].Red + 0.7152 * pixels[t].Green + 0.0722 * pixels[t].Blue;
+                    double bottom = 0.2126 * pixels[b].Red + 0.7152 * pixels[b].Green + 0.0722 * pixels[b].Blue;
+                    double left   = 0.2126 * pixels[l].Red + 0.7152 * pixels[l].Green + 0.0722 * pixels[l].Blue;
+                    double right  = 0.2126 * pixels[r].Red + 0.7152 * pixels[r].Green + 0.0722 * pixels[r].Blue;
+
+                    double lap = 4 * center - top - bottom - left - right;
+                    sum += lap * lap;
+                    count++;
+                }
             }
+
+            return count > 0 ? sum / count : 0.0;
         }
 
         // CalculateFrameQualityScore
