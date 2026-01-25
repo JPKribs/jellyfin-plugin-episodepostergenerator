@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.11.5",
+        "changelog": "## Fixes\r\n- Remove temporary file creation\r\n\r\n## Enhancements\r\n- Cache fonts to reduce idle time on slower disks\r\n\r\n## Technical\r\n- Batch frame extractions to reduce calls to FFmpeg\r\n\r\n## Documentation\r\n- Standardized commenting accross all classes",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.5/jellyfin-plugin-episodepostergenerator-10.11.5.zip",
+        "checksum": "c7060604989ae14a89b782911a378bfe",
+        "timestamp": "2026-01-25T06:16:12Z"
+      },
+      {
         "version": "10.11.4",
         "changelog": "## Fixes\r\n- Fixed UTF-8 encoding for bullet characters and special text\r\n- Fixed Frame poster text alignment with borders\r\n- Fixed all VideoRangeType variants in HDR/DV tone mapping\r\n\r\n## Enhancements\r\n- Redesigned StandardBrush\r\n- Added smooth bezier curves and Perlin noise for organic edges\r\n- Added paint splatters and edge texture for realism\r\n\r\n## Technical\r\n- Added UTF-8 text encoding to all poster types\r\n- Implemented Perlin noise brush stroke generation\r\n- Added natural brush tapering with bezier curves",
         "targetAbi": "10.11.0.0",
