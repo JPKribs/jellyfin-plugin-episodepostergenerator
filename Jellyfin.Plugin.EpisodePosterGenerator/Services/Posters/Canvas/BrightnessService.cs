@@ -130,7 +130,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private const int AnalysisSize = 200;
 
         // CalculateAverageBrightness
-        // Computes the average brightness using downscaled bitmap with raw pixel buffer access.
+        // Computes the average brightness using downscaled bitmap with SKColor pixel access.
         private double CalculateAverageBrightness(SKBitmap bitmap)
         {
             if (bitmap == null) return 0;
@@ -147,23 +147,19 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 using var paint = new SKPaint { FilterQuality = SKFilterQuality.Low };
                 canvas.DrawBitmap(bitmap, SKRect.Create(newWidth, newHeight), paint);
 
-                var pixels = analysis.GetPixelSpan();
-                if (pixels.IsEmpty) return 0;
+                var pixels = analysis.Pixels;
+                if (pixels == null || pixels.Length == 0) return 0;
 
                 double totalBrightness = 0;
-                int pixelCount = pixels.Length / 4;
 
-                // Raw RGBA buffer access - 4 bytes per pixel
-                for (int i = 0; i < pixels.Length; i += 4)
+                for (int i = 0; i < pixels.Length; i++)
                 {
-                    byte r = pixels[i];
-                    byte g = pixels[i + 1];
-                    byte b = pixels[i + 2];
+                    var c = pixels[i];
                     // ITU-R BT.709 luma: Y = 0.2126*R + 0.7152*G + 0.0722*B
-                    totalBrightness += (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+                    totalBrightness += (0.2126 * c.Red + 0.7152 * c.Green + 0.0722 * c.Blue) / 255.0;
                 }
 
-                return pixelCount > 0 ? totalBrightness / pixelCount : 0;
+                return totalBrightness / pixels.Length;
             }
             catch
             {

@@ -1,7 +1,7 @@
 ---
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
-version: "10.11.7"
+version: "10.11.8"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Generate Custom Episode Posters"
@@ -12,6 +12,9 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
+  improvements:
+  - Optimized frame quality analysis with downscaled processing
+  - Added font caching for faster poster rendering
+  - Reduced memory overhead by eliminating encode/decode cycles
   fixes:
-  - Poster generation on 10.11's version of FFmpeg
-  - Alter sharpness check
+  - SkiaSharp API compatibility with Jellyfin's bundled version
