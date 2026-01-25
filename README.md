@@ -50,6 +50,13 @@ Roman numeral episode numbers with overlapping titles.
 |-----------|-----------|-----------|
 | ![Numeral Example 1](Examples/Numeral/Example1.png) | ![Numeral Example 2](Examples/Numeral/Example2.png) | ![Numeral Example 3](Examples/Numeral/Example3.png) |
 
+### Split Style
+Classic episode posters with overlay text and episode information, split alongside the series poster.
+
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Standard Example 1](Examples/Split/Example1.png) | ![Standard Example 2](Examples/Split/Example2.png) | ![Standard Example 3](Examples/Split/Example3.png) |
+
 ## Poster Architecture
 
 The Episode Poster Generator uses a 4-layer rendering pipeline to create consistent posters across all styles:

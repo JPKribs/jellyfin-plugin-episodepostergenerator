@@ -7,6 +7,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         Numeral,
         Logo,
         Frame,
-        Brush
+        Brush,
+        Split
     }
 }

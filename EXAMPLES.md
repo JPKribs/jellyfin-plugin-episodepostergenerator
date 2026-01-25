@@ -158,6 +158,20 @@ This document showcases the example poster template styles for the Episode Poste
 
 ---
 
+## Split
+
+**Template:** [File](Examples/Split/Template.json)
+
+| Example 1 | Example 2 | Example 3 | Example 4 | Example 5 |
+|-----------|-----------|-----------|-----------|-----------|
+| ![Example 1](Examples/Split/Example1.png) | ![Example 2](Examples/Split/Example2.png) | ![Example 3](Examples/Split/Example3.png) | ![Example 4](Examples/Split/Example4.png) | ![Example 5](Examples/Split/Example5.png) |
+
+| Example 6 | Example 7 | Example 8 | Example 9 | Example 10 |
+|-----------|-----------|-----------|-----------|------------|
+| ![Example 6](Examples/Split/Example6.png) | ![Example 7](Examples/Split/Example7.png) | ![Example 8](Examples/Split/Example8.png) | ![Example 9](Examples/Split/Example9.png) | ![Example 10](Examples/Split/Example10.png) |
+
+---
+
 ## Standard
 
 **Template:** [File](Examples/Standard/Template.json)

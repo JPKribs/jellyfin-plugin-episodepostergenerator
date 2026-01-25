@@ -11,6 +11,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
     {
         public string? SeriesLogoFilePath { get; set; }
 
+        public string? SeriesPosterFilePath { get; set; }
+
         public string? EpisodeFilePath { get; set; }
 
         public int VideoWidth { get; set; }
@@ -41,8 +43,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             var series = episode.Series;
             if (series != null)
             {
-                var logoPath = GetSeriesLogoPath(series);
-                metadata.SeriesLogoFilePath = logoPath;
+                metadata.SeriesLogoFilePath = GetSeriesLogoPath(series);
+                metadata.SeriesPosterFilePath = GetSeriesPosterPath(series);
             }
 
             var mediaStreams = episode.GetMediaStreams();
@@ -80,6 +82,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         {
             var logoImage = series.GetImages(ImageType.Logo).FirstOrDefault();
             return logoImage?.Path;
+        }
+
+        // GetSeriesPosterPath
+        // Retrieves the file path of the series primary poster image if available.
+        private static string? GetSeriesPosterPath(Series series)
+        {
+            var posterImage = series.GetImages(ImageType.Primary).FirstOrDefault();
+            return posterImage?.Path;
         }
 
         // ExtractColorBits

@@ -19,6 +19,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.DemoGenerator
         private const string BaseImagePath = "Assets/demo-base.png";
         private const string LogoImagePath = "Assets/demo-logo.png";
         private const string GraphicImagePath = "Assets/demo-graphic.png";
+        private const string SeriesPosterPath = "Assets/demo-poster.jpg";
         private const string ExamplesDirectory = "../Examples";
 
         private const string ShowName = "TV Show";
@@ -112,6 +113,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.DemoGenerator
                 }
             }
 
+            // Set series poster for Split poster styles
+            if (settings.PosterStyle == PosterStyle.Split)
+            {
+                var absolutePosterPath = Path.GetFullPath(SeriesPosterPath);
+                if (File.Exists(absolutePosterPath))
+                {
+                    videoMetadata.SeriesPosterFilePath = absolutePosterPath;
+                }
+            }
+
             // Create mock episode metadata with current episode number
             var metadata = new EpisodeMetadata
             {
@@ -134,6 +145,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.DemoGenerator
                 PosterStyle.Standard => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>()),
                 PosterStyle.Frame => new FramePosterGenerator(_loggerFactory.CreateLogger<FramePosterGenerator>()),
                 PosterStyle.Brush => new BrushPosterGenerator(_loggerFactory.CreateLogger<BrushPosterGenerator>()),
+                PosterStyle.Split => new SplitPosterGenerator(_loggerFactory.CreateLogger<SplitPosterGenerator>()),
                 _ => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>())
             };
 
