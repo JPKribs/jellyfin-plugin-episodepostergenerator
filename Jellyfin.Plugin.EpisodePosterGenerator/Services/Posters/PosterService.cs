@@ -58,17 +58,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             var episodeMetadata = EpisodeMetadata.CreateFromEpisode(episode);
 
-            var canvasData = await _canvasService.GenerateCanvasAsync(episodeMetadata, posterSettings).ConfigureAwait(false);
-            if (canvasData == null || canvasData.Length == 0)
-            {
-                _logger.LogWarning("Failed to generate canvas for episode: {EpisodeName}", episode.Name);
-                return null;
-            }
-
-            using var bitmap = SkiaSharp.SKBitmap.Decode(canvasData);
+            using var bitmap = await _canvasService.GenerateCanvasAsync(episodeMetadata, posterSettings).ConfigureAwait(false);
             if (bitmap == null)
             {
-                _logger.LogWarning("Failed to decode bitmap for episode: {EpisodeName}", episode.Name);
+                _logger.LogWarning("Failed to generate canvas for episode: {EpisodeName}", episode.Name);
                 return null;
             }
 

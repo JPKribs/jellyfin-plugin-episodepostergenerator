@@ -34,8 +34,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // GenerateCanvasAsync
-        // Generates a poster canvas by extracting a frame, cropping, brightening, and encoding it.
-        public async Task<byte[]?> GenerateCanvasAsync(EpisodeMetadata metadata, PosterSettings config)
+        // Generates a poster canvas by extracting a frame, cropping, and brightening it.
+        public async Task<SKBitmap?> GenerateCanvasAsync(EpisodeMetadata metadata, PosterSettings config)
         {
             if (metadata?.VideoMetadata == null)
             {
@@ -89,16 +89,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 else
                 {
                     // Branch: Create transparent canvas when not extracting poster
-                    canvasBitmap = CreateTransparentCanvas(
-                        videoMeta.VideoWidth,
-                        videoMeta.VideoHeight,
-                        config.PosterFileType
-                    ) is byte[] data
-                        ? SKBitmap.Decode(data) ?? CreateFallbackCanvas(videoMeta.VideoWidth, videoMeta.VideoHeight)
-                        : CreateFallbackCanvas(videoMeta.VideoWidth, videoMeta.VideoHeight);
+                    canvasBitmap = CreateFallbackCanvas(videoMeta.VideoWidth, videoMeta.VideoHeight);
                 }
 
-                return EncodeImage(canvasBitmap, config.PosterFileType);
+                // Return ownership of bitmap to caller (caller is responsible for disposing)
+                var result = canvasBitmap;
+                canvasBitmap = null;
+                return result;
             }
             catch (Exception ex)
             {
@@ -129,60 +126,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private SKBitmap CreateFallbackCanvas(int width, int height)
         {
             _logger.LogDebug("Creating fallback canvas {Width}x{Height}", width, height);
-            return new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
-        }
-
-        // CreateTransparentCanvas
-        // Creates a transparent canvas encoded in the specified file format.
-        private byte[]? CreateTransparentCanvas(int width, int height, PosterFileType fileType)
-        {
-            try
-            {
-                _logger.LogDebug("Creating transparent canvas {Width}x{Height} as {FileType}", width, height, fileType);
-
-                using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
-                using var canvas = new SKCanvas(bitmap);
-
-                canvas.Clear(SKColors.Transparent);
-
-                var imageData = EncodeImage(bitmap, fileType);
-
-                if (imageData != null)
-                {
-                    _logger.LogDebug("Successfully created transparent canvas: {Size} bytes", imageData.Length);
-                }
-
-                return imageData;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to create transparent canvas");
-                return null;
-            }
-        }
-
-        // EncodeImage
-        // Encodes a bitmap to a byte array in the specified image format.
-        private byte[]? EncodeImage(SKBitmap bitmap, PosterFileType fileType)
-        {
-            var format = fileType switch
-            {
-                PosterFileType.JPEG => SKEncodedImageFormat.Jpeg,
-                PosterFileType.PNG => SKEncodedImageFormat.Png,
-                PosterFileType.WEBP => SKEncodedImageFormat.Webp,
-                _ => SKEncodedImageFormat.Png
-            };
-
-            using var image = SKImage.FromBitmap(bitmap);
-            using var data = image.Encode(format, 100);
-
-            if (data == null)
-            {
-                _logger.LogError("Failed to encode image as {FileType}", fileType);
-                return null;
-            }
-
-            return data.ToArray();
+            var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+            using var canvas = new SKCanvas(bitmap);
+            canvas.Clear(SKColors.Transparent);
+            return bitmap;
         }
     }
 }

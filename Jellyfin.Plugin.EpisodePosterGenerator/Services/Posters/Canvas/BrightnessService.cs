@@ -125,30 +125,50 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
+        // AnalysisSize
+        // Target size for downscaled analysis (200x200 is sufficient for brightness metrics).
+        private const int AnalysisSize = 200;
+
         // CalculateAverageBrightness
-        // Computes the average brightness of a bitmap using ITU-R BT.709 luma coefficients.
+        // Computes the average brightness using downscaled bitmap with raw pixel buffer access.
         private double CalculateAverageBrightness(SKBitmap bitmap)
         {
             if (bitmap == null) return 0;
 
-            double totalBrightness = 0;
-            int sampleCount = 0;
-
-            var stepSize = Math.Max(1, Math.Min(bitmap.Width, bitmap.Height) / 100);
-
-            for (int y = 0; y < bitmap.Height; y += stepSize)
+            try
             {
-                for (int x = 0; x < bitmap.Width; x += stepSize)
-                {
-                    var pixel = bitmap.GetPixel(x, y);
-                    // ITU-R BT.709 luma: Y = 0.2126*R + 0.7152*G + 0.0722*B
-                    var brightness = (0.2126 * pixel.Red + 0.7152 * pixel.Green + 0.0722 * pixel.Blue) / 255.0;
-                    totalBrightness += brightness;
-                    sampleCount++;
-                }
-            }
+                // Downscale for faster analysis
+                float scale = Math.Min((float)AnalysisSize / bitmap.Width, (float)AnalysisSize / bitmap.Height);
+                int newWidth = Math.Max(1, (int)(bitmap.Width * scale));
+                int newHeight = Math.Max(1, (int)(bitmap.Height * scale));
 
-            return sampleCount > 0 ? totalBrightness / sampleCount : 0;
+                using var analysis = new SKBitmap(newWidth, newHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
+                using var canvas = new SKCanvas(analysis);
+                using var paint = new SKPaint { FilterQuality = SKFilterQuality.Low };
+                canvas.DrawBitmap(bitmap, SKRect.Create(newWidth, newHeight), paint);
+
+                var pixels = analysis.GetPixelSpan();
+                if (pixels.IsEmpty) return 0;
+
+                double totalBrightness = 0;
+                int pixelCount = pixels.Length / 4;
+
+                // Raw RGBA buffer access - 4 bytes per pixel
+                for (int i = 0; i < pixels.Length; i += 4)
+                {
+                    byte r = pixels[i];
+                    byte g = pixels[i + 1];
+                    byte b = pixels[i + 2];
+                    // ITU-R BT.709 luma: Y = 0.2126*R + 0.7152*G + 0.0722*B
+                    totalBrightness += (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+                }
+
+                return pixelCount > 0 ? totalBrightness / pixelCount : 0;
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         // SaveBitmap

@@ -1,23 +1,50 @@
 using System;
+using System.Collections.Concurrent;
 using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils;
 
 public static class FontUtils
 {
-    // CreateTypeface
-    // Creates a typeface from a font family name and style.
-    public static SKTypeface CreateTypeface(string fontFamilyName, SKFontStyle style)
+    // TypefaceCache
+    // Thread-safe cache for loaded typefaces to avoid repeated font loading.
+    private static readonly ConcurrentDictionary<string, SKTypeface> TypefaceCache = new();
+
+    // GetCacheKey
+    // Creates a unique cache key from font family and style parameters.
+    private static string GetCacheKey(string? fontFamily, SKFontStyle style)
     {
-        var fontManager = SKFontManager.Default;
-        return fontManager.MatchFamily(fontFamilyName, style);
+        return $"{fontFamily ?? "default"}_{style.Weight}_{style.Width}_{style.Slant}";
     }
 
     // CreateTypeface
-    // Creates a typeface using the default font family with the specified style.
+    // Creates or retrieves a cached typeface from a font family name and style.
+    public static SKTypeface CreateTypeface(string fontFamilyName, SKFontStyle style)
+    {
+        var cacheKey = GetCacheKey(fontFamilyName, style);
+        return TypefaceCache.GetOrAdd(cacheKey, _ =>
+        {
+            var fontManager = SKFontManager.Default;
+            return fontManager.MatchFamily(fontFamilyName, style);
+        });
+    }
+
+    // CreateTypeface
+    // Creates or retrieves a cached typeface using the default font family with the specified style.
     public static SKTypeface CreateTypeface(SKFontStyle style)
     {
-        return SKFontManager.Default.MatchFamily(null, style);
+        var cacheKey = GetCacheKey(null, style);
+        return TypefaceCache.GetOrAdd(cacheKey, _ =>
+        {
+            return SKFontManager.Default.MatchFamily(null, style);
+        });
+    }
+
+    // ClearCache
+    // Clears the typeface cache to free memory.
+    public static void ClearCache()
+    {
+        TypefaceCache.Clear();
     }
 
     // MeasureTextDimensions

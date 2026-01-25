@@ -253,11 +253,20 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     continue;
                 }
 
-                var actualBrightness = GetFrameBrightness(outputPath);
-                var actualSharpness = GetFrameSharpness(outputPath);
+                // Load bitmap once for all quality checks (eliminates triple file read)
+                using var stream = File.OpenRead(outputPath);
+                using var frameBitmap = SKBitmap.Decode(stream);
+                if (frameBitmap == null)
+                {
+                    if (File.Exists(outputPath)) File.Delete(outputPath);
+                    continue;
+                }
+
+                var actualBrightness = GetFrameBrightness(frameBitmap);
+                var actualSharpness = GetFrameSharpness(frameBitmap);
                 var qualityScore = CalculateFrameQualityScore(actualBrightness, actualSharpness, isHDR);
 
-                var brightnessOk = _brightnessService.IsFrameBrightEnough(outputPath, brightnessThreshold);
+                var brightnessOk = _brightnessService.IsFrameBrightEnough(frameBitmap, brightnessThreshold);
                 var sharpnessOk = actualSharpness >= SharpnessThreshold;
                 var qualityOk = brightnessOk && sharpnessOk;
 
@@ -313,15 +322,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // ApplyFinalProcessing
-        // Applies HDR brightness adjustment if configured.
+        // Returns the frame path for further processing by CanvasService.
         private Task<string> ApplyFinalProcessing(string framePath, PosterSettings config, bool isHDR)
         {
-            if (isHDR && config.BrightenHDR > 0)
-            {
-                _logger.LogDebug("Applying HDR brightness adjustment: {Adjustment}", config.BrightenHDR);
-                _brightnessService.Brighten(framePath, config.BrightenHDR, config.PosterFileType);
-            }
-
+            // HDR brightness is applied by CanvasService.BrightenBitmap on the in-memory bitmap
             return Task.FromResult(framePath);
         }
 
@@ -346,33 +350,57 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return (int)(random.NextDouble() * (endTime - startTime) + startTime);
         }
 
-        // GetFrameBrightness
-        // Calculates average brightness of an image using luminance formula.
-        private double GetFrameBrightness(string filePath)
+        // AnalysisSize
+        // Target size for downscaled analysis (200x200 is sufficient for quality metrics).
+        private const int AnalysisSize = 200;
+
+        // CreateAnalysisBitmap
+        // Creates a small downscaled copy of a bitmap for fast quality analysis.
+        private SKBitmap? CreateAnalysisBitmap(SKBitmap source)
         {
+            if (source == null) return null;
+
+            // Calculate dimensions maintaining aspect ratio
+            float scale = Math.Min((float)AnalysisSize / source.Width, (float)AnalysisSize / source.Height);
+            int newWidth = Math.Max(1, (int)(source.Width * scale));
+            int newHeight = Math.Max(1, (int)(source.Height * scale));
+
+            var resized = new SKBitmap(newWidth, newHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
+            using var canvas = new SKCanvas(resized);
+            using var paint = new SKPaint { FilterQuality = SKFilterQuality.Low };
+            canvas.DrawBitmap(source, SKRect.Create(newWidth, newHeight), paint);
+
+            return resized;
+        }
+
+        // GetFrameBrightness
+        // Calculates average brightness using raw pixel buffer access on downscaled bitmap.
+        private double GetFrameBrightness(SKBitmap bitmap)
+        {
+            if (bitmap == null) return 0.0;
+
             try
             {
-                using var stream = File.OpenRead(filePath);
-                using var bitmap = SKBitmap.Decode(stream);
-                if (bitmap == null) return 0.0;
+                using var analysis = CreateAnalysisBitmap(bitmap);
+                if (analysis == null) return 0.0;
+
+                var pixels = analysis.GetPixelSpan();
+                if (pixels.IsEmpty) return 0.0;
 
                 double totalBrightness = 0;
-                int sampleCount = 0;
-                int stepSize = Math.Max(1, Math.Min(bitmap.Width, bitmap.Height) / 100);
+                int pixelCount = pixels.Length / 4;
 
-                for (int y = 0; y < bitmap.Height; y += stepSize)
+                // Raw RGBA buffer access - 4 bytes per pixel
+                for (int i = 0; i < pixels.Length; i += 4)
                 {
-                    for (int x = 0; x < bitmap.Width; x += stepSize)
-                    {
-                        var pixel = bitmap.GetPixel(x, y);
-                        // ITU-R BT.709 luminance coefficients
-                        var brightness = (0.2126 * pixel.Red + 0.7152 * pixel.Green + 0.0722 * pixel.Blue) / 255.0;
-                        totalBrightness += brightness;
-                        sampleCount++;
-                    }
+                    byte r = pixels[i];
+                    byte g = pixels[i + 1];
+                    byte b = pixels[i + 2];
+                    // ITU-R BT.709 luminance coefficients
+                    totalBrightness += (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
                 }
 
-                return sampleCount > 0 ? totalBrightness / sampleCount : 0.0;
+                return pixelCount > 0 ? totalBrightness / pixelCount : 0.0;
             }
             catch
             {
@@ -381,36 +409,42 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // GetFrameSharpness
-        // Calculates sharpness using Laplacian variance to detect motion blur.
-        private double GetFrameSharpness(string filePath)
+        // Calculates sharpness using Laplacian variance on downscaled bitmap with raw buffer access.
+        private double GetFrameSharpness(SKBitmap bitmap)
         {
+            if (bitmap == null) return 0.0;
+
             try
             {
-                using var stream = File.OpenRead(filePath);
-                using var bitmap = SKBitmap.Decode(stream);
-                if (bitmap == null) return 0.0;
+                using var analysis = CreateAnalysisBitmap(bitmap);
+                if (analysis == null) return 0.0;
 
-                int width = bitmap.Width;
-                int height = bitmap.Height;
+                int width = analysis.Width;
+                int height = analysis.Height;
+                var pixels = analysis.GetPixelSpan();
+                if (pixels.IsEmpty) return 0.0;
+
                 double sumLaplacian = 0;
                 int count = 0;
+                int stride = width * 4;
 
                 // Laplacian kernel: detects edges by measuring second derivative
                 for (int y = 1; y < height - 1; y++)
                 {
                     for (int x = 1; x < width - 1; x++)
                     {
-                        var center = bitmap.GetPixel(x, y);
-                        var top = bitmap.GetPixel(x, y - 1);
-                        var bottom = bitmap.GetPixel(x, y + 1);
-                        var left = bitmap.GetPixel(x - 1, y);
-                        var right = bitmap.GetPixel(x + 1, y);
+                        int centerIdx = (y * width + x) * 4;
+                        int topIdx = ((y - 1) * width + x) * 4;
+                        int bottomIdx = ((y + 1) * width + x) * 4;
+                        int leftIdx = (y * width + (x - 1)) * 4;
+                        int rightIdx = (y * width + (x + 1)) * 4;
 
-                        double centerGray = 0.2126 * center.Red + 0.7152 * center.Green + 0.0722 * center.Blue;
-                        double topGray = 0.2126 * top.Red + 0.7152 * top.Green + 0.0722 * top.Blue;
-                        double bottomGray = 0.2126 * bottom.Red + 0.7152 * bottom.Green + 0.0722 * bottom.Blue;
-                        double leftGray = 0.2126 * left.Red + 0.7152 * left.Green + 0.0722 * left.Blue;
-                        double rightGray = 0.2126 * right.Red + 0.7152 * right.Green + 0.0722 * right.Blue;
+                        // Calculate grayscale using ITU-R BT.709 coefficients
+                        double centerGray = 0.2126 * pixels[centerIdx] + 0.7152 * pixels[centerIdx + 1] + 0.0722 * pixels[centerIdx + 2];
+                        double topGray = 0.2126 * pixels[topIdx] + 0.7152 * pixels[topIdx + 1] + 0.0722 * pixels[topIdx + 2];
+                        double bottomGray = 0.2126 * pixels[bottomIdx] + 0.7152 * pixels[bottomIdx + 1] + 0.0722 * pixels[bottomIdx + 2];
+                        double leftGray = 0.2126 * pixels[leftIdx] + 0.7152 * pixels[leftIdx + 1] + 0.0722 * pixels[leftIdx + 2];
+                        double rightGray = 0.2126 * pixels[rightIdx] + 0.7152 * pixels[rightIdx + 1] + 0.0722 * pixels[rightIdx + 2];
 
                         // Laplacian = 4*center - neighbors (measures edge intensity)
                         double laplacian = Math.Abs(4 * centerGray - topGray - bottomGray - leftGray - rightGray);
