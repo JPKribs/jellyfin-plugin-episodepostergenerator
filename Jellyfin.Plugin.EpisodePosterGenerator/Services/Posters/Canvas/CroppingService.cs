@@ -39,8 +39,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     _logger.LogInformation("Letterbox/pillarbox removed: {Original} -> {New}",
                         originalSize, $"{cropped.Width}x{cropped.Height}");
 
-                    if (result != source) result.Dispose();
+                    var oldResult = result;
                     result = cropped;
+                    if (oldResult != source) oldResult.Dispose();
 
                     metadata.VideoWidth = cropped.Width;
                     metadata.VideoHeight = cropped.Height;
@@ -58,8 +59,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     _logger.LogInformation("Poster fill applied: {Fill} ratio {Ratio}",
                         settings.PosterFill, settings.PosterDimensionRatio);
 
-                    if (result != source) result.Dispose();
+                    var oldResult = result;
                     result = filled;
+                    if (oldResult != source) oldResult.Dispose();
                 }
             }
             else

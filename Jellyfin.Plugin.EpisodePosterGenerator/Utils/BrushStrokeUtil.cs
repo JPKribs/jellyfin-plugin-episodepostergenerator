@@ -30,33 +30,27 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
 
             for (int i = 0; i < strokeCount; i++)
             {
-                var stroke = CreateBrushStroke(bounds, textKeepClear, i, strokeCount);
-                if (stroke != null)
-                {
-                    combinedPath.AddPath(stroke);
-                    stroke.Dispose();
-                }
+                using var stroke = CreateBrushStroke(bounds, textKeepClear, i, strokeCount);
+                combinedPath.AddPath(stroke);
             }
 
             int edgeStrokeCount = 5 + _random.Next(10);
             for (int i = 0; i < edgeStrokeCount; i++)
             {
-                var edgeStroke = CreateEdgeStroke(bounds, textKeepClear);
+                using var edgeStroke = CreateEdgeStroke(bounds, textKeepClear);
                 if (edgeStroke != null)
                 {
                     combinedPath.AddPath(edgeStroke);
-                    edgeStroke.Dispose();
                 }
             }
 
             int splatCount = 20 + _random.Next(30);
             for (int i = 0; i < splatCount; i++)
             {
-                var splat = CreatePaintSplatter(bounds, textKeepClear);
+                using var splat = CreatePaintSplatter(bounds, textKeepClear);
                 if (splat != null)
                 {
                     combinedPath.AddPath(splat);
-                    splat.Dispose();
                 }
             }
 

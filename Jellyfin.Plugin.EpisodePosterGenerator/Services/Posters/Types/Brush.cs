@@ -76,31 +76,31 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         private SKPath GenerateBrushStrokePath(int width, int height, SKRect safeArea, SKRect textArea, int seed)
         {
             var random = new Random(seed);
-            
-            var centerPath = new SKPath();
-            
+
+            using var centerPath = new SKPath();
+
             float textTop = textArea.Top;
             float usableHeight = textTop - safeArea.Top - 100f;
             float startY = safeArea.Top + (usableHeight * 0.3f) + (float)(random.NextDouble() - 0.5) * usableHeight * 0.2f;
             float endY = safeArea.Top + (usableHeight * 0.7f) + (float)(random.NextDouble() - 0.5) * usableHeight * 0.2f;
-            
+
             int segments = 150;
             float frequency = 8f + (float)random.NextDouble() * 4f;
             float tightAmplitude = usableHeight * 0.08f;
-            
+
             for (int i = 0; i <= segments; i++)
             {
                 float t = i / (float)segments;
                 float x = safeArea.Left + (t * safeArea.Width);
-                
+
                 float baseY = startY + (endY - startY) * t;
-                
+
                 float tightSwoop = (float)Math.Sin(t * Math.PI * frequency) * tightAmplitude;
-                
+
                 float wobble = (float)(random.NextDouble() - 0.5) * 8f;
-                
+
                 float y = baseY + tightSwoop + wobble;
-                
+
                 if (i == 0)
                 {
                     centerPath.MoveTo(x, y);
@@ -110,10 +110,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                     centerPath.LineTo(x, y);
                 }
             }
-            
+
             float baseWidth = width * 0.16f;
             float widthVariation = (float)random.NextDouble() * 0.3f + 0.85f;
-            
+
             using var strokePaint = new SKPaint
             {
                 Style = SKPaintStyle.Stroke,
@@ -122,11 +122,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 StrokeJoin = SKStrokeJoin.Round,
                 IsAntialias = true
             };
-            
-            var strokedPath = strokePaint.GetFillPath(centerPath);
-            centerPath.Dispose();
-            
-            return strokedPath;
+
+            return strokePaint.GetFillPath(centerPath);
         }
 
         // CalculateTextKeepClearArea

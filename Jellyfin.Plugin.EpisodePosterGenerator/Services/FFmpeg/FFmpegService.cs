@@ -134,8 +134,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 }
                 _logger.LogWarning("HWA failed, falling back to software");
             }
-            else if (config.EnableHWA && !hardwareValidated)
+            else if (config.EnableHWA)
             {
+                // hardwareValidated must be false here since we're in the else branch
                 _logger.LogInformation("Hardware acceleration disabled due to failed validation, using software");
             }
             else

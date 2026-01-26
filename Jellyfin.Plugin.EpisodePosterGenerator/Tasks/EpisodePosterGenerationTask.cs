@@ -61,14 +61,20 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
         // Processes all episodes that need poster generation.
         public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
         {
-            var config = Plugin.Instance?.Configuration;
+            if (Plugin.Instance == null)
+            {
+                _logger.LogError("No instance of the Episode Poster Generator has been found");
+                return;
+            }
+
+            var config = Plugin.Instance.Configuration;
             if (config == null || !config.EnableTask)
             {
                 return;
             }
 
-            var trackingService = Plugin.Instance?.TrackingService;
-            var posterService = Plugin.Instance?.PosterService;
+            var trackingService = Plugin.Instance.TrackingService;
+            var posterService = Plugin.Instance.PosterService;
 
             if (trackingService == null || posterService == null)
             {
@@ -113,7 +119,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                         {
                             try
                             {
-                                var posterSettings = Plugin.Instance?.PosterConfigService.GetSettingsForEpisode(episode);
+                                var posterSettings = Plugin.Instance.PosterConfigService.GetSettingsForEpisode(episode);
 
                                 if (posterSettings == null)
                                 {

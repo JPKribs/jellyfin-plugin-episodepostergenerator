@@ -81,7 +81,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var lines = TextUtils.FitTextToWidth(title, titlePaint, availableWidth);
 
             var lineHeight = fontSize * 1.2f;
-            var totalHeight = (lines.Count - 1) * lineHeight + fontSize;
             var centerX = safeArea.MidX;
 
             var fontMetrics = titlePaint.FontMetrics;

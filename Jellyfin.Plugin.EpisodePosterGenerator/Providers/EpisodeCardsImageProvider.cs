@@ -51,7 +51,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
         // Generates and returns a poster image for the episode.
         public async Task<DynamicImageResponse> GetImage(BaseItem item, ImageType type, CancellationToken cancellationToken)
         {
-            var config = Plugin.Instance?.Configuration;
+            if (Plugin.Instance == null)
+            {
+                return new DynamicImageResponse { HasImage = false };
+            }
+
+            var config = Plugin.Instance.Configuration;
             if (config == null || !config.EnableProvider)
             {
                 return new DynamicImageResponse { HasImage = false };
@@ -72,7 +77,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                 return new DynamicImageResponse { HasImage = false };
             }
 
-            var posterService = Plugin.Instance?.PosterService;
+            var posterService = Plugin.Instance.PosterService;
             if (posterService == null)
             {
                 _logger.LogError("PosterService not available");
@@ -94,7 +99,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                 var imageBytes = await File.ReadAllBytesAsync(posterPath, cancellationToken).ConfigureAwait(false);
                 var imageStream = new MemoryStream(imageBytes);
 
-                var trackingService = Plugin.Instance?.TrackingService;
+                var trackingService = Plugin.Instance.TrackingService;
                 if (trackingService != null)
                 {
                     try

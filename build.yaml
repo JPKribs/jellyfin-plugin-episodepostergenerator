@@ -1,7 +1,7 @@
 ---
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
-version: "10.11.9"
+version: "10.11.10"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Generate Custom Episode Posters"
@@ -12,16 +12,6 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
-  features:
-  - New Split poster style combining series poster with extracted frame
-  - Added BrightenHDR setting to boost brightness on HDR content
-  improvements:
-  - Optimized frame quality analysis with downscaled processing
-  - Added font caching for faster poster rendering
-  - Reduced memory overhead by eliminating encode/decode cycles
-  - Centralized paint and rendering constants for consistent styling
-  - Added CancellationToken support for graceful task shutdown
   fixes:
-  - SkiaSharp API compatibility with Jellyfin's bundled version
-  - Fixed random seed reuse causing identical frame selections
-  - Added proper error logging for logo loading failures
+  - Fixed floating point equality comparisons in TextInfo
+  - Improved IDisposable handling to prevent resource leaks

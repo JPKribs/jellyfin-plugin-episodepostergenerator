@@ -4,6 +4,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 {
     public struct TextInfo : IEquatable<TextInfo>
     {
+        private const float Epsilon = 0.0001f;
+
         public float Height { get; set; }
 
         public float Width { get; set; }
@@ -13,13 +15,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         public float Y { get; set; }
 
         // Equals
-        // Compares this TextInfo with another for value equality.
+        // Compares this TextInfo with another for value equality using epsilon comparison.
         public readonly bool Equals(TextInfo other)
         {
-            return Height == other.Height &&
-                   Width == other.Width &&
-                   CenterX == other.CenterX &&
-                   Y == other.Y;
+            return Math.Abs(Height - other.Height) < Epsilon &&
+                   Math.Abs(Width - other.Width) < Epsilon &&
+                   Math.Abs(CenterX - other.CenterX) < Epsilon &&
+                   Math.Abs(Y - other.Y) < Epsilon;
         }
 
         // Equals
