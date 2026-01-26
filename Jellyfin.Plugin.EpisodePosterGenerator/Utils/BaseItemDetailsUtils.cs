@@ -66,6 +66,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
             }
             catch
             {
+                // File access errors are expected for network paths or locked files
             }
 
             return null;

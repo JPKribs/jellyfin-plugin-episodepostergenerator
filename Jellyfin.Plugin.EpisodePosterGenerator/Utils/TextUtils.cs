@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using SkiaSharp;
@@ -64,25 +65,10 @@ public static class TextUtils
             return lines;
         }
 
-        string line1 = "";
-        string line2 = "";
-
         int splitPoint = FindOptimalSplitPoint(words, paint, maxWidth);
 
-        for (int i = 0; i < words.Length; i++)
-        {
-            if (i < splitPoint)
-            {
-                line1 += (i > 0 ? " " : "") + words[i];
-            }
-            else
-            {
-                line2 += (i > splitPoint ? " " : "") + words[i];
-            }
-        }
-
-        line1 = line1.Trim();
-        line2 = line2.Trim();
+        var line1 = string.Join(" ", words.Take(splitPoint));
+        var line2 = string.Join(" ", words.Skip(splitPoint));
 
         if (paint.MeasureText(line1) > maxWidth)
         {
@@ -255,14 +241,7 @@ public static class TextUtils
     // Calculates the bounding rectangle for a collection of text lines.
     private static SKRect CalculateTextBounds(IReadOnlyList<string> lines, SKPaint paint, int fontSize)
     {
-        float maxWidth = 0;
-
-        foreach (var line in lines)
-        {
-            var width = paint.MeasureText(line);
-            if (width > maxWidth)
-                maxWidth = width;
-        }
+        float maxWidth = lines.Count > 0 ? lines.Max(line => paint.MeasureText(line)) : 0;
 
         float lineHeight = fontSize * LineSpacingMultiplier;
         float totalHeight = (lines.Count - 1) * lineHeight + fontSize;

@@ -59,16 +59,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     _logger.LogInformation("Poster fill applied: {Fill} ratio {Ratio}",
                         settings.PosterFill, settings.PosterDimensionRatio);
 
-                    var oldResult = result;
+                    if (result != source)
+                    {
+                        result.Dispose();
+                    }
                     result = filled;
-                    try
-                    {
-                        if (oldResult != source) oldResult.Dispose();
-                    }
-                    catch
-                    {
-                        // Suppress dispose exceptions to prevent masking original exceptions
-                    }
                 }
             }
             else

@@ -15,3 +15,7 @@ changelog:
   fixes:
   - Fixed floating point equality comparisons in TextInfo
   - Improved IDisposable handling to prevent resource leaks
+  improvements:
+  - Replaced string concatenation with LINQ in TextUtils
+  - Improved LINQ usage for text measurement calculations
+  - Added readonly modifier to configuration lookup dictionary

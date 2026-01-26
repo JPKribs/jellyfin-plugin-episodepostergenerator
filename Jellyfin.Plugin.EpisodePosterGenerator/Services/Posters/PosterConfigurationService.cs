@@ -11,7 +11,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
     public class PosterConfigurationService
     {
         private readonly ILogger<PosterConfigurationService> _logger;
-        private Dictionary<Guid, PosterSettings> _seriesLookup = new Dictionary<Guid, PosterSettings>();
+        private readonly Dictionary<Guid, PosterSettings> _seriesLookup = new Dictionary<Guid, PosterSettings>();
         private PosterSettings? _defaultSettings;
 
         // PosterConfigurationService
