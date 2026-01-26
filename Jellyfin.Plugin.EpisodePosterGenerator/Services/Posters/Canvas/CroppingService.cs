@@ -61,7 +61,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                     var oldResult = result;
                     result = filled;
-                    if (oldResult != source) oldResult.Dispose();
+                    try
+                    {
+                        if (oldResult != source) oldResult.Dispose();
+                    }
+                    catch
+                    {
+                        // Suppress dispose exceptions to prevent masking original exceptions
+                    }
                 }
             }
             else

@@ -78,7 +78,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     {
                         var oldBitmap = canvasBitmap;
                         canvasBitmap = croppedBitmap;
-                        oldBitmap.Dispose();
+                        try
+                        {
+                            oldBitmap.Dispose();
+                        }
+                        catch
+                        {
+                            // Suppress dispose exceptions to prevent masking original exceptions
+                        }
                     }
 
                     if (config.BrightenHDR > 0)
