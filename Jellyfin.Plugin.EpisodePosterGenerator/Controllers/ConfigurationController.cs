@@ -117,7 +117,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to copy property {PropertyName}", property.Name);
+                    var sanitizedName = property.Name.Replace(Environment.NewLine, string.Empty, StringComparison.Ordinal);
+                    _logger.LogWarning(ex, "Failed to copy property {PropertyName}", sanitizedName);
                 }
             }
         }

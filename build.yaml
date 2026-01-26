@@ -15,6 +15,7 @@ changelog:
   fixes:
   - Fixed floating point equality comparisons in TextInfo
   - Improved IDisposable handling to prevent resource leaks
+  - Fixed potential log forging vulnerability in ConfigurationController
   improvements:
   - Replaced string concatenation with LINQ in TextUtils
   - Improved LINQ usage for text measurement calculations
