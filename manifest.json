@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.11.10",
+        "changelog": "## Fixes\r\n- Fixed floating point equality comparisons in TextInfo\r\n- Improved IDisposable handling to prevent resource leaks\r\n- Fixed potential log forging vulnerability in ConfigurationController\r\n\r\n## Improvements\r\n- Replaced string concatenation with LINQ in TextUtils\r\n- Improved LINQ usage for text measurement calculations\r\n- Added readonly modifier to configuration lookup dictionary\r\n- Replaced loop with LINQ Where in ConfigurationController",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.10/jellyfin-plugin-episodepostergenerator-10.11.10.zip",
+        "checksum": "221a8efb1e9094e6b503a06c0a2dd9b9",
+        "timestamp": "2026-01-26T00:41:57Z"
+      },
+      {
         "version": "10.11.9",
         "changelog": "## Features\r\n- New Split poster style combining series poster with extracted frame\r\n- Added BrightenHDR setting to boost brightness on HDR content\r\n\r\n## Improvements\r\n- Optimized frame quality analysis with downscaled processing\r\n- Added font caching for faster poster rendering\r\n- Reduced memory overhead by eliminating encode/decode cycles\r\n- Centralized paint and rendering constants for consistent styling\r\n- Added CancellationToken support for graceful task shutdown\r\n\r\n## Fixes\r\n- SkiaSharp API compatibility with Jellyfin's bundled version\r\n- Fixed random seed reuse causing identical frame selections\r\n- Added proper error logging for logo loading failures",
         "targetAbi": "10.11.0.0",
