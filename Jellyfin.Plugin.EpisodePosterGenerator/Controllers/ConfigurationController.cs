@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
@@ -103,21 +104,20 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
         // MARK: CopyConfigurationProperties
         private void CopyConfigurationProperties(PluginConfiguration source, PluginConfiguration target)
         {
-            var properties = typeof(PluginConfiguration).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var properties = typeof(PluginConfiguration)
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && p.CanWrite);
 
             foreach (var property in properties)
             {
-                if (property.CanRead && property.CanWrite)
+                try
                 {
-                    try
-                    {
-                        var value = property.GetValue(source);
-                        property.SetValue(target, value);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to copy property {PropertyName}", property.Name);
-                    }
+                    var value = property.GetValue(source);
+                    property.SetValue(target, value);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to copy property {PropertyName}", property.Name);
                 }
             }
         }

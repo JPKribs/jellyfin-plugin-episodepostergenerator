@@ -76,7 +76,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     var croppedBitmap = _croppingService.CropPoster(canvasBitmap, metadata.VideoMetadata, config);
                     if (croppedBitmap != canvasBitmap)
                     {
-                        canvasBitmap.Dispose();
+                        using (canvasBitmap) { }
                         canvasBitmap = croppedBitmap;
                     }
 

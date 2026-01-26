@@ -19,3 +19,4 @@ changelog:
   - Replaced string concatenation with LINQ in TextUtils
   - Improved LINQ usage for text measurement calculations
   - Added readonly modifier to configuration lookup dictionary
+  - Replaced loop with LINQ Where in ConfigurationController
