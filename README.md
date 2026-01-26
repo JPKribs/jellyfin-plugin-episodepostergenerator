@@ -48,7 +48,7 @@ Roman numeral episode numbers with overlapping titles.
 
 | Example 1 | Example 2 | Example 3 |
 |-----------|-----------|-----------|
-| ![Numeral Example 1](Examples/Numeral/Example1.png) | ![Numeral Example 2](Examples/Numeral/Example2.png) | ![Numeral Example 3](Examples/Numeral/Example3.png) |
+| ![Numeral Example 1](Examples/NumeralFull/Example1.png) | ![Numeral Example 2](Examples/NumeralFull/Example2.png) | ![Numeral Example 3](Examples/NumeralFull/Example3.png) |
 
 ### Split Style
 Classic episode posters with overlay text and episode information, split alongside the series poster.
