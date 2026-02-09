@@ -42,21 +42,31 @@ public static class FontUtils
     }
 
     // CreateTypefaceFromFile
-    // Loads a typeface from a font file path, caching the result.
-    // Returns null if the file doesn't exist or loading fails.
+    // Loads a typeface from a font file path, caching successful results.
+    // Returns null if the file doesn't exist or loading fails. Failures are not cached
+    // so the font will be retried if the file appears later (e.g. after a volume mount).
     public static SKTypeface? CreateTypefaceFromFile(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             return null;
 
         var cacheKey = $"file:{filePath}";
-        return TypefaceCache.GetOrAdd(cacheKey, _ =>
-        {
-            if (!File.Exists(filePath))
-                return null!;
 
-            return SKTypeface.FromFile(filePath);
-        }) is SKTypeface tf && tf != null ? tf : null;
+        // Check cache first
+        if (TypefaceCache.TryGetValue(cacheKey, out var cached))
+            return cached;
+
+        // Don't cache failures — only cache successful loads
+        if (!File.Exists(filePath))
+            return null;
+
+        var typeface = SKTypeface.FromFile(filePath);
+        if (typeface != null)
+        {
+            TypefaceCache.TryAdd(cacheKey, typeface);
+        }
+
+        return typeface;
     }
 
     // ResolveTypeface

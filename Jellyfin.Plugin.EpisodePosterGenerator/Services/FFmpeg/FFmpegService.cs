@@ -221,102 +221,110 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             for (int attempt = 0; attempt < maxAttemptsForStrategy; attempt++)
             {
                 var outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.png");
-                var seekTime = GenerateSeekTime(videoDurationSeconds, attempt, config);
+                bool keepOutputFile = false;
 
-                string? args = service.BuildFFmpegArgs(outputPath, metadata, encodingOptions, seekTime, !useToneMapping);
-                if (string.IsNullOrWhiteSpace(args))
+                try
                 {
-                    _logger.LogError("{Method}: Could not build FFmpeg arguments - service returned null", methodName);
-                    break;
-                }
+                    var seekTime = GenerateSeekTime(videoDurationSeconds, attempt, config);
 
-                var ffmpegPath = _mediaEncoder.EncoderPath;
-
-                if (string.IsNullOrWhiteSpace(ffmpegPath))
-                {
-                    _logger.LogWarning("MediaEncoder.EncoderPath is null or empty, falling back to system ffmpeg");
-                    ffmpegPath = "ffmpeg";
-                }
-
-                if (attempt == 0)
-                {
-                    _logger.LogInformation("{Method}: Using FFmpeg command: {Path} {Args}", methodName, ffmpegPath, args);
-                }
-
-                bool success = await RunFFmpegAsync(ffmpegPath, args, outputPath, cancellationToken).ConfigureAwait(false);
-
-                if (!success)
-                {
-                    TryDeleteFile(outputPath);
-
-                    // Hardware failures are usually systemic - give up early
-                    if (useHardware && attempt < 3)
+                    string? args = service.BuildFFmpegArgs(outputPath, metadata, encodingOptions, seekTime, !useToneMapping);
+                    if (string.IsNullOrWhiteSpace(args))
                     {
-                        _logger.LogWarning("{Method}: Failed on attempt {Attempt} - hardware likely not working, giving up", methodName, attempt + 1);
+                        _logger.LogError("{Method}: Could not build FFmpeg arguments - service returned null", methodName);
                         break;
+                    }
+
+                    var ffmpegPath = _mediaEncoder.EncoderPath;
+
+                    if (string.IsNullOrWhiteSpace(ffmpegPath))
+                    {
+                        _logger.LogWarning("MediaEncoder.EncoderPath is null or empty, falling back to system ffmpeg");
+                        ffmpegPath = "ffmpeg";
                     }
 
                     if (attempt == 0)
                     {
-                        _logger.LogWarning("{Method}: FFmpeg execution failed on first attempt", methodName);
+                        _logger.LogInformation("{Method}: Using FFmpeg command: {Path} {Args}", methodName, ffmpegPath, args);
                     }
-                    continue;
+
+                    bool success = await RunFFmpegAsync(ffmpegPath, args, outputPath, cancellationToken).ConfigureAwait(false);
+
+                    if (!success)
+                    {
+                        // Hardware failures are usually systemic - give up early
+                        if (useHardware && attempt < 3)
+                        {
+                            _logger.LogWarning("{Method}: Failed on attempt {Attempt} - hardware likely not working, giving up", methodName, attempt + 1);
+                            break;
+                        }
+
+                        if (attempt == 0)
+                        {
+                            _logger.LogWarning("{Method}: FFmpeg execution failed on first attempt", methodName);
+                        }
+                        continue;
+                    }
+
+                    // Load bitmap once for all quality checks (eliminates triple file read)
+                    using var stream = File.OpenRead(outputPath);
+                    using var frameBitmap = SKBitmap.Decode(stream);
+                    if (frameBitmap == null)
+                    {
+                        continue;
+                    }
+
+                    // Create single downscaled bitmap for all quality analysis (eliminates duplicate downscaling)
+                    using var analysisBitmap = CreateAnalysisBitmap(frameBitmap);
+                    var actualBrightness = analysisBitmap != null ? GetFrameBrightnessFromAnalysis(analysisBitmap) : 0.0;
+                    var actualSharpness = analysisBitmap != null ? GetFrameSharpnessFromAnalysis(analysisBitmap) : 0.0;
+                    var qualityScore = CalculateFrameQualityScore(actualBrightness, actualSharpness, isHDR);
+
+                    var brightnessOk = _brightnessService.IsFrameBrightEnough(frameBitmap, brightnessThreshold);
+                    var sharpnessOk = actualSharpness >= SharpnessThreshold;
+                    var qualityOk = brightnessOk && sharpnessOk;
+
+                    if (attempt < EarlyExitAttemptThreshold || qualityOk)
+                    {
+                        _logger.LogDebug("{Method} attempt {Attempt}: Brightness {Brightness:F3} (OK: {BrightOk}), Sharpness {Sharpness:F1} (OK: {SharpOk}), Score {Score:F3}",
+                            methodName, attempt + 1, actualBrightness, brightnessOk, actualSharpness, sharpnessOk, qualityScore);
+                    }
+
+                    // Found a frame meeting both brightness and sharpness thresholds
+                    if (qualityOk)
+                    {
+                        TryDeleteFile(bestFramePath);
+                        keepOutputFile = true;
+                        _logger.LogInformation("{Method}: Found high-quality frame on attempt {Attempt} - Brightness: {Brightness:F3}, Sharpness: {Sharpness:F1}, Score: {Score:F3}",
+                            methodName, attempt + 1, actualBrightness, actualSharpness, qualityScore);
+                        return outputPath;
+                    }
+
+                    // Track best frame seen so far
+                    if (qualityScore > bestQualityScore)
+                    {
+                        TryDeleteFile(bestFramePath);
+                        bestFramePath = outputPath;
+                        keepOutputFile = true;
+                        bestQualityScore = qualityScore;
+                        bestBrightness = actualBrightness;
+                        bestSharpness = actualSharpness;
+                    }
+
+                    // Early exit for HDR content if we have a reasonably good frame
+                    if (isHDR && qualityScore > HdrEarlyExitScoreThreshold && attempt > EarlyExitAttemptThreshold)
+                    {
+                        _logger.LogInformation("{Method}: Found reasonably good HDR frame after {Attempts} attempts (score: {Score:F3}), stopping search",
+                            methodName, attempt + 1, qualityScore);
+                        break;
+                    }
                 }
-
-                // Load bitmap once for all quality checks (eliminates triple file read)
-                using var stream = File.OpenRead(outputPath);
-                using var frameBitmap = SKBitmap.Decode(stream);
-                if (frameBitmap == null)
+                finally
                 {
-                    TryDeleteFile(outputPath);
-                    continue;
-                }
-
-                // Create single downscaled bitmap for all quality analysis (eliminates duplicate downscaling)
-                using var analysisBitmap = CreateAnalysisBitmap(frameBitmap);
-                var actualBrightness = analysisBitmap != null ? GetFrameBrightnessFromAnalysis(analysisBitmap) : 0.0;
-                var actualSharpness = analysisBitmap != null ? GetFrameSharpnessFromAnalysis(analysisBitmap) : 0.0;
-                var qualityScore = CalculateFrameQualityScore(actualBrightness, actualSharpness, isHDR);
-
-                var brightnessOk = _brightnessService.IsFrameBrightEnough(frameBitmap, brightnessThreshold);
-                var sharpnessOk = actualSharpness >= SharpnessThreshold;
-                var qualityOk = brightnessOk && sharpnessOk;
-
-                if (attempt < EarlyExitAttemptThreshold || qualityOk)
-                {
-                    _logger.LogDebug("{Method} attempt {Attempt}: Brightness {Brightness:F3} (OK: {BrightOk}), Sharpness {Sharpness:F1} (OK: {SharpOk}), Score {Score:F3}",
-                        methodName, attempt + 1, actualBrightness, brightnessOk, actualSharpness, sharpnessOk, qualityScore);
-                }
-
-                // Found a frame meeting both brightness and sharpness thresholds
-                if (qualityOk)
-                {
-                    TryDeleteFile(bestFramePath);
-                    _logger.LogInformation("{Method}: Found high-quality frame on attempt {Attempt} - Brightness: {Brightness:F3}, Sharpness: {Sharpness:F1}, Score: {Score:F3}",
-                        methodName, attempt + 1, actualBrightness, actualSharpness, qualityScore);
-                    return outputPath;
-                }
-
-                // Track best frame seen so far
-                if (qualityScore > bestQualityScore)
-                {
-                    TryDeleteFile(bestFramePath);
-                    bestFramePath = outputPath;
-                    bestQualityScore = qualityScore;
-                    bestBrightness = actualBrightness;
-                    bestSharpness = actualSharpness;
-                }
-                else
-                {
-                    TryDeleteFile(outputPath);
-                }
-
-                // Early exit for HDR content if we have a reasonably good frame
-                if (isHDR && qualityScore > HdrEarlyExitScoreThreshold && attempt > EarlyExitAttemptThreshold)
-                {
-                    _logger.LogInformation("{Method}: Found reasonably good HDR frame after {Attempts} attempts (score: {Score:F3}), stopping search",
-                        methodName, attempt + 1, qualityScore);
-                    break;
+                    // Always clean up the temp file unless it's being kept as the best/returned frame
+                    if (!keepOutputFile)
+                    {
+                        TryDeleteFile(outputPath);
+                    }
                 }
             }
 
@@ -453,13 +461,19 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return (normalizedBrightness * brightnessWeight) + (normalizedSharpness * sharpnessWeight);
         }
 
+        // FFmpegProcessTimeout
+        // Maximum time to wait for a single FFmpeg frame extraction before killing the process.
+        private static readonly TimeSpan FFmpegProcessTimeout = TimeSpan.FromSeconds(60);
+
         // RunFFmpegAsync
-        // Executes FFmpeg process and validates output file was created.
+        // Executes FFmpeg process with timeout and cancellation support.
+        // Ensures the process is killed if it exceeds the timeout or cancellation is requested.
         private async Task<bool> RunFFmpegAsync(string ffmpegPath, string arguments, string outputPath, CancellationToken cancellationToken)
         {
+            Process? process = null;
             try
             {
-                using var process = new Process
+                process = new Process
                 {
                     StartInfo = new ProcessStartInfo
                     {
@@ -473,7 +487,31 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 };
 
                 process.Start();
-                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+                // Combine caller cancellation with a per-process timeout to prevent hangs
+                using var timeoutCts = new CancellationTokenSource(FFmpegProcessTimeout);
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+                try
+                {
+                    await process.WaitForExitAsync(linkedCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Kill the process if cancelled or timed out
+                    KillProcess(process);
+
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        _logger.LogWarning("FFmpeg process killed due to task cancellation");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("FFmpeg process killed after {Timeout}s timeout", FFmpegProcessTimeout.TotalSeconds);
+                    }
+
+                    return false;
+                }
 
                 var error = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
@@ -493,11 +531,39 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                 return true;
             }
+            catch (OperationCanceledException)
+            {
+                KillProcess(process);
+                _logger.LogWarning("FFmpeg process killed due to cancellation");
+                return false;
+            }
             catch (Exception ex)
             {
+                KillProcess(process);
                 _logger.LogError(ex, "Error running FFmpeg process");
                 return false;
             }
+            finally
+            {
+                process?.Dispose();
+            }
+        }
+
+        // KillProcess
+        // Forcefully terminates an FFmpeg process to prevent zombie processes.
+        private void KillProcess(Process? process)
+        {
+            if (process == null) return;
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                    _logger.LogDebug("FFmpeg process {Pid} killed", process.Id);
+                }
+            }
+            catch (InvalidOperationException) { }
+            catch (SystemException) { }
         }
 
         // TryDeleteFile

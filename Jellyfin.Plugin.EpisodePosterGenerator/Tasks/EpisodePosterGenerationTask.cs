@@ -73,6 +73,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                 return;
             }
 
+            // Wait for database initialization before accessing tracking service
+            var dbReady = await Plugin.Instance.WaitForDatabaseAsync(cancellationToken).ConfigureAwait(false);
+            if (!dbReady)
+            {
+                _logger.LogError("Episode tracking database failed to initialize - cannot run poster generation task");
+                return;
+            }
+
             var trackingService = Plugin.Instance.TrackingService;
             var posterService = Plugin.Instance.PosterService;
 

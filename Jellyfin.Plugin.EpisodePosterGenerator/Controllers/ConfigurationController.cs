@@ -86,6 +86,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
                     return StatusCode(StatusCodes.Status500InternalServerError, "Plugin not initialized.");
                 }
 
+                // Wait for database initialization before accessing tracking service
+                var dbReady = await plugin.WaitForDatabaseAsync().ConfigureAwait(false);
+                if (!dbReady)
+                {
+                    _logger.LogError("Episode tracking database not initialized in ResetHistory.");
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable, "Database not initialized.");
+                }
+
                 // Get count before clearing for response
                 var clearedCount = await plugin.TrackingService.GetProcessedCountAsync().ConfigureAwait(false);
                 

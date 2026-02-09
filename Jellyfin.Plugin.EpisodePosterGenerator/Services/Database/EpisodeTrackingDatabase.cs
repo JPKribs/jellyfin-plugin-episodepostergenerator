@@ -16,6 +16,7 @@ public sealed class EpisodeTrackingDatabase : IDisposable
     private readonly string _databasePath;
     private SqliteConnection? _connection;
     private bool _disposed;
+    private bool _initialized;
 
     public string DatabasePath => _databasePath;
 
@@ -39,7 +40,20 @@ public sealed class EpisodeTrackingDatabase : IDisposable
 
         await CreateTablesAsync().ConfigureAwait(false);
 
+        _initialized = true;
         _logger.LogInformation("Episode tracking database initialized at: {DatabasePath}", _databasePath);
+    }
+
+    // EnsureInitialized
+    // Throws if the database connection has not been initialized.
+    private SqliteConnection EnsureInitialized()
+    {
+        if (!_initialized || _connection == null)
+        {
+            throw new InvalidOperationException("Episode tracking database has not been initialized. Call InitializeAsync() first.");
+        }
+
+        return _connection;
     }
 
     // CreateTablesAsync
@@ -71,7 +85,7 @@ public sealed class EpisodeTrackingDatabase : IDisposable
             WHERE EpisodeId = @episodeId
             """;
 
-        using var command = new SqliteCommand(sql, _connection);
+        using var command = new SqliteCommand(sql, EnsureInitialized());
         command.Parameters.AddWithValue("@episodeId", episodeId.ToString());
 
         using var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
@@ -101,7 +115,7 @@ public sealed class EpisodeTrackingDatabase : IDisposable
             VALUES (@episodeId, @lastProcessed, @videoFilePath, @videoFileSize, @videoFileLastModified, @configurationHash)
             """;
 
-        using var command = new SqliteCommand(sql, _connection);
+        using var command = new SqliteCommand(sql, EnsureInitialized());
         command.Parameters.AddWithValue("@episodeId", record.EpisodeId.ToString());
         command.Parameters.AddWithValue("@lastProcessed", record.LastProcessed.ToString("O"));
         command.Parameters.AddWithValue("@videoFilePath", record.VideoFilePath);
@@ -118,7 +132,7 @@ public sealed class EpisodeTrackingDatabase : IDisposable
     {
         const string sql = "DELETE FROM ProcessedEpisodes WHERE EpisodeId = @episodeId";
 
-        using var command = new SqliteCommand(sql, _connection);
+        using var command = new SqliteCommand(sql, EnsureInitialized());
         command.Parameters.AddWithValue("@episodeId", episodeId.ToString());
 
         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
@@ -130,7 +144,7 @@ public sealed class EpisodeTrackingDatabase : IDisposable
     {
         const string sql = "SELECT COUNT(*) FROM ProcessedEpisodes";
 
-        using var command = new SqliteCommand(sql, _connection);
+        using var command = new SqliteCommand(sql, EnsureInitialized());
         var result = await command.ExecuteScalarAsync().ConfigureAwait(false);
 
         return Convert.ToInt32(result, CultureInfo.InvariantCulture);
@@ -142,7 +156,7 @@ public sealed class EpisodeTrackingDatabase : IDisposable
     {
         const string sql = "DELETE FROM ProcessedEpisodes";
 
-        using var command = new SqliteCommand(sql, _connection);
+        using var command = new SqliteCommand(sql, EnsureInitialized());
         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
@@ -157,7 +171,7 @@ public sealed class EpisodeTrackingDatabase : IDisposable
 
         var records = new List<ProcessedEpisodeRecord>();
 
-        using var command = new SqliteCommand(sql, _connection);
+        using var command = new SqliteCommand(sql, EnsureInitialized());
         using var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
 
         while (await reader.ReadAsync().ConfigureAwait(false))
