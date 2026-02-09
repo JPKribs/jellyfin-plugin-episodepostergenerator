@@ -17,7 +17,7 @@ export default function (view) {
         ];
     }
 
-    // ===== Utilities =====
+    // ── Utilities ────────────────────────────────────────────
 
     function generateGuid() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -29,7 +29,6 @@ export default function (view) {
     function parseARGBHex(input) {
         if (!input) return null;
         input = input.replace('#', '').toUpperCase();
-
         if (input.length === 8) {
             return { rgb: '#' + input.substring(2), alpha: parseInt(input.substring(0, 2), 16) };
         }
@@ -43,9 +42,9 @@ export default function (view) {
         return null;
     }
 
-    function trapFocus(modalContent, e) {
+    function trapFocus(container, e) {
         if (e.key !== 'Tab') return;
-        var focusable = modalContent.querySelectorAll(
+        var focusable = container.querySelectorAll(
             'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
         );
         if (focusable.length === 0) return;
@@ -63,15 +62,13 @@ export default function (view) {
     function debounce(fn, delay) {
         var timer = null;
         return function () {
-            var context = this, args = arguments;
+            var ctx = this, args = arguments;
             clearTimeout(timer);
-            timer = setTimeout(function () {
-                fn.apply(context, args);
-            }, delay);
+            timer = setTimeout(function () { fn.apply(ctx, args); }, delay);
         };
     }
 
-    // ===== Unsaved Changes =====
+    // ── Unsaved Changes ─────────────────────────────────────
 
     function takeConfigSnapshot() {
         _savedConfigSnapshot = JSON.stringify(fullConfig.PosterConfigurations);
@@ -106,7 +103,6 @@ export default function (view) {
 
         setTimeout(function () {
             indicator.classList.remove('visible', 'save-success');
-            // Restore original content after fade
             setTimeout(function () {
                 indicator.innerHTML = '<span class="unsaved-indicator-dot"></span> Unsaved changes';
             }, 300);
@@ -126,19 +122,18 @@ export default function (view) {
         }
     }
 
-    // ===== Input Modal =====
+    // ── Input Modal ─────────────────────────────────────────
 
     function showInputModal(title, fields, callback) {
         var triggerElement = document.activeElement;
         var modal = view.querySelector('#inputModal');
         var modalContent = view.querySelector('.input-modal-content');
-        var titleEl = view.querySelector('#inputModalTitle');
         var fieldsContainer = view.querySelector('#inputModalFields');
         var btnConfirm = view.querySelector('#btnConfirmInputModal');
         var btnCancel = view.querySelector('#btnCancelInputModal');
         var btnClose = view.querySelector('#btnCloseInputModal');
 
-        titleEl.textContent = title;
+        view.querySelector('#inputModalTitle').textContent = title;
         fieldsContainer.innerHTML = '';
 
         fields.forEach(function (field, index) {
@@ -170,7 +165,6 @@ export default function (view) {
         });
 
         modal.style.display = 'flex';
-
         var firstInput = fieldsContainer.querySelector('input');
         if (firstInput) {
             setTimeout(function () { firstInput.focus(); firstInput.select(); }, 100);
@@ -195,25 +189,14 @@ export default function (view) {
             callback(values);
         }
 
-        function onCancel() {
-            cleanup();
-            callback(null);
-        }
+        function onCancel() { cleanup(); callback(null); }
 
-        function onBackdrop(e) {
-            if (e.target === modal) onCancel();
-        }
+        function onBackdrop(e) { if (e.target === modal) onCancel(); }
 
         function onKeydown(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                onConfirm();
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                onCancel();
-            } else {
-                trapFocus(modalContent, e);
-            }
+            if (e.key === 'Enter') { e.preventDefault(); onConfirm(); }
+            else if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+            else { trapFocus(modalContent, e); }
         }
 
         btnConfirm.addEventListener('click', onConfirm);
@@ -223,92 +206,66 @@ export default function (view) {
         document.addEventListener('keydown', onKeydown);
     }
 
-    // ===== Collapsibles =====
+    // ── Collapsibles ────────────────────────────────────────
 
     function initCollapsibles() {
         view.querySelectorAll('.collapsibleHeader').forEach(function (header) {
             header.addEventListener('click', function () {
-                var targetId = this.dataset.target;
-                var content = view.querySelector('#' + targetId);
+                var content = view.querySelector('#' + this.dataset.target);
                 if (content) {
                     this.classList.toggle('collapsed');
                     content.classList.toggle('collapsed');
-                    var isExpanded = !this.classList.contains('collapsed');
-                    this.setAttribute('aria-expanded', String(isExpanded));
+                    this.setAttribute('aria-expanded', String(!this.classList.contains('collapsed')));
                 }
             });
         });
     }
 
-    // ===== Color Controls =====
+    // ── Color Controls ──────────────────────────────────────
 
     function updateHexFromControls(container) {
-        var colorPicker = container.querySelector('.color-picker');
-        var alphaSlider = container.querySelector('.alpha-slider');
-        var hexInput = container.querySelector('.hex-input');
-
-        var rgb = colorPicker.value.substring(1);
-        var alpha = parseInt(alphaSlider.value);
-        var alphaHex = alpha.toString(16).padStart(2, '0').toUpperCase();
-        hexInput.value = '#' + alphaHex + rgb.toUpperCase();
+        var rgb = container.querySelector('.color-picker').value.substring(1);
+        var alpha = parseInt(container.querySelector('.alpha-slider').value);
+        container.querySelector('.hex-input').value = '#' + alpha.toString(16).padStart(2, '0').toUpperCase() + rgb.toUpperCase();
     }
 
     function updateControlsFromHex(container) {
-        var colorPicker = container.querySelector('.color-picker');
-        var alphaSlider = container.querySelector('.alpha-slider');
-        var alphaLabel = container.querySelector('.alpha-label');
-        var hexInput = container.querySelector('.hex-input');
-
-        var parsed = parseARGBHex(hexInput.value);
+        var parsed = parseARGBHex(container.querySelector('.hex-input').value);
         if (parsed) {
-            colorPicker.value = parsed.rgb;
-            alphaSlider.value = parsed.alpha;
-            alphaLabel.textContent = parsed.alpha;
+            container.querySelector('.color-picker').value = parsed.rgb;
+            container.querySelector('.alpha-slider').value = parsed.alpha;
+            container.querySelector('.alpha-label').textContent = parsed.alpha;
         }
     }
 
     function bindColorControls() {
-        view.querySelectorAll('.color-picker').forEach(function (colorPicker) {
-            var container = colorPicker.parentElement;
-            var alphaSlider = container.querySelector('.alpha-slider');
-            var alphaLabel = container.querySelector('.alpha-label');
-            var hexInput = container.querySelector('.hex-input');
+        view.querySelectorAll('.color-picker').forEach(function (picker) {
+            var container = picker.parentElement;
+            var slider = container.querySelector('.alpha-slider');
+            var label = container.querySelector('.alpha-label');
 
-            colorPicker.addEventListener('input', function () {
-                updateHexFromControls(container);
-                checkDirty();
-            });
-            alphaSlider.addEventListener('input', function () {
-                alphaLabel.textContent = alphaSlider.value;
-                updateHexFromControls(container);
-                checkDirty();
-            });
-            hexInput.addEventListener('input', function () {
-                updateControlsFromHex(container);
-                checkDirty();
-            });
+            picker.addEventListener('input', function () { updateHexFromControls(container); checkDirty(); });
+            slider.addEventListener('input', function () { label.textContent = slider.value; updateHexFromControls(container); checkDirty(); });
+            container.querySelector('.hex-input').addEventListener('input', function () { updateControlsFromHex(container); checkDirty(); });
         });
     }
 
     function syncColorControls() {
-        view.querySelectorAll('.color-picker').forEach(function (colorPicker) {
-            var container = colorPicker.parentElement;
-            var hexInput = container.querySelector('.hex-input');
-            var alphaSlider = container.querySelector('.alpha-slider');
-            var alphaLabel = container.querySelector('.alpha-label');
-
-            if (hexInput.value) {
-                var parsed = parseARGBHex(hexInput.value);
+        view.querySelectorAll('.color-picker').forEach(function (picker) {
+            var container = picker.parentElement;
+            var hex = container.querySelector('.hex-input').value;
+            if (hex) {
+                var parsed = parseARGBHex(hex);
                 if (parsed) {
-                    colorPicker.value = parsed.rgb;
-                    alphaSlider.value = parsed.alpha;
-                    alphaLabel.textContent = parsed.alpha;
+                    picker.value = parsed.rgb;
+                    container.querySelector('.alpha-slider').value = parsed.alpha;
+                    container.querySelector('.alpha-label').textContent = parsed.alpha;
                 }
             }
         });
     }
 
-    // ===== Config Loading =====
+    // ── Config Loading ──────────────────────────────────────
 
     function loadConfig() {
         Dashboard.showLoadingMsg();
@@ -316,15 +273,10 @@ export default function (view) {
             fullConfig = config;
 
             if (!config.PosterConfigurations || config.PosterConfigurations.length === 0) {
-                config.PosterConfigurations = [{
-                    Id: generateGuid(),
-                    Settings: {},
-                    SeriesIds: []
-                }];
+                config.PosterConfigurations = [{ Id: generateGuid(), Settings: {}, SeriesIds: [] }];
             }
 
             populateConfigDropdown();
-
             loadAllSeries().then(function () {
                 syncColorControls();
                 takeConfigSnapshot();
@@ -368,19 +320,18 @@ export default function (view) {
     function loadCurrentConfig() {
         var config = getCurrentConfig();
         if (!config) return;
-
         var settings = config.Settings || {};
 
-        view.querySelectorAll('[data-setting]').forEach(function (element) {
-            var settingKey = element.getAttribute('data-setting');
-            var settingValue = settings[settingKey];
+        view.querySelectorAll('[data-setting]').forEach(function (el) {
+            var key = el.getAttribute('data-setting');
+            var val = settings[key];
 
-            if (element.type === 'checkbox') {
-                element.checked = settingValue !== false;
-            } else if (element.getAttribute('data-type') === 'number') {
-                element.value = settingValue || 0;
+            if (el.type === 'checkbox') {
+                el.checked = val !== false;
+            } else if (el.getAttribute('data-type') === 'number') {
+                el.value = val || 0;
             } else {
-                element.value = settingValue || '';
+                el.value = val || '';
             }
         });
 
@@ -394,19 +345,17 @@ export default function (view) {
         return fullConfig.PosterConfigurations.find(function (c) { return c.Id === currentConfigId; });
     }
 
-    // ===== Series Management =====
+    // ── Series Management ───────────────────────────────────
 
     function updateSeriesAssignment() {
         var config = getCurrentConfig();
         var isDefault = config.IsDefault;
 
         view.querySelector('#seriesAssignmentSection').style.display = isDefault ? 'none' : 'block';
-        view.querySelector('#btnDeleteConfig').style.display = isDefault ? 'none' : 'inline-block';
-        view.querySelector('#btnRenameConfig').style.display = isDefault ? 'none' : 'inline-block';
+        view.querySelector('#btnDeleteConfig').classList.toggle('hidden', isDefault);
+        view.querySelector('#btnRenameConfig').classList.toggle('hidden', isDefault);
 
-        if (!isDefault) {
-            renderAssignedSeries();
-        }
+        if (!isDefault) renderAssignedSeries();
     }
 
     function renderAssignedSeries() {
@@ -415,47 +364,37 @@ export default function (view) {
         container.innerHTML = '';
 
         if (!config.SeriesIds || config.SeriesIds.length === 0) {
-            var emptyMsg = document.createElement('div');
-            emptyMsg.className = 'series-empty-state';
-            emptyMsg.innerHTML = '<span class="series-empty-state-icon">&#9888;</span> No series assigned — assign at least one series before saving.';
-            container.appendChild(emptyMsg);
+            var msg = document.createElement('div');
+            msg.className = 'series-empty-state';
+            msg.innerHTML = '<span class="series-empty-state-icon">&#9888;</span> No series assigned — assign at least one series before saving.';
+            container.appendChild(msg);
             return;
         }
 
         config.SeriesIds.forEach(function (seriesId) {
             var series = allSeries.find(function (s) { return s.Id === seriesId; });
-
-            if (!series) {
-                console.warn('Series not found for ID:', seriesId);
-                return;
-            }
+            if (!series) return;
 
             var tag = document.createElement('div');
             tag.className = 'series-tag';
 
-            var posterImg = document.createElement('img');
-            posterImg.className = 'series-tag-poster';
-            posterImg.src = ApiClient.getImageUrl(series.Id, {
-                type: 'Primary',
-                maxWidth: 64,
-                quality: 90
-            });
-            posterImg.onerror = function () {
-                this.style.display = 'none';
-            };
+            var img = document.createElement('img');
+            img.className = 'series-tag-poster';
+            img.src = ApiClient.getImageUrl(series.Id, { type: 'Primary', maxWidth: 64, quality: 90 });
+            img.onerror = function () { this.style.display = 'none'; };
 
-            var nameSpan = document.createElement('span');
-            nameSpan.className = 'series-tag-name';
-            nameSpan.textContent = series.Name;
+            var name = document.createElement('span');
+            name.className = 'series-tag-name';
+            name.textContent = series.Name;
 
-            var removeSpan = document.createElement('span');
-            removeSpan.className = 'series-tag-remove';
-            removeSpan.textContent = '\u00d7';
-            removeSpan.setAttribute('data-series-id', seriesId);
+            var remove = document.createElement('span');
+            remove.className = 'series-tag-remove';
+            remove.textContent = '\u00d7';
+            remove.setAttribute('data-series-id', seriesId);
 
-            tag.appendChild(posterImg);
-            tag.appendChild(nameSpan);
-            tag.appendChild(removeSpan);
+            tag.appendChild(img);
+            tag.appendChild(name);
+            tag.appendChild(remove);
             container.appendChild(tag);
         });
 
@@ -467,7 +406,6 @@ export default function (view) {
     }
 
     function loadAllSeries() {
-        console.log('Loading all series from Jellyfin...');
         return ApiClient.getItems(ApiClient.getCurrentUserId(), {
             IncludeItemTypes: 'Series',
             Recursive: true,
@@ -476,7 +414,6 @@ export default function (view) {
             Fields: 'Overview,ProductionYear'
         }).then(function (result) {
             allSeries = result.Items || [];
-            console.log('Loaded series count:', allSeries.length);
             return allSeries;
         }).catch(function (error) {
             console.error('Failed to load series:', error);
@@ -489,12 +426,10 @@ export default function (view) {
         _seriesModalTrigger = document.activeElement;
         var modal = view.querySelector('#seriesSelectionModal');
         var listContainer = view.querySelector('#seriesCheckboxList');
-        var summaryEl = view.querySelector('#seriesSelectionSummary');
 
         if (!allSeries || allSeries.length === 0) {
-            // Show modal with loading state
             listContainer.innerHTML = '<div class="series-modal-loading"><div class="series-modal-spinner"></div><span>Loading series...</span></div>';
-            summaryEl.textContent = '';
+            view.querySelector('#seriesSelectionSummary').textContent = '';
             modal.style.display = 'flex';
             document.addEventListener('keydown', _onSeriesModalKeydown);
 
@@ -520,11 +455,9 @@ export default function (view) {
         var config = getCurrentConfig();
         var currentSeriesIds = config.SeriesIds || [];
         var assignedSeriesIds = getAllAssignedSeriesIds();
+        var availableCount = 0;
 
         listContainer.innerHTML = '';
-
-        var selectedCount = currentSeriesIds.length;
-        var availableCount = 0;
 
         allSeries.forEach(function (series) {
             var isAssignedHere = currentSeriesIds.includes(series.Id);
@@ -541,16 +474,10 @@ export default function (view) {
             if (isAssignedHere) checkbox.checked = true;
             if (isAssignedElsewhere) checkbox.disabled = true;
 
-            var posterImg = document.createElement('img');
-            posterImg.className = 'series-item-poster';
-            posterImg.src = ApiClient.getImageUrl(series.Id, {
-                type: 'Primary',
-                maxWidth: 80,
-                quality: 80
-            });
-            posterImg.onerror = function () {
-                this.style.visibility = 'hidden';
-            };
+            var poster = document.createElement('img');
+            poster.className = 'series-item-poster';
+            poster.src = ApiClient.getImageUrl(series.Id, { type: 'Primary', maxWidth: 80, quality: 80 });
+            poster.onerror = function () { this.style.visibility = 'hidden'; };
 
             var info = document.createElement('div');
             info.className = 'series-item-info';
@@ -560,19 +487,17 @@ export default function (view) {
             nameSpan.textContent = series.Name;
             info.appendChild(nameSpan);
 
-            var year = series.ProductionYear;
-            if (year) {
+            if (series.ProductionYear) {
                 var yearSpan = document.createElement('span');
                 yearSpan.className = 'series-item-year';
-                yearSpan.textContent = year;
+                yearSpan.textContent = series.ProductionYear;
                 info.appendChild(yearSpan);
             }
 
-            var overview = series.Overview;
-            if (overview) {
+            if (series.Overview) {
                 var descSpan = document.createElement('span');
                 descSpan.className = 'series-item-overview';
-                descSpan.textContent = overview.length > 120 ? overview.substring(0, 120) + '...' : overview;
+                descSpan.textContent = series.Overview.length > 120 ? series.Overview.substring(0, 120) + '...' : series.Overview;
                 info.appendChild(descSpan);
             }
 
@@ -584,13 +509,11 @@ export default function (view) {
             }
 
             item.appendChild(checkbox);
-            item.appendChild(posterImg);
+            item.appendChild(poster);
             item.appendChild(info);
             listContainer.appendChild(item);
 
-            checkbox.addEventListener('change', function () {
-                updateSelectionSummary();
-            });
+            checkbox.addEventListener('change', updateSelectionSummary);
         });
 
         function updateSelectionSummary() {
@@ -605,38 +528,28 @@ export default function (view) {
         searchInput.focus();
     }
 
-    function filterSeriesList() {
-        var searchInput = view.querySelector('#seriesSearchInput');
-        var listContainer = view.querySelector('#seriesCheckboxList');
-        var searchTerm = searchInput.value.toLowerCase();
-
-        listContainer.querySelectorAll('.series-checkbox-item').forEach(function (item) {
-            var nameEl = item.querySelector('.series-item-name');
-            var text = nameEl ? nameEl.textContent.toLowerCase() : item.textContent.toLowerCase();
-            item.style.display = text.includes(searchTerm) ? '' : 'none';
+    var debouncedFilterSeriesList = debounce(function () {
+        var term = view.querySelector('#seriesSearchInput').value.toLowerCase();
+        view.querySelectorAll('.series-checkbox-item').forEach(function (item) {
+            var name = item.querySelector('.series-item-name');
+            item.style.display = (name ? name.textContent : item.textContent).toLowerCase().includes(term) ? '' : 'none';
         });
-    }
-
-    var debouncedFilterSeriesList = debounce(filterSeriesList, 200);
+    }, 200);
 
     function getAllAssignedSeriesIds() {
-        var allIds = [];
-        fullConfig.PosterConfigurations.forEach(function (config) {
-            if (config.SeriesIds) {
-                allIds.push.apply(allIds, config.SeriesIds);
-            }
+        var ids = [];
+        fullConfig.PosterConfigurations.forEach(function (c) {
+            if (c.SeriesIds) ids.push.apply(ids, c.SeriesIds);
         });
-        return allIds;
+        return ids;
     }
 
     function confirmSeriesSelection() {
         var config = getCurrentConfig();
         var selectedIds = [];
-
-        view.querySelectorAll('.series-checkbox:checked').forEach(function (checkbox) {
-            selectedIds.push(checkbox.value);
+        view.querySelectorAll('.series-checkbox:checked').forEach(function (cb) {
+            selectedIds.push(cb.value);
         });
-
         config.SeriesIds = selectedIds;
         renderAssignedSeries();
         closeSeriesSelectionModal();
@@ -648,8 +561,7 @@ export default function (view) {
             e.preventDefault();
             closeSeriesSelectionModal();
         } else {
-            var modalContent = view.querySelector('.series-modal-content');
-            trapFocus(modalContent, e);
+            trapFocus(view.querySelector('.series-modal-content'), e);
         }
     }
 
@@ -667,7 +579,7 @@ export default function (view) {
         checkDirty();
     }
 
-    // ===== Config CRUD =====
+    // ── Config CRUD ─────────────────────────────────────────
 
     function createNewConfig() {
         showInputModal('New Configuration', [
@@ -680,17 +592,13 @@ export default function (view) {
                 Dashboard.alert('Configuration name is required.');
                 return;
             }
-
             if (name.trim().toLowerCase() === 'default') {
                 Dashboard.alert('The name "Default" is reserved and cannot be used.');
                 return;
             }
-
-            var exists = fullConfig.PosterConfigurations.some(function (c) {
+            if (fullConfig.PosterConfigurations.some(function (c) {
                 return c.Name && c.Name.toLowerCase() === name.trim().toLowerCase();
-            });
-
-            if (exists) {
+            })) {
                 Dashboard.alert('A configuration with this name already exists.');
                 return;
             }
@@ -700,7 +608,6 @@ export default function (view) {
                 Name: name.trim(),
                 Settings: {
                     ExtractPoster: true,
-                    EnableHWA: false,
                     EnableLetterboxDetection: true,
                     LetterboxBlackThreshold: 25,
                     LetterboxConfidence: 85.0,
@@ -715,7 +622,6 @@ export default function (view) {
                     BrightenHDR: 25.0,
                     PosterFill: 'Original',
                     PosterDimensionRatio: '16:9',
-                    PosterFileType: 'WEBP',
                     PosterSafeArea: 5.0,
                     ShowEpisode: true,
                     EpisodeFontFamily: 'Arial',
@@ -752,34 +658,25 @@ export default function (view) {
 
     function renameCurrentConfig() {
         var config = getCurrentConfig();
-
         if (config.IsDefault) {
             Dashboard.alert('The default configuration cannot be renamed.');
             return;
         }
 
-        var currentName = config.Name || 'Unnamed';
-
         showInputModal('Rename Configuration', [
-            { label: 'Name', value: currentName, required: true }
+            { label: 'Name', value: config.Name || 'Unnamed', required: true }
         ], function (values) {
             if (!values) return;
             var newName = values[0];
 
-            if (!newName || newName.trim() === '') {
-                return;
-            }
-
+            if (!newName || newName.trim() === '') return;
             if (newName.trim().toLowerCase() === 'default') {
                 Dashboard.alert('The name "Default" is reserved and cannot be used.');
                 return;
             }
-
-            var exists = fullConfig.PosterConfigurations.some(function (c) {
+            if (fullConfig.PosterConfigurations.some(function (c) {
                 return c.Id !== config.Id && c.Name && c.Name.toLowerCase() === newName.trim().toLowerCase();
-            });
-
-            if (exists) {
+            })) {
                 Dashboard.alert('A configuration with this name already exists.');
                 return;
             }
@@ -792,7 +689,6 @@ export default function (view) {
 
     function deleteCurrentConfig() {
         var config = getCurrentConfig();
-
         if (config.IsDefault) {
             Dashboard.alert('Cannot delete the default configuration.');
             return;
@@ -803,7 +699,6 @@ export default function (view) {
                 fullConfig.PosterConfigurations = fullConfig.PosterConfigurations.filter(function (c) {
                     return c.Id !== currentConfigId;
                 });
-
                 currentConfigId = fullConfig.PosterConfigurations[0].Id;
                 populateConfigDropdown();
                 markDirty();
@@ -822,48 +717,37 @@ export default function (view) {
             reader.onload = function (event) {
                 try {
                     var template = JSON.parse(event.target.result);
-
                     if (!template.settings) {
                         Dashboard.alert('Invalid template file: missing settings.');
                         return;
                     }
 
-                    var configName = template.name || 'Imported Configuration';
-
                     showInputModal('Import Configuration', [
-                        { label: 'Name', value: configName, required: true, description: 'Enter a name for the imported configuration.' }
+                        { label: 'Name', value: template.name || 'Imported Configuration', required: true, description: 'Enter a name for the imported configuration.' }
                     ], function (values) {
                         if (!values) return;
                         var nameInput = values[0];
 
-                        if (!nameInput || nameInput.trim() === '') {
-                            return;
-                        }
-
+                        if (!nameInput || nameInput.trim() === '') return;
                         if (nameInput.trim().toLowerCase() === 'default') {
                             Dashboard.alert('The name "Default" is reserved and cannot be used.');
                             return;
                         }
-
-                        var exists = fullConfig.PosterConfigurations.some(function (c) {
+                        if (fullConfig.PosterConfigurations.some(function (c) {
                             return c.Name && c.Name.toLowerCase() === nameInput.trim().toLowerCase();
-                        });
-
-                        if (exists) {
+                        })) {
                             Dashboard.alert('A configuration with this name already exists.');
                             return;
                         }
 
-                        var newConfig = {
+                        fullConfig.PosterConfigurations.push({
                             Id: generateGuid(),
                             Name: nameInput.trim(),
                             Settings: template.settings,
                             SeriesIds: [],
                             IsDefault: false
-                        };
-
-                        fullConfig.PosterConfigurations.push(newConfig);
-                        currentConfigId = newConfig.Id;
+                        });
+                        currentConfigId = fullConfig.PosterConfigurations[fullConfig.PosterConfigurations.length - 1].Id;
                         populateConfigDropdown();
                         markDirty();
 
@@ -871,7 +755,6 @@ export default function (view) {
                             (template.author ? '\nAuthor: ' + template.author : '') +
                             (template.description ? '\nDescription: ' + template.description : ''));
                     });
-
                 } catch (error) {
                     console.error('Import error:', error);
                     Dashboard.alert('Failed to import template. Please ensure the file is a valid JSON template.');
@@ -887,7 +770,6 @@ export default function (view) {
 
     function exportCurrentConfig() {
         var config = getCurrentConfig();
-
         if (!config) {
             Dashboard.alert('No configuration selected.');
             return;
@@ -901,37 +783,26 @@ export default function (view) {
             var author = values[0];
             var description = values[1];
 
-            if (!author || !author.trim()) {
-                Dashboard.alert('Author name is required.');
-                return;
-            }
-
-            if (!description || !description.trim()) {
-                Dashboard.alert('Description is required.');
-                return;
-            }
+            if (!author || !author.trim()) { Dashboard.alert('Author name is required.'); return; }
+            if (!description || !description.trim()) { Dashboard.alert('Description is required.'); return; }
 
             Dashboard.showLoadingMsg();
-
             ApiClient.getPluginConfiguration(pluginId).then(function (pluginConfig) {
-                var pluginVersion = pluginConfig.Version;
-
-                var template = {
+                var ver = pluginConfig.Version;
+                var json = JSON.stringify({
                     name: config.Name,
                     description: description.trim(),
                     author: author.trim(),
-                    version: pluginVersion,
+                    version: ver,
                     createdDate: new Date().toISOString(),
                     settings: config.Settings
-                };
+                }, null, 2);
 
-                var json = JSON.stringify(template, null, 2);
                 var blob = new Blob([json], { type: 'application/json' });
                 var url = URL.createObjectURL(blob);
                 var a = document.createElement('a');
                 a.href = url;
-                var cleanName = config.Name.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_');
-                a.download = cleanName + '_v' + pluginVersion + '.json';
+                a.download = config.Name.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_') + '_v' + ver + '.json';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -947,24 +818,21 @@ export default function (view) {
         });
     }
 
-    // ===== Save =====
+    // ── Save ────────────────────────────────────────────────
 
     function saveCurrentConfigSettings() {
         var config = getCurrentConfig();
         if (!config) return;
-        if (!config.Settings) {
-            config.Settings = {};
-        }
+        if (!config.Settings) config.Settings = {};
 
-        view.querySelectorAll('[data-setting]').forEach(function (element) {
-            var settingKey = element.getAttribute('data-setting');
-
-            if (element.type === 'checkbox') {
-                config.Settings[settingKey] = element.checked;
-            } else if (element.getAttribute('data-type') === 'number') {
-                config.Settings[settingKey] = parseFloat(element.value) || 0;
+        view.querySelectorAll('[data-setting]').forEach(function (el) {
+            var key = el.getAttribute('data-setting');
+            if (el.type === 'checkbox') {
+                config.Settings[key] = el.checked;
+            } else if (el.getAttribute('data-type') === 'number') {
+                config.Settings[key] = parseFloat(el.value) || 0;
             } else {
-                config.Settings[settingKey] = element.value;
+                config.Settings[key] = el.value;
             }
         });
     }
@@ -972,7 +840,6 @@ export default function (view) {
     function validateNumberInputs() {
         var errors = [];
         view.querySelectorAll('[data-setting][data-type="number"]').forEach(function (input) {
-            // Skip inputs that are hidden (inside collapsed/invisible sections)
             if (input.offsetParent === null) return;
 
             var value = parseFloat(input.value);
@@ -985,12 +852,8 @@ export default function (view) {
             if (isNaN(value)) {
                 errors.push(name + ' must be a valid number.');
             } else {
-                if (!isNaN(min) && value < min) {
-                    errors.push(name + ' must be at least ' + min + '.');
-                }
-                if (!isNaN(max) && value > max) {
-                    errors.push(name + ' must be at most ' + max + '.');
-                }
+                if (!isNaN(min) && value < min) errors.push(name + ' must be at least ' + min + '.');
+                if (!isNaN(max) && value > max) errors.push(name + ' must be at most ' + max + '.');
             }
         });
         return errors;
@@ -1005,15 +868,13 @@ export default function (view) {
             return;
         }
 
-        var invalidConfigs = fullConfig.PosterConfigurations.filter(function (config) {
-            var hasNoSeries = !config.SeriesIds || config.SeriesIds.length === 0;
-            var isNotDefault = config.IsDefault !== true;
-            return isNotDefault && hasNoSeries;
+        var invalidConfigs = fullConfig.PosterConfigurations.filter(function (c) {
+            return c.IsDefault !== true && (!c.SeriesIds || c.SeriesIds.length === 0);
         });
 
         if (invalidConfigs.length > 0) {
-            var configNames = invalidConfigs.map(function (c) { return c.Name || 'Unnamed'; }).join(', ');
-            Dashboard.alert('Cannot save: The following non-default configurations have no series assigned: ' + configNames + '. Please assign series or delete these configurations.');
+            var names = invalidConfigs.map(function (c) { return c.Name || 'Unnamed'; }).join(', ');
+            Dashboard.alert('Cannot save: The following non-default configurations have no series assigned: ' + names + '. Please assign series or delete these configurations.');
             return;
         }
 
@@ -1025,7 +886,7 @@ export default function (view) {
         });
     }
 
-    // ===== Style Descriptions =====
+    // ── Style Descriptions ──────────────────────────────────
 
     var posterStyleDescriptions = {
         Standard: 'Full-frame episode image with text overlaid at the bottom. Clean and versatile — works well for most libraries.',
@@ -1039,97 +900,81 @@ export default function (view) {
 
     function updateStyleDescription() {
         var style = view.querySelector('#selectPosterStyle').value;
-        var descEl = view.querySelector('#posterStyleDescription');
-        if (descEl) {
-            descEl.textContent = posterStyleDescriptions[style] || 'Choose the poster generation style and layout.';
-        }
+        var el = view.querySelector('#posterStyleDescription');
+        if (el) el.textContent = posterStyleDescriptions[style] || '';
     }
 
-    // ===== Visibility =====
+    // ── Visibility ──────────────────────────────────────────
 
     function updateVisibility() {
         var posterStyle = view.querySelector('#selectPosterStyle').value;
-
-        view.querySelectorAll('[data-poster-styles]').forEach(function (element) {
-            var supportedStyles = element.getAttribute('data-poster-styles').split(',');
-            var isVisible = supportedStyles.includes(posterStyle);
-            element.style.display = isVisible ? 'block' : 'none';
-        });
-
         var posterFill = view.querySelector('#selectPosterFill').value;
-        view.querySelectorAll('[data-hide-for-posterfill]').forEach(function (element) {
-            var hiddenFills = element.getAttribute('data-hide-for-posterfill').split(',');
-            var shouldHide = hiddenFills.includes(posterFill);
-            element.style.display = shouldHide ? 'none' : 'block';
+
+        // Show/hide elements based on supported poster styles
+        view.querySelectorAll('[data-poster-styles]').forEach(function (el) {
+            el.style.display = el.getAttribute('data-poster-styles').split(',').includes(posterStyle) ? 'block' : 'none';
         });
 
-        view.querySelectorAll('[data-hide-for-styles]').forEach(function (element) {
-            var hiddenStyles = element.getAttribute('data-hide-for-styles').split(',');
-            var shouldHide = hiddenStyles.includes(posterStyle);
-            element.style.display = shouldHide ? 'none' : 'block';
+        // Hide elements for specific fill modes
+        view.querySelectorAll('[data-hide-for-posterfill]').forEach(function (el) {
+            el.style.display = el.getAttribute('data-hide-for-posterfill').split(',').includes(posterFill) ? 'none' : 'block';
         });
 
-        view.querySelectorAll('[data-depends-on]').forEach(function (element) {
-            var dependencies = element.getAttribute('data-depends-on').split(',');
-            var allDependenciesMet = true;
+        // Hide elements for specific styles
+        view.querySelectorAll('[data-hide-for-styles]').forEach(function (el) {
+            el.style.display = el.getAttribute('data-hide-for-styles').split(',').includes(posterStyle) ? 'none' : 'block';
+        });
 
-            dependencies.forEach(function (dependencyId) {
-                var dependencyElement = view.querySelector('#' + dependencyId.trim());
-                if (!dependencyElement || !dependencyElement.checked) {
-                    allDependenciesMet = false;
-                }
+        // Checkbox dependency chains
+        view.querySelectorAll('[data-depends-on]').forEach(function (el) {
+            var deps = el.getAttribute('data-depends-on').split(',');
+            var met = deps.every(function (id) {
+                var dep = view.querySelector('#' + id.trim());
+                return dep && dep.checked;
             });
 
-            var hideForStyles = element.getAttribute('data-hide-for-styles');
-            var shouldHideForStyle = false;
-            if (hideForStyles) {
-                var hiddenStyles = hideForStyles.split(',');
-                shouldHideForStyle = hiddenStyles.includes(posterStyle);
-            }
-
-            element.style.display = (allDependenciesMet && !shouldHideForStyle) ? 'block' : 'none';
+            var hideForStyles = el.getAttribute('data-hide-for-styles');
+            var hiddenByStyle = hideForStyles && hideForStyles.split(',').includes(posterStyle);
+            el.style.display = (met && !hiddenByStyle) ? 'block' : 'none';
         });
 
-        view.querySelectorAll('[data-depends-on-gradient]').forEach(function (element) {
-            var gradientSelectId = element.getAttribute('data-depends-on-gradient');
-            var gradientSelect = view.querySelector('#' + gradientSelectId);
-            var isVisible = gradientSelect && gradientSelect.value !== 'None';
-            element.style.display = isVisible ? 'block' : 'none';
+        // Gradient dependency
+        view.querySelectorAll('[data-depends-on-gradient]').forEach(function (el) {
+            var select = view.querySelector('#' + el.getAttribute('data-depends-on-gradient'));
+            el.style.display = (select && select.value !== 'None') ? 'block' : 'none';
         });
 
-        view.querySelectorAll('[data-depends-on-value]').forEach(function (element) {
-            var inputId = element.getAttribute('data-depends-on-value');
-            var input = view.querySelector('#' + inputId);
-            var hasValue = input && input.value && input.value.trim() !== '';
-            element.style.display = hasValue ? 'block' : 'none';
+        // Value dependency (show when input has a value)
+        view.querySelectorAll('[data-depends-on-value]').forEach(function (el) {
+            var input = view.querySelector('#' + el.getAttribute('data-depends-on-value'));
+            el.style.display = (input && input.value && input.value.trim() !== '') ? 'block' : 'none';
         });
 
-        view.querySelectorAll('[data-hide-when-checked]').forEach(function (element) {
-            var checkboxId = element.getAttribute('data-hide-when-checked');
-            var checkbox = view.querySelector('#' + checkboxId);
-            var isChecked = checkbox && checkbox.checked;
-            element.style.display = isChecked ? 'none' : 'block';
+        // Hide when checkbox is checked (inverse dependency)
+        view.querySelectorAll('[data-hide-when-checked]').forEach(function (el) {
+            var cb = view.querySelector('#' + el.getAttribute('data-hide-when-checked'));
+            el.style.display = (cb && cb.checked) ? 'none' : 'block';
         });
 
-        var showEpisodeCheckbox = view.querySelector('#chkShowEpisode');
+        // Force-enable checkboxes for styles that require them
         if (posterStyle === 'Cutout' || posterStyle === 'Numeral' || posterStyle === 'Brush') {
-            showEpisodeCheckbox.checked = true;
+            view.querySelector('#chkShowEpisode').checked = true;
         }
-
-        var showTitleCheckbox = view.querySelector('#chkShowTitle');
         if (posterStyle === 'Frame' || posterStyle === 'Brush') {
-            showTitleCheckbox.checked = true;
+            view.querySelector('#chkShowTitle').checked = true;
         }
     }
 
-    // ===== Event Binding =====
+    // ── Event Binding ───────────────────────────────────────
 
     function bindEventListeners() {
+        // Form save
         view.querySelector('#EpgPostersForm').addEventListener('submit', function (e) {
             e.preventDefault();
             saveConfig();
         });
 
+        // Config selector
         view.querySelector('#selectPosterConfig').addEventListener('change', function () {
             saveCurrentConfigSettings();
             currentConfigId = this.value;
@@ -1137,111 +982,54 @@ export default function (view) {
             view.querySelector('.content-primary').scrollIntoView({ behavior: 'smooth' });
         });
 
-        view.querySelector('#btnNewConfig').addEventListener('click', function () {
-            createNewConfig();
-        });
+        // Config action buttons
+        view.querySelector('#btnNewConfig').addEventListener('click', createNewConfig);
+        view.querySelector('#btnDeleteConfig').addEventListener('click', deleteCurrentConfig);
+        view.querySelector('#btnRenameConfig').addEventListener('click', renameCurrentConfig);
+        view.querySelector('#btnExportConfig').addEventListener('click', exportCurrentConfig);
+        view.querySelector('#btnImportConfig').addEventListener('click', importCurrentConfig);
 
-        view.querySelector('#btnDeleteConfig').addEventListener('click', function () {
-            deleteCurrentConfig();
-        });
-
-        view.querySelector('#btnRenameConfig').addEventListener('click', function () {
-            renameCurrentConfig();
-        });
-
-        view.querySelector('#btnExportConfig').addEventListener('click', function () {
-            exportCurrentConfig();
-        });
-
-        view.querySelector('#btnImportConfig').addEventListener('click', function () {
-            importCurrentConfig();
-        });
-
-        view.querySelector('#btnAddSeries').addEventListener('click', function () {
-            showSeriesSelectionModal();
-        });
-
-        view.querySelector('#btnCancelSeriesSelection').addEventListener('click', function () {
-            closeSeriesSelectionModal();
-        });
-
-        view.querySelector('#btnCloseSeriesModal').addEventListener('click', function () {
-            closeSeriesSelectionModal();
-        });
-
+        // Series modal
+        view.querySelector('#btnAddSeries').addEventListener('click', showSeriesSelectionModal);
+        view.querySelector('#btnCancelSeriesSelection').addEventListener('click', closeSeriesSelectionModal);
+        view.querySelector('#btnCloseSeriesModal').addEventListener('click', closeSeriesSelectionModal);
+        view.querySelector('#btnConfirmSeriesSelection').addEventListener('click', confirmSeriesSelection);
         view.querySelector('#seriesSelectionModal').addEventListener('click', function (e) {
-            if (e.target === this) {
-                closeSeriesSelectionModal();
+            if (e.target === this) closeSeriesSelectionModal();
+        });
+        view.querySelector('#seriesSearchInput').addEventListener('input', debouncedFilterSeriesList);
+
+        // Controls that affect visibility
+        var visibilityControls = [
+            '#selectPosterStyle', '#chkShowTitle', '#chkShowEpisode', '#chkExtractPoster',
+            '#chkEnableLetterboxDetection', '#selectPosterFill', '#selectOverlayGradient',
+            '#chkEpisodeUseCustomFont', '#chkTitleUseCustomFont'
+        ];
+        visibilityControls.forEach(function (selector) {
+            var el = view.querySelector(selector);
+            if (el) {
+                var evt = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
+                el.addEventListener(evt, function () { updateVisibility(); checkDirty(); });
             }
         });
 
-        view.querySelector('#btnConfirmSeriesSelection').addEventListener('click', function () {
-            confirmSeriesSelection();
-        });
-
-        view.querySelector('#seriesSearchInput').addEventListener('input', debouncedFilterSeriesList);
-
-        view.querySelector('#selectPosterStyle').addEventListener('change', function () {
-            updateVisibility();
-            updateStyleDescription();
-            checkDirty();
-        });
-
-        view.querySelector('#chkShowTitle').addEventListener('change', function () {
-            updateVisibility();
-            checkDirty();
-        });
-
-        view.querySelector('#chkShowEpisode').addEventListener('change', function () {
-            updateVisibility();
-            checkDirty();
-        });
-
-        view.querySelector('#chkExtractPoster').addEventListener('change', function () {
-            updateVisibility();
-            checkDirty();
-        });
-
-        view.querySelector('#chkEnableLetterboxDetection').addEventListener('change', function () {
-            updateVisibility();
-            checkDirty();
-        });
-
-        view.querySelector('#selectPosterFill').addEventListener('change', function () {
-            updateVisibility();
-            checkDirty();
-        });
-
-        view.querySelector('#selectOverlayGradient').addEventListener('change', function () {
-            updateVisibility();
-            checkDirty();
-        });
-
+        // Graphic path also affects visibility
         view.querySelector('#txtGraphicPath').addEventListener('input', function () {
             updateVisibility();
             checkDirty();
         });
 
-        view.querySelector('#chkEpisodeUseCustomFont').addEventListener('change', function () {
-            updateVisibility();
-            checkDirty();
-        });
-
-        view.querySelector('#chkTitleUseCustomFont').addEventListener('change', function () {
-            updateVisibility();
-            checkDirty();
-        });
+        // Style description updates
+        view.querySelector('#selectPosterStyle').addEventListener('change', updateStyleDescription);
 
         // Track changes on all settings inputs
-        view.querySelectorAll('[data-setting]').forEach(function (element) {
-            var eventType = (element.type === 'checkbox' || element.tagName === 'SELECT') ? 'change' : 'input';
-            element.addEventListener(eventType, function () {
-                checkDirty();
-            });
+        view.querySelectorAll('[data-setting]').forEach(function (el) {
+            var evt = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
+            el.addEventListener(evt, checkDirty);
         });
     }
 
-    // ===== Lifecycle =====
+    // ── Lifecycle ───────────────────────────────────────────
 
     function onBeforeUnload(e) {
         if (_dirty) {
@@ -1271,7 +1059,6 @@ export default function (view) {
             var confirmed = confirm('You have unsaved changes. Are you sure you want to leave?');
             if (!confirmed) {
                 e.preventDefault();
-                // Re-select the Posters tab since we're staying
                 LibraryMenu.setTabs('epg', 0, getTabs);
             }
         }

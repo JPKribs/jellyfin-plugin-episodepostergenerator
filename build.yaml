@@ -13,11 +13,13 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   improvements:
-  - Added 60-second timeout per FFmpeg frame extraction to prevent hung processes
-  - Added FFmpeg process kill on task cancellation and timeout to prevent zombie processes
-  - Added database initialization guard that blocks callers until DB is ready
-  - Added database wait gate to scheduled task and reset history endpoint
+  - Use Jellyfin's built-in IMediaEncoder for frame extraction and tone mapping
+  - Remove custom FFmpeg tone mapping pipeline (ToneMapFilterService, HardwareFFmpegService, SoftwareFFmpegService, HardwareValidationService)
+  - Remove HWA (Hardware Acceleration) configuration option
+  - Remove file type selection, standardize output to JPEG
+  - Replace config action button labels with Material Icons for a more compact mobile layout
+  - Update example templates to include custom font properties and bump to 10.11.13
   fixes:
-  - Fixed temp file accumulation from unhandled exceptions during frame quality analysis
-  - Fixed database NullReferenceException when methods called before initialization completes
-  - Fixed custom font cache permanently caching missing files instead of retrying
+  - HDR content appears washed out (DV with HDR10+ fallback)
+  - Dolby Vision content appears purple (pure DV without fallback)
+  - Config action buttons overflow on mobile screens

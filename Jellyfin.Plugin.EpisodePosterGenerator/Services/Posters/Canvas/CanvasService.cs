@@ -2,8 +2,8 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
+using MediaBrowser.Controller.Entities.TV;
 using Microsoft.Extensions.Logging;
 using SkiaSharp;
 
@@ -35,7 +35,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
         // GenerateCanvasAsync
         // Generates a poster canvas by extracting a frame, cropping, and brightening it.
-        public async Task<SKBitmap?> GenerateCanvasAsync(EpisodeMetadata metadata, PosterSettings config, CancellationToken cancellationToken = default)
+        public async Task<SKBitmap?> GenerateCanvasAsync(Episode episode, EpisodeMetadata metadata, PosterSettings config, CancellationToken cancellationToken = default)
         {
             if (metadata?.VideoMetadata == null)
             {
@@ -53,7 +53,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 if (config.ExtractPoster)
                 {
                     ffmpegOutputPath = await _ffmpegService.ExtractSceneAsync(
-                        metadata,
+                        episode,
                         config,
                         cancellationToken
                     ).ConfigureAwait(false);

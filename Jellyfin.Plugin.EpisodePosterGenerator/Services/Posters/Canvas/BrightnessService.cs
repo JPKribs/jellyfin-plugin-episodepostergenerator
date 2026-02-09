@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using SkiaSharp;
-using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
@@ -98,7 +97,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
         // Brighten
         // Loads an image file, increases its brightness, and saves it back.
-        public void Brighten(string filePath, double brightnessIncrease, PosterFileType fileType)
+        public void Brighten(string filePath, double brightnessIncrease)
         {
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
                 return;
@@ -117,7 +116,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                 BrightenBitmap(bitmap, brightnessIncrease);
 
-                SaveBitmap(bitmap, filePath, fileType);
+                SaveBitmap(bitmap, filePath);
             }
             catch (Exception ex)
             {
@@ -170,7 +169,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
         // SaveBitmap
         // Saves a bitmap to a file in PNG format.
-        private void SaveBitmap(SKBitmap bitmap, string filePath, PosterFileType fileType)
+        private void SaveBitmap(SKBitmap bitmap, string filePath)
         {
             using var image = SKImage.FromBitmap(bitmap);
             using var data = image.Encode(SKEncodedImageFormat.Png, 100);

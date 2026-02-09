@@ -140,7 +140,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                                 await _providerManager.SaveImage(
                                     episode,
                                     imageStream,
-                                    posterSettings.PosterFileType.GetMimeType(),
+                                    "image/jpeg",
                                     ImageType.Primary,
                                     null,
                                     cancellationToken).ConfigureAwait(false);

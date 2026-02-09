@@ -18,8 +18,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 
         public bool ExtractPoster { get; set; } = true;
 
-        public bool EnableHWA { get; set; } = false;
-
         public bool EnableLetterboxDetection { get; set; } = true;
 
         public int LetterboxBlackThreshold { get; set; } = 25;
@@ -47,8 +45,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         public PosterFill PosterFill { get; set; } = PosterFill.Original;
 
         public string PosterDimensionRatio { get; set; } = "16:9";
-
-        public PosterFileType PosterFileType { get; set; } = PosterFileType.WEBP;
 
         public float PosterSafeArea { get; set; } = 5.0f;
 

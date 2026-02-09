@@ -23,7 +23,6 @@ public class ConfigurationHashService
         var hashConfig = new
         {
             settings.ExtractPoster,
-            settings.EnableHWA,
             settings.EnableLetterboxDetection,
             settings.LetterboxBlackThreshold,
             settings.LetterboxConfidence,
@@ -38,7 +37,6 @@ public class ConfigurationHashService
             settings.BrightenHDR,
             settings.PosterFill,
             settings.PosterDimensionRatio,
-            settings.PosterFileType,
             settings.PosterSafeArea,
             settings.ShowEpisode,
             settings.EpisodeFontFamily,

@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Configuration;
@@ -58,7 +57,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             var episodeMetadata = EpisodeMetadata.CreateFromEpisode(episode);
 
-            using var bitmap = await _canvasService.GenerateCanvasAsync(episodeMetadata, posterSettings).ConfigureAwait(false);
+            using var bitmap = await _canvasService.GenerateCanvasAsync(episode, episodeMetadata, posterSettings).ConfigureAwait(false);
             if (bitmap == null)
             {
                 _logger.LogWarning("Failed to generate canvas for episode: {EpisodeName}", episode.Name);
@@ -77,7 +76,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 _ => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>())
             };
 
-            var tempFilePath = GetTemporaryPosterPath(episode.Id, posterSettings.PosterFileType);
+            var tempFilePath = GetTemporaryPosterPath(episode.Id);
 
             var generatedPath = generator.Generate(bitmap, episodeMetadata, posterSettings, tempFilePath);
 
@@ -96,10 +95,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
         // GetTemporaryPosterPath
         // Constructs the temporary file path for the generated poster.
-        private string GetTemporaryPosterPath(Guid episodeId, PosterFileType fileType)
+        private string GetTemporaryPosterPath(Guid episodeId)
         {
             var tempDir = _configurationManager.GetTranscodePath();
-            var fileName = $"{episodeId}{fileType.GetFileExtension()}";
+            var fileName = $"{episodeId}.jpg";
             return Path.Combine(tempDir, fileName);
         }
     }

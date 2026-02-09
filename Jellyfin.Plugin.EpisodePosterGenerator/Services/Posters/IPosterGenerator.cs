@@ -284,25 +284,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // SavePoster
-        // Encodes and saves the poster bitmap to the specified path.
+        // Encodes and saves the poster bitmap to the specified path as JPEG.
         private string? SavePoster(SKBitmap bitmap, PosterSettings settings, string? outputPath)
         {
             if (string.IsNullOrWhiteSpace(outputPath))
             {
-                var extension = settings.PosterFileType.ToString().ToLowerInvariant();
-                outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.{extension}");
+                outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.jpg");
             }
 
-            SKEncodedImageFormat format = settings.PosterFileType switch
-            {
-                PosterFileType.JPEG => SKEncodedImageFormat.Jpeg,
-                PosterFileType.PNG => SKEncodedImageFormat.Png,
-                PosterFileType.WEBP => SKEncodedImageFormat.Webp,
-                _ => SKEncodedImageFormat.Png
-            };
-
             using var image = SKImage.FromBitmap(bitmap);
-            using var data = image.Encode(format, 100);
+            using var data = image.Encode(SKEncodedImageFormat.Jpeg, 100);
 
             var directory = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))

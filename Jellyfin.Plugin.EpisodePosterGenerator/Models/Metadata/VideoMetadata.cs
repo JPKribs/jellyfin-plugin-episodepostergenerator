@@ -1,7 +1,4 @@
-using System;
-using System.IO;
 using System.Linq;
-using Jellyfin.Data.Enums;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Model.Entities;
 
@@ -19,17 +16,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 
         public int VideoHeight { get; set; }
 
-        public MediaContainer VideoContainer { get; set; } = MediaContainer.Unknown;
-
-        public VideoCodec VideoCodec { get; set; } = VideoCodec.Unknown;
-
         public long VideoLengthTicks { get; set; }
-
-        public string VideoColorSpace { get; set; } = string.Empty;
-
-        public int VideoColorBits { get; set; }
-
-        public VideoRangeType VideoHdrType { get; set; } = VideoRangeType.Unknown;
 
         // CreateFromEpisode
         // Creates a VideoMetadata instance by extracting video information from an Episode.
@@ -54,21 +41,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
             {
                 metadata.VideoWidth = videoStream.Width ?? 1920;
                 metadata.VideoHeight = videoStream.Height ?? 1080;
-                metadata.VideoContainer = MediaContainerExtensions.FromFileExtension(episode.Path);
-                metadata.VideoCodec = VideoCodecExtensions.FromString(videoStream.Codec);
-                metadata.VideoColorSpace = videoStream.ColorSpace ?? "Unknown";
-                metadata.VideoColorBits = ExtractColorBits(videoStream);
-                metadata.VideoHdrType = ExtractVideoRangeType(videoStream);
             }
             else
             {
                 metadata.VideoWidth = 1920;
                 metadata.VideoHeight = 1080;
-                metadata.VideoContainer = MediaContainerExtensions.FromFileExtension(episode.Path);
-                metadata.VideoCodec = VideoCodec.Unknown;
-                metadata.VideoColorSpace = "Unknown";
-                metadata.VideoColorBits = 8;
-                metadata.VideoHdrType = VideoRangeType.Unknown;
             }
 
             metadata.VideoLengthTicks = episode.RunTimeTicks ?? 0;
@@ -90,38 +67,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         {
             var posterImage = series.GetImages(ImageType.Primary).FirstOrDefault();
             return posterImage?.Path;
-        }
-
-        // ExtractColorBits
-        // Extracts the color bit depth from the video stream metadata.
-        private static int ExtractColorBits(MediaStream videoStream)
-        {
-            var bitDepth = videoStream.BitDepth;
-            if (bitDepth.HasValue)
-                return bitDepth.Value;
-
-            var profile = videoStream.Profile?.ToLowerInvariant();
-            if (!string.IsNullOrEmpty(profile))
-            {
-                if (profile.Contains("10", StringComparison.OrdinalIgnoreCase) || profile.Contains("main10", StringComparison.OrdinalIgnoreCase))
-                    return 10;
-                if (profile.Contains("12", StringComparison.OrdinalIgnoreCase) || profile.Contains("main12", StringComparison.OrdinalIgnoreCase))
-                    return 12;
-            }
-
-            return 8;
-        }
-
-        // ExtractVideoRangeType
-        // Determines the video range type (HDR/SDR) from the video stream metadata.
-        private static VideoRangeType ExtractVideoRangeType(MediaStream videoStream)
-        {
-            if (videoStream.VideoRangeType != VideoRangeType.Unknown)
-                return videoStream.VideoRangeType;
-
-            return VideoRangeTypeExtensions.FromColorTransferAndPrimaries(
-                videoStream.ColorTransfer,
-                videoStream.ColorPrimaries);
         }
     }
 }

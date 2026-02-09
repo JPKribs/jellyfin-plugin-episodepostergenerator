@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,7 +8,6 @@ using Jellyfin.Plugin.EpisodePosterGenerator.Services.Database;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Controller.Configuration;
-using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
@@ -29,9 +27,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         private readonly EpisodeTrackingService _trackingService;
         private readonly EpisodeTrackingDatabase _trackingDatabase;
         private readonly FFmpegService _ffmpegService;
-        private readonly HardwareValidationService _hardwareValidationService;
-        private readonly HardwareFFmpegService _hardwareFFmpegService;
-        private readonly SoftwareFFmpegService _softwareFFmpegService;
         private readonly CanvasService _canvasService;
         private readonly BrightnessService _brightnessService;
         private readonly CroppingService _croppingService;
@@ -77,21 +72,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
 
             _brightnessService = new BrightnessService(
                 loggerFactory.CreateLogger<BrightnessService>());
-            _hardwareValidationService = new HardwareValidationService(
-                loggerFactory.CreateLogger<HardwareValidationService>());
-            _hardwareFFmpegService = new HardwareFFmpegService(
-                loggerFactory.CreateLogger<HardwareFFmpegService>(),
-                _hardwareValidationService);
-            _softwareFFmpegService = new SoftwareFFmpegService(
-                loggerFactory.CreateLogger<SoftwareFFmpegService>());
             _ffmpegService = new FFmpegService(
                 loggerFactory.CreateLogger<FFmpegService>(),
-                configurationManager,
                 mediaEncoder,
-                _hardwareFFmpegService,
-                _softwareFFmpegService,
-                _brightnessService,
-                _hardwareValidationService);
+                _brightnessService);
 
             _croppingService = new CroppingService(
                 loggerFactory.CreateLogger<CroppingService>());
@@ -145,9 +129,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public CanvasService CanvasService => _canvasService;
         public CroppingService CroppingService => _croppingService;
         public FFmpegService FFmpegService => _ffmpegService;
-        public HardwareValidationService HardwareValidationService => _hardwareValidationService;
-        public HardwareFFmpegService HardwareFFmpegService => _hardwareFFmpegService;
-        public SoftwareFFmpegService SoftwareFFmpegService => _softwareFFmpegService;
         public PosterService PosterService => _posterService;
         public PosterConfigurationService PosterConfigService => _posterConfigService;
         public TemplateExportService TemplateExportService => _templateExportService;
@@ -208,7 +189,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             {
                 _dbInitGate?.Dispose();
                 _trackingDatabase?.Dispose();
-                _hardwareValidationService?.Dispose();
                 _disposed = true;
             }
         }

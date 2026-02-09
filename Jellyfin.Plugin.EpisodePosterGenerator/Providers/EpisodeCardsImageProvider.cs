@@ -116,16 +116,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
 
                 _logger.LogInformation("Poster created for {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
 
-                var posterSettings = Plugin.Instance!.PosterConfigService.GetSettingsForEpisode(episode);
-                var imageFormat = posterSettings.PosterFileType == Models.PosterFileType.PNG ? ImageFormat.Png :
-                                  posterSettings.PosterFileType == Models.PosterFileType.WEBP ? ImageFormat.Webp :
-                                  ImageFormat.Jpg;
-
                 return new DynamicImageResponse
                 {
                     HasImage = true,
                     Stream = imageStream,
-                    Format = imageFormat
+                    Format = ImageFormat.Jpg
                 };
             }
             catch (Exception ex)
