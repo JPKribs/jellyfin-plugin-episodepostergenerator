@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.11.14",
+        "changelog": "## Improvements\r\n- Use Jellyfin's built-in IMediaEncoder for frame extraction and tone mapping\r\n- Remove custom FFmpeg tone mapping pipeline (ToneMapFilterService, HardwareFFmpegService, SoftwareFFmpegService, HardwareValidationService)\r\n- Remove HWA (Hardware Acceleration) configuration option\r\n- Remove file type selection, standardize output to JPEG\r\n- Replace config action button labels with Material Icons for a more compact mobile layout\r\n- Update example templates to include custom font properties and bump to 10.11.13\r\n\r\n## Fixes\r\n- HDR content appears washed out (DV with HDR10+ fallback)\r\n- Dolby Vision content appears purple (pure DV without fallback)\r\n- Config action buttons overflow on mobile screens",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.14/jellyfin-plugin-episodepostergenerator-10.11.14.zip",
+        "checksum": "09977742dc67fe700f8e2fc01feb5cfc",
+        "timestamp": "2026-02-09T22:41:49Z"
+      },
+      {
         "version": "10.11.13",
         "changelog": "## Improvements\r\n- Added 60-second timeout per FFmpeg frame extraction to prevent hung processes\r\n- Added FFmpeg process kill on task cancellation and timeout to prevent zombie processes\r\n- Added database initialization guard that blocks callers until DB is ready\r\n- Added database wait gate to scheduled task and reset history endpoint\r\n\r\n## Fixes\r\n- Fixed temp file accumulation from unhandled exceptions during frame quality analysis\r\n- Fixed database NullReferenceException when methods called before initialization completes\r\n- Fixed custom font cache permanently caching missing files instead of retrying",
         "targetAbi": "10.11.0.0",
