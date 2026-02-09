@@ -67,7 +67,11 @@ validate_resources() {
     
     local missing_files=()
     local config_files=(
-        "$PROJECT_DIR/Configuration/configPage.html"
+        "$PROJECT_DIR/Configuration/epg_posters.html"
+        "$PROJECT_DIR/Configuration/epg_posters.js"
+        "$PROJECT_DIR/Configuration/epg_settings.html"
+        "$PROJECT_DIR/Configuration/epg_settings.js"
+        "$PROJECT_DIR/Configuration/epg_shared.css"
         "$PROJECT_DIR/Logo.png"
     )
     

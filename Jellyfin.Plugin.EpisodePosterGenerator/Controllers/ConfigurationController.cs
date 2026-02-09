@@ -16,6 +16,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
     [Route("Plugins/EpisodePosterGenerator")]
     public class ConfigurationController : ControllerBase
     {
+        // Cache reflection results — PluginConfiguration properties don't change at runtime
+        private static readonly PropertyInfo[] ConfigProperties = typeof(PluginConfiguration)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.CanRead && p.CanWrite)
+            .ToArray();
+
         private readonly ILogger<ConfigurationController> _logger;
 
         public ConfigurationController(ILogger<ConfigurationController> logger)
@@ -104,11 +110,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
         // MARK: CopyConfigurationProperties
         private void CopyConfigurationProperties(PluginConfiguration source, PluginConfiguration target)
         {
-            var properties = typeof(PluginConfiguration)
-                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead && p.CanWrite);
-
-            foreach (var property in properties)
+            foreach (var property in ConfigProperties)
             {
                 try
                 {

@@ -1,3 +1,4 @@
+using System;
 using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
@@ -6,6 +7,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
     // Factory for creating commonly used SKPaint configurations with consistent settings.
     public static class PaintFactory
     {
+        // Cached blur mask filter — same sigma used for all shadow paints, lives for process lifetime
+        private static readonly Lazy<SKMaskFilter> ShadowBlurFilter = new Lazy<SKMaskFilter>(
+            () => SKMaskFilter.CreateBlur(SKBlurStyle.Normal, RenderConstants.ShadowBlurSigma));
+
         // CreateTextPaint
         // Creates a text paint with standard rendering settings.
         public static SKPaint CreateTextPaint(
@@ -43,7 +48,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
                 LcdRenderText = true,
                 Typeface = typeface,
                 TextAlign = textAlign,
-                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, RenderConstants.ShadowBlurSigma),
+                MaskFilter = ShadowBlurFilter.Value,
                 TextEncoding = SKTextEncoding.Utf8
             };
         }

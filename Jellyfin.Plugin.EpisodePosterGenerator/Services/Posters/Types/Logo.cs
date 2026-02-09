@@ -129,7 +129,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize * RenderConstants.LineHeightMultiplier, height);
             var color = ColorUtils.ParseHexColor(config.EpisodeFontColor ?? "#FFFFFF");
-            var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
+            var typeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
             var textAlign = GetSKTextAlign(alignment);
 
             using var paint = PaintFactory.CreateTextPaint(color, fontSize, typeface, textAlign);
@@ -157,7 +157,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         private float DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int width, int height, float bottomY, SKRect safeArea)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
-            var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
+            var typeface = FontUtils.ResolveTypeface(config.EffectiveTitleFontPath, config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
             var titleColor = ColorUtils.ParseHexColor(config.TitleFontColor);
 
             using var titlePaint = PaintFactory.CreateTextPaint(titleColor, fontSize, typeface);
@@ -186,7 +186,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, height);
             var color = ColorUtils.ParseHexColor(config.EpisodeFontColor ?? "#FFFFFF");
-            var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
+            var typeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
 
             using var paint = PaintFactory.CreateTextPaint(color, fontSize, typeface);
             using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface);

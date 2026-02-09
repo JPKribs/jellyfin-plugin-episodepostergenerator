@@ -44,7 +44,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         private void DrawRomanNumeral(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, SKRect area)
         {
             var numeralText = NumberUtils.NumberToRomanNumeral(episodeMetadata.EpisodeNumberStart ?? 0);
-            var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
+            var typeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
 
             float fontSize = FontUtils.CalculateOptimalFontSize(numeralText, typeface, area.Width, area.Height);
 
@@ -84,7 +84,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         private void DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int width, int height, SKRect safeArea)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
-            var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
+            var typeface = FontUtils.ResolveTypeface(config.EffectiveTitleFontPath, config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
 
             using var titlePaint = new SKPaint
             {
@@ -131,7 +131,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         private float CalculateTitleHeight(string title, PosterSettings config, int height, SKRect safeArea)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
-            var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
+            var typeface = FontUtils.ResolveTypeface(config.EffectiveTitleFontPath, config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
 
             using var paint = new SKPaint
             {

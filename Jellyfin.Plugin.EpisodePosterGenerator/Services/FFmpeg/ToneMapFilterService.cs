@@ -44,13 +44,29 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 return string.Empty;
             }
 
-            logger.LogInformation("Applying tone mapping for {RangeType} content using {HwAccel}",
-                video.VideoHdrType, hwAccel);
+            var isDV = video.VideoHdrType.IsDolbyVision();
+
+            logger.LogInformation("Applying tone mapping for {RangeType} content using {HwAccel} (DolbyVision={IsDV})",
+                video.VideoHdrType, hwAccel, isDV);
+
+            // VideoToolbox on macOS handles DV natively via its own tone mapping pipeline
+            if (hwAccel == HardwareAccelerationType.videotoolbox)
+            {
+                return GetVideoToolboxToneMapFilter(options, video.VideoHdrType, logger);
+            }
+
+            // For Dolby Vision content on non-VT hardware or software:
+            // Use libplacebo which reads DV RPU metadata for proper dynamic tone mapping.
+            // Pure DV (Profile 5) has no HDR10 fallback — static PQ tone mapping produces
+            // washed-out or dark results because the RPU curves are not applied.
+            if (isDV)
+            {
+                return GetLibplaceboToneMapFilter(options, video.VideoHdrType, hwAccel, logger);
+            }
 
             return hwAccel switch
             {
                 HardwareAccelerationType.qsv => GetVppToneMapFilter(options, video.VideoHdrType, logger),
-                HardwareAccelerationType.videotoolbox => GetVideoToolboxToneMapFilter(options, video.VideoHdrType, logger),
                 _ => GetSoftwareToneMapFilter(options, video.VideoHdrType, logger)
             };
         }
@@ -119,44 +135,49 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return "scale_vt=format=nv12:color_matrix=bt709:color_primaries=bt709:color_transfer=bt709";
         }
 
+        // GetLibplaceboToneMapFilter
+        // Builds libplacebo tone mapping filter for Dolby Vision content.
+        // libplacebo reads DV RPU metadata for proper dynamic tone mapping, which is essential
+        // for pure DV (Profile 5) content that has no HDR10 fallback layer.
+        // For hardware-accelerated pipelines, hwdownload is prepended to bring GPU frames to CPU.
+        private static string GetLibplaceboToneMapFilter(EncodingOptions options, VideoRangeType rangeType, HardwareAccelerationType hwAccel, ILogger logger)
+        {
+            logger.LogInformation("Using libplacebo tone mapping for Dolby Vision {RangeType}", rangeType);
+
+            var prefix = string.Empty;
+
+            // GPU frames must be downloaded to system memory before libplacebo can process them
+            if (hwAccel != HardwareAccelerationType.none)
+            {
+                var downloadFormat = hwAccel == HardwareAccelerationType.videotoolbox ? "nv12" : "yuv420p";
+                prefix = $"hwdownload,format={downloadFormat},";
+            }
+
+            // libplacebo handles DV RPU parsing, gamut mapping, and tone mapping in one filter.
+            // colorspace=bt709 and color_primaries=bt709 convert to SDR color space.
+            // color_trc=bt709 sets the output transfer function to SDR gamma.
+            // tonemapping=bt2390 is a good default that preserves detail in highlights and shadows.
+            return prefix +
+                   "libplacebo=tonemapping=bt2390:colorspace=bt709:color_primaries=bt709:color_trc=bt709:format=yuv420p";
+        }
+
         // GetSoftwareToneMapFilter
         // Builds software tone mapping filter chain using zscale and tonemapx.
+        // Uses GetTransferFunction to select the correct transfer for HLG vs PQ-based formats.
         private static string GetSoftwareToneMapFilter(EncodingOptions options, VideoRangeType rangeType, ILogger logger)
         {
             var algorithm = GetToneMappingAlgorithm(options);
             var npl = options.TonemappingPeak > 0 ? options.TonemappingPeak : 100;
+            var transferFunction = GetTransferFunction(rangeType);
+
+            logger.LogDebug("Using software tone mapping for {RangeType} with transfer={Transfer}", rangeType, transferFunction);
 
             // zscale chain: convert color space, then tonemapx applies the tone curve
             // tin=transfer input, pin=primaries input, min=matrix input
             // t=linear converts to linear light for proper tone mapping math
-
-            if (IsDolbyVision(rangeType))
-            {
-                logger.LogDebug("Using Dolby Vision-aware tone mapping with tonemapx for {RangeType}", rangeType);
-
-                // DV base layer is HDR10-compatible, explicitly set PQ transfer
-                return $"zscale=tin=smpte2084:pin=bt2020:min=bt2020nc:t=linear:npl={npl}," +
-                       $"format=gbrpf32le,zscale=p=bt709," +
-                       $"tonemapx=tonemap={algorithm}:desat=0:peak={npl}:t=bt709:m=bt709:p=bt709:format=yuv420p";
-            }
-            else if (rangeType == VideoRangeType.HLG)
-            {
-                logger.LogDebug("Using HLG-specific tone mapping");
-
-                // HLG uses arib-std-b67 transfer function instead of smpte2084 (PQ)
-                return $"zscale=tin=arib-std-b67:pin=bt2020:min=bt2020nc:t=linear:npl={npl}," +
-                       $"format=gbrpf32le,zscale=p=bt709," +
-                       $"tonemapx=tonemap={algorithm}:desat=0:peak={npl}:t=bt709:m=bt709:p=bt709:format=yuv420p";
-            }
-            else
-            {
-                logger.LogDebug("Using standard HDR10 tone mapping with zscale chain for {RangeType}", rangeType);
-
-                // Standard HDR10/HDR10+ uses PQ (smpte2084) transfer
-                return $"zscale=tin=smpte2084:pin=bt2020:min=bt2020nc:t=linear:npl={npl}," +
-                       $"format=gbrpf32le,zscale=p=bt709," +
-                       $"tonemapx=tonemap={algorithm}:desat=0:peak={npl}:t=bt709:m=bt709:p=bt709:format=yuv420p";
-            }
+            return $"zscale=tin={transferFunction}:pin=bt2020:min=bt2020nc:t=linear:npl={npl}," +
+                   $"format=gbrpf32le,zscale=p=bt709," +
+                   $"tonemapx=tonemap={algorithm}:desat=0:peak={npl}:t=bt709:m=bt709:p=bt709:format=yuv420p";
         }
 
         // GetTransferFunction
@@ -167,23 +188,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             {
                 VideoRangeType.HLG or VideoRangeType.DOVIWithHLG => "arib-std-b67",
                 _ => "smpte2084"
-            };
-        }
-
-        // IsDolbyVision
-        // Checks if the VideoRangeType is any Dolby Vision variant.
-        private static bool IsDolbyVision(VideoRangeType rangeType)
-        {
-            return rangeType switch
-            {
-                VideoRangeType.DOVI or
-                VideoRangeType.DOVIWithHDR10 or
-                VideoRangeType.DOVIWithHDR10Plus or
-                VideoRangeType.DOVIWithHLG or
-                VideoRangeType.DOVIWithEL or
-                VideoRangeType.DOVIWithELHDR10Plus or
-                VideoRangeType.DOVIInvalid => true,
-                _ => false
             };
         }
 

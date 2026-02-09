@@ -66,7 +66,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         private float DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int canvasWidth, int canvasHeight, float bottomY, SKRect safeArea)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight);
-            var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
+            var typeface = FontUtils.ResolveTypeface(config.EffectiveTitleFontPath, config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
             var titleColor = ColorUtils.ParseHexColor(config.TitleFontColor);
 
             using var titlePaint = PaintFactory.CreateTextPaint(titleColor, fontSize, typeface);
@@ -111,8 +111,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         {
             var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, canvasHeight);
             var episodeColor = ColorUtils.ParseHexColor(config.EpisodeFontColor ?? "#FFFFFF");
-            var episodeTypeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
-            var bulletTypeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, SKFontStyle.Normal);
+            var episodeTypeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
+            var bulletTypeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, SKFontStyle.Normal);
 
             using var episodePaint = PaintFactory.CreateTextPaint(episodeColor, episodeFontSize, episodeTypeface);
             using var shadowPaint = PaintFactory.CreateShadowTextPaint(episodeFontSize, episodeTypeface);

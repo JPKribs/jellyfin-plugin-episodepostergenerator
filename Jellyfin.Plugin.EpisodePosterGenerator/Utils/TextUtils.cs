@@ -28,7 +28,7 @@ public static class TextUtils
             return;
 
         var fontSize = FontUtils.CalculateFontSizeFromPercentage(settings.TitleFontSize, canvasHeight, settings.PosterSafeArea);
-        var typeface = FontUtils.CreateTypeface(settings.TitleFontFamily, FontUtils.GetFontStyle(settings.TitleFontStyle));
+        var typeface = FontUtils.ResolveTypeface(settings.EffectiveTitleFontPath, settings.TitleFontFamily, FontUtils.GetFontStyle(settings.TitleFontStyle));
 
         using var titlePaint = CreateTextPaint(settings.TitleFontColor, fontSize, typeface, alignment);
         using var shadowPaint = CreateShadowPaint(fontSize, typeface, alignment);

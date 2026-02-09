@@ -161,8 +161,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                 return totalBrightness / pixels.Length;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Failed to calculate average brightness, returning 0");
                 return 0;
             }
         }

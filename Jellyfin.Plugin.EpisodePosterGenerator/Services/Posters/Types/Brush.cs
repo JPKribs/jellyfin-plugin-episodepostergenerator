@@ -167,8 +167,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 episodeMetadata.EpisodeNumberStart ?? 0);
             
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, height, config.PosterSafeArea);
-            var typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
-            
+            var typeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
+
             var textColor = ColorUtils.ParseHexColor(config.EpisodeFontColor);
             var shadowColor = SKColors.Black.WithAlpha(180);
             
@@ -216,7 +216,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 return;
 
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height, config.PosterSafeArea);
-            var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
+            var typeface = FontUtils.ResolveTypeface(config.EffectiveTitleFontPath, config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
             
             using var titlePaint = new SKPaint
             {

@@ -1,7 +1,21 @@
+using System.Text.Json.Serialization;
+
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 {
     public class PosterSettings
     {
+        /// <summary>
+        /// Gets the effective episode font path (null when custom font is disabled).
+        /// </summary>
+        [JsonIgnore]
+        public string? EffectiveEpisodeFontPath => EpisodeUseCustomFont ? EpisodeFontPath : null;
+
+        /// <summary>
+        /// Gets the effective title font path (null when custom font is disabled).
+        /// </summary>
+        [JsonIgnore]
+        public string? EffectiveTitleFontPath => TitleUseCustomFont ? TitleFontPath : null;
+
         public bool ExtractPoster { get; set; } = true;
 
         public bool EnableHWA { get; set; } = false;
@@ -42,6 +56,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 
         public string EpisodeFontFamily { get; set; } = "Arial";
 
+        public bool EpisodeUseCustomFont { get; set; } = false;
+
+        public string EpisodeFontPath { get; set; } = string.Empty;
+
         public string EpisodeFontStyle { get; set; } = "Bold";
 
         public float EpisodeFontSize { get; set; } = 7.0F;
@@ -51,6 +69,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         public bool ShowTitle { get; set; } = true;
 
         public string TitleFontFamily { get; set; } = "Arial";
+
+        public bool TitleUseCustomFont { get; set; } = false;
+
+        public string TitleFontPath { get; set; } = string.Empty;
 
         public string TitleFontStyle { get; set; } = "Bold";
 

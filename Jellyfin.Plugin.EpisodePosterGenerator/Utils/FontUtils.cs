@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.IO;
 using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils;
@@ -38,6 +39,38 @@ public static class FontUtils
         {
             return SKFontManager.Default.MatchFamily(null, style);
         });
+    }
+
+    // CreateTypefaceFromFile
+    // Loads a typeface from a font file path, caching the result.
+    // Returns null if the file doesn't exist or loading fails.
+    public static SKTypeface? CreateTypefaceFromFile(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            return null;
+
+        var cacheKey = $"file:{filePath}";
+        return TypefaceCache.GetOrAdd(cacheKey, _ =>
+        {
+            if (!File.Exists(filePath))
+                return null!;
+
+            return SKTypeface.FromFile(filePath);
+        }) is SKTypeface tf && tf != null ? tf : null;
+    }
+
+    // ResolveTypeface
+    // Tries to load a typeface from file path first, then falls back to font family name.
+    public static SKTypeface ResolveTypeface(string? fontPath, string fontFamily, SKFontStyle style)
+    {
+        if (!string.IsNullOrWhiteSpace(fontPath))
+        {
+            var fileTypeface = CreateTypefaceFromFile(fontPath);
+            if (fileTypeface != null)
+                return fileTypeface;
+        }
+
+        return CreateTypeface(fontFamily, style);
     }
 
     // ClearCache

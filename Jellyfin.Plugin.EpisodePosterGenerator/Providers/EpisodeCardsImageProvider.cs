@@ -97,6 +97,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                 }
 
                 var imageBytes = await File.ReadAllBytesAsync(posterPath, cancellationToken).ConfigureAwait(false);
+
+                // Ownership note: DynamicImageResponse takes ownership of the stream and disposes it
                 var imageStream = new MemoryStream(imageBytes);
 
                 var trackingService = Plugin.Instance.TrackingService;

@@ -11,8 +11,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
     public class PosterConfigurationService
     {
         private readonly ILogger<PosterConfigurationService> _logger;
-        private readonly Dictionary<Guid, PosterSettings> _seriesLookup = new Dictionary<Guid, PosterSettings>();
-        private PosterSettings? _defaultSettings;
+        private volatile Dictionary<Guid, PosterSettings> _seriesLookup = new Dictionary<Guid, PosterSettings>();
+        private volatile PosterSettings? _defaultSettings;
 
         // PosterConfigurationService
         // Initializes the poster configuration service with logging support.
@@ -23,10 +23,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
         // Initialize
         // Builds the series-to-settings lookup from the plugin configuration.
+        // Uses atomic swap to avoid race conditions with concurrent readers.
         public void Initialize(PluginConfiguration config)
         {
-            _seriesLookup.Clear();
-            _defaultSettings = null;
+            PosterSettings? newDefaultSettings = null;
 
             var defaults = config.PosterConfigurations.Where(c => c.IsDefault).ToList();
 
@@ -39,37 +39,42 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     IsDefault = true
                 };
                 config.PosterConfigurations.Insert(0, newDefault);
-                _defaultSettings = newDefault.Settings;
+                newDefaultSettings = newDefault.Settings;
 
                 Plugin.Instance?.SaveConfiguration();
             }
             else if (defaults.Count > 1)
             {
                 _logger.LogWarning("Multiple default configurations found, using first one");
-                _defaultSettings = defaults[0].Settings;
+                newDefaultSettings = defaults[0].Settings;
             }
             else
             {
-                _defaultSettings = defaults[0].Settings;
+                newDefaultSettings = defaults[0].Settings;
             }
 
+            var newLookup = new Dictionary<Guid, PosterSettings>();
             var duplicates = new List<Guid>();
 
             foreach (var posterConfig in config.PosterConfigurations.Where(c => !c.IsDefault))
             {
                 foreach (var seriesId in posterConfig.SeriesIds)
                 {
-                    if (_seriesLookup.ContainsKey(seriesId))
+                    if (newLookup.ContainsKey(seriesId))
                     {
                         duplicates.Add(seriesId);
                         _logger.LogWarning("Series {SeriesId} assigned to multiple poster configurations, using first assignment", seriesId);
                     }
                     else
                     {
-                        _seriesLookup[seriesId] = posterConfig.Settings;
+                        newLookup[seriesId] = posterConfig.Settings;
                     }
                 }
             }
+
+            // Atomic swap — readers see either the old or the new state, never a partially built dictionary
+            _defaultSettings = newDefaultSettings;
+            _seriesLookup = newLookup;
 
             _logger.LogInformation("Poster configuration initialized: {Count} series-specific configs, {DuplicateCount} duplicates ignored",
                 _seriesLookup.Count, duplicates.Count);

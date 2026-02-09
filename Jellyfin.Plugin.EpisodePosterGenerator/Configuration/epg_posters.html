@@ -1,0 +1,584 @@
+<div id="EpgPostersPage" data-role="page" class="page type-interior pluginConfigurationPage withTabs"
+     data-require="emby-input,emby-button,emby-select,emby-checkbox"
+     data-controller="__plugin/epg_posters.js">
+    <div data-role="content">
+        <div class="content-primary">
+            <form id="EpgPostersForm">
+                <div class="verticalSection verticalSection-extrabottompadding">
+
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h1 class="sectionTitle">Poster Configuration</h1>
+                    </div>
+
+                    <!-- Poster Configuration Selector -->
+                    <div class="config-selector">
+                        <select is="emby-select" id="selectPosterConfig" class="config-selector-dropdown">
+                            <!-- Options populated dynamically -->
+                        </select>
+                        <div class="config-selector-actions">
+                            <button is="emby-button" type="button" id="btnRenameConfig" class="raised">
+                                <span>Rename</span>
+                            </button>
+                            <button is="emby-button" type="button" id="btnExportConfig" class="raised">
+                                <span>Export</span>
+                            </button>
+                            <button is="emby-button" type="button" id="btnImportConfig" class="raised">
+                                <span>Import</span>
+                            </button>
+                            <button is="emby-button" type="button" id="btnNewConfig" class="raised button-submit">
+                                <span>New</span>
+                            </button>
+                            <button is="emby-button" type="button" id="btnDeleteConfig" class="raised button-delete">
+                                <span>Delete</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Series Assignment (hidden for default) -->
+                    <div id="seriesAssignmentSection" class="inputContainer" style="display: none; margin-bottom: 1.5em;">
+                        <label>Assigned Series:</label>
+                        <div id="assignedSeriesList" class="assigned-series-container">
+                            <!-- Series tags populated dynamically -->
+                        </div>
+                        <button is="emby-button" type="button" id="btnAddSeries" class="raised" style="margin-top: 8px;">
+                            <span>Edit Series</span>
+                        </button>
+                        <div class="fieldDescription">Select which series should use this poster configuration.</div>
+                    </div>
+
+                    <!-- COLLAPSIBLE: Poster -->
+                    <div class="collapsibleSection">
+                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="posterContent" data-target="posterContent">
+                            <span class="collapsibleTitle">Poster</span>
+                            <span class="collapsibleIcon">&#9660;</span>
+                        </button>
+                        <div id="posterContent" class="collapsibleContent collapsed">
+
+                            <div class="inputContainer">
+                                <label for="selectPosterStyle">Style:</label>
+                                <select is="emby-select" id="selectPosterStyle" data-setting="PosterStyle">
+                                    <option value="Standard">Standard</option>
+                                    <option value="Brush">Brush</option>
+                                    <option value="Cutout">Cutout</option>
+                                    <option value="Frame">Frame</option>
+                                    <option value="Logo">Logo</option>
+                                    <option value="Numeral">Numeral</option>
+                                    <option value="Split">Split</option>
+                                </select>
+                                <div id="posterStyleDescription" class="fieldDescription"></div>
+                            </div>
+
+                            <!-- Cutout Style Options -->
+                            <div class="cutout-logo-group" id="cutoutOptions" data-poster-styles="Cutout">
+                                <div class="inputContainer">
+                                    <label class="checkboxContainer">
+                                        <input is="emby-checkbox" type="checkbox" id="chkCutoutBorder" data-setting="CutoutBorder" />
+                                        <span>Enable Cutout Text Border</span>
+                                    </label>
+                                    <div class="fieldDescription">Add a contrasting border around the cutout text for better visibility.</div>
+                                </div>
+
+                                <div class="inputContainer">
+                                    <label for="selectCutoutType">Type:</label>
+                                    <select is="emby-select" id="selectCutoutType" data-setting="CutoutType">
+                                        <option value="Code">Code</option>
+                                        <option value="Text">Text</option>
+                                    </select>
+                                    <div class="fieldDescription">Choose between episode code (S01E01) or text (ONE) for cutout display.</div>
+                                </div>
+                            </div>
+
+                            <!-- Logo Style Options -->
+                            <div class="cutout-logo-group" id="logoOptions" data-poster-styles="Logo">
+                                <div class="inputContainer">
+                                    <label for="selectLogoAlignment">Logo Alignment:</label>
+                                    <select is="emby-select" id="selectLogoAlignment" data-setting="LogoAlignment">
+                                        <option value="Left">Left</option>
+                                        <option value="Center">Center</option>
+                                        <option value="Right">Right</option>
+                                    </select>
+                                    <div class="fieldDescription">Horizontal alignment of the series logo on the poster.</div>
+                                </div>
+
+                                <div class="inputContainer">
+                                    <label for="selectLogoPosition">Logo Position:</label>
+                                    <select is="emby-select" id="selectLogoPosition" data-setting="LogoPosition">
+                                        <option value="Top">Top</option>
+                                        <option value="Center">Center</option>
+                                        <option value="Bottom">Bottom</option>
+                                    </select>
+                                    <div class="fieldDescription">Vertical position of the series logo on the poster.</div>
+                                </div>
+
+                                <div class="inputContainer">
+                                    <label for="txtLogoHeight">Logo Height:</label>
+                                    <input is="emby-input" type="number" id="txtLogoHeight" min="1.0" max="100.0" data-setting="LogoHeight" data-type="number" />
+                                    <div class="fieldDescription">Logo height as a percentage of the poster height (1-100%).</div>
+                                </div>
+                            </div>
+
+                            <div class="inputContainer">
+                                <label for="selectPosterFileType">File Type:</label>
+                                <select is="emby-select" id="selectPosterFileType" data-setting="PosterFileType">
+                                    <option value="JPEG">JPEG</option>
+                                    <option value="PNG">PNG</option>
+                                    <option value="WEBP">WEBP</option>
+                                </select>
+                                <div class="fieldDescription">File format for generated poster images.</div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- COLLAPSIBLE: Canvas -->
+                    <div class="collapsibleSection">
+                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="canvasContent" data-target="canvasContent">
+                            <span class="collapsibleTitle">Canvas</span>
+                            <span class="collapsibleIcon">&#9660;</span>
+                        </button>
+                        <div id="canvasContent" class="collapsibleContent collapsed">
+
+                            <div class="inputContainer">
+                                <label class="checkboxContainer">
+                                    <input is="emby-checkbox" type="checkbox" id="chkExtractPoster" data-setting="ExtractPoster" />
+                                    <span>Extract Frame from Episode</span>
+                                </label>
+                                <div class="fieldDescription">Capture a video frame from the episode to use as the poster background.</div>
+                            </div>
+
+                            <div class="nested-settings" data-depends-on="chkExtractPoster">
+                                <div class="inputContainer">
+                                    <label for="txtExtractWindowStart">Extraction Start (%):</label>
+                                    <input is="emby-input" type="number" id="txtExtractWindowStart" min="0" max="100" step="1" data-setting="ExtractWindowStart" data-type="number" />
+                                    <div class="fieldDescription">Skip the first X% of the episode to avoid opening credits and intro sequences (0-100%).</div>
+                                </div>
+
+                                <div class="inputContainer">
+                                    <label for="txtExtractWindowEnd">Extraction End (%):</label>
+                                    <input is="emby-input" type="number" id="txtExtractWindowEnd" min="0" max="100" step="1" data-setting="ExtractWindowEnd" data-type="number" />
+                                    <div class="fieldDescription">Stop extracting at X% of the episode to avoid end credits and outro sequences (0-100%).</div>
+                                </div>
+
+                                <div class="inputContainer">
+                                    <label for="txtBrightenHDR">Brighten HDR (%):</label>
+                                    <input is="emby-input" type="number" id="txtBrightenHDR" min="0" max="100" data-setting="BrightenHDR" data-type="number" />
+                                    <div class="fieldDescription">Brightness adjustment for HDR content as percentage (0-100%).</div>
+                                </div>
+
+                                <div class="inputContainer">
+                                    <label class="checkboxContainer">
+                                        <input is="emby-checkbox" type="checkbox" id="chkEnableHWA" data-setting="EnableHWA" />
+                                        <span>Enable Hardware Accelerated Decoding</span>
+                                    </label>
+                                    <div class="fieldDescription">Uses the transcoding settings for Hardware Acceleration to extract the canvas image.</div>
+                                </div>
+                            </div>
+
+                            <div class="inputContainer" id="letterboxDetectionContainer" data-depends-on="chkExtractPoster">
+                                <label class="checkboxContainer">
+                                    <input is="emby-checkbox" type="checkbox" id="chkEnableLetterboxDetection" data-setting="EnableLetterboxDetection" />
+                                    <span>Enable Letterbox Detection</span>
+                                </label>
+                                <div class="fieldDescription">Automatically detect and crop black letterbox borders from poster images.</div>
+                            </div>
+
+                            <div class="nested-settings" data-depends-on="chkExtractPoster,chkEnableLetterboxDetection">
+                                <div class="inputContainer">
+                                    <label for="txtLetterboxBlackThreshold">Black Threshold:</label>
+                                    <input is="emby-input" type="number" id="txtLetterboxBlackThreshold" min="0" max="255" data-setting="LetterboxBlackThreshold" data-type="number" />
+                                    <div class="fieldDescription">Pixel brightness threshold for black detection (0-255). Lower values detect darker pixels as letterbox.</div>
+                                </div>
+
+                                <div class="inputContainer">
+                                    <label for="txtLetterboxConfidence">Detection Confidence (%):</label>
+                                    <input is="emby-input" type="number" id="txtLetterboxConfidence" min="50" max="100" step="1" data-setting="LetterboxConfidence" data-type="number" />
+                                    <div class="fieldDescription">Percentage of pixels that must be black to consider it letterboxing (50-100%).</div>
+                                </div>
+                            </div>
+
+                            <div class="inputContainer">
+                                <label for="selectPosterFill">Fill Strategy:</label>
+                                <select is="emby-select" id="selectPosterFill" data-setting="PosterFill">
+                                    <option value="Original">Original</option>
+                                    <option value="Fill">Fill</option>
+                                    <option value="Fit">Fit</option>
+                                </select>
+                                <div class="fieldDescription">How the source image should be resized to fit the poster dimensions.</div>
+                            </div>
+
+                            <div class="inputContainer nested-settings" data-hide-for-posterfill="Original">
+                                <label for="txtPosterDimensionRatio">Aspect Ratio:</label>
+                                <input is="emby-input" type="text" id="txtPosterDimensionRatio" placeholder="16:9" data-setting="PosterDimensionRatio" />
+                                <div class="fieldDescription">Aspect ratio for the poster (e.g., 16:9, 3:2, 4:3).</div>
+                            </div>
+
+                            <div class="inputContainer">
+                                <label for="txtPosterSafeArea">Safe Area:</label>
+                                <input is="emby-input" type="number" id="txtPosterSafeArea" min="1.0" max="100.0" data-setting="PosterSafeArea" data-type="number" />
+                                <div class="fieldDescription">Percentage of vertical and horizontal space preserved around edges as safe area (1-100%).</div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- COLLAPSIBLE: Overlay -->
+                    <div class="collapsibleSection">
+                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="overlayContent" data-target="overlayContent">
+                            <span class="collapsibleTitle">Overlay</span>
+                            <span class="collapsibleIcon">&#9660;</span>
+                        </button>
+                        <div id="overlayContent" class="collapsibleContent collapsed">
+
+                            <div class="inputContainer">
+                                <label for="txtOverlayColor">Overlay Color:</label>
+                                <div class="color-control-group">
+                                    <input type="color" id="colorOverlayColor" class="color-picker" />
+                                    <input type="range" id="alphaOverlayColor" class="alpha-slider" min="0" max="255" value="102" />
+                                    <span class="alpha-label">102</span>
+                                    <input is="emby-input" type="text" id="txtOverlayColor" placeholder="#66000000" data-setting="OverlayColor" class="hex-input" aria-describedby="descOverlayColor" />
+                                </div>
+                                <div id="descOverlayColor" class="fieldDescription">ARGB hex for background overlay color and transparency (e.g., #66000000 for semi-transparent black).</div>
+                            </div>
+
+                            <div class="inputContainer">
+                                <label for="selectOverlayGradient">Overlay Gradient:</label>
+                                <select is="emby-select" id="selectOverlayGradient" data-setting="OverlayGradient">
+                                    <option value="None">None</option>
+                                    <option value="LeftToRight">Left to Right</option>
+                                    <option value="BottomToTop">Bottom to Top</option>
+                                    <option value="TopLeftCornerToBottomRightCorner">Top Left Corner to Bottom Right Corner</option>
+                                    <option value="TopRightCornerToBottomLeftCorner">Top Right Corner to Bottom Left Corner</option>
+                                </select>
+                                <div class="fieldDescription">Direction of gradient overlay effect. When enabled, creates a gradient from the primary overlay color to the secondary color.</div>
+                            </div>
+
+                            <div class="nested-settings" data-depends-on-gradient="selectOverlayGradient">
+                                <div class="inputContainer">
+                                    <label for="txtOverlaySecondaryColor">Secondary Overlay Color:</label>
+                                    <div class="color-control-group">
+                                        <input type="color" id="colorOverlaySecondaryColor" class="color-picker" />
+                                        <input type="range" id="alphaOverlaySecondaryColor" class="alpha-slider" min="0" max="255" value="102" />
+                                        <span class="alpha-label">102</span>
+                                        <input is="emby-input" type="text" id="txtOverlaySecondaryColor" placeholder="#66000000" data-setting="OverlaySecondaryColor" class="hex-input" aria-describedby="descOverlaySecondaryColor" />
+                                    </div>
+                                    <div id="descOverlaySecondaryColor" class="fieldDescription">ARGB hex for secondary gradient color. This is the end color for gradient overlays.</div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- COLLAPSIBLE: Static Graphic -->
+                    <div class="collapsibleSection">
+                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="graphicContent" data-target="graphicContent">
+                            <span class="collapsibleTitle">Static Graphic</span>
+                            <span class="collapsibleIcon">&#9660;</span>
+                        </button>
+                        <div id="graphicContent" class="collapsibleContent collapsed">
+
+                            <div class="inputContainer">
+                                <label for="txtGraphicPath">Graphic File Path:</label>
+                                <input is="emby-input" type="text" id="txtGraphicPath" placeholder="/path/to/graphic.png" data-setting="GraphicPath" />
+                                <div class="fieldDescription">Optional file path to a static graphic overlay applied to all posters. The graphic is positioned above the background image but below all text elements. Supports PNG, JPG, and WEBP formats. Leave empty to disable. Use absolute file paths accessible by the Jellyfin server.</div>
+                            </div>
+
+                            <div class="cutout-logo-group" id="graphicOptions" data-depends-on-value="txtGraphicPath">
+                                <div class="inputContainer">
+                                    <label for="selectGraphicPosition">Graphic Position:</label>
+                                    <select is="emby-select" id="selectGraphicPosition" data-setting="GraphicPosition">
+                                        <option value="Top">Top</option>
+                                        <option value="Center">Center</option>
+                                        <option value="Bottom">Bottom</option>
+                                    </select>
+                                    <div class="fieldDescription">Vertical position of the static graphic on the poster.</div>
+                                </div>
+
+                                <div class="inputContainer">
+                                    <label for="selectGraphicAlignment">Graphic Alignment:</label>
+                                    <select is="emby-select" id="selectGraphicAlignment" data-setting="GraphicAlignment">
+                                        <option value="Left">Left</option>
+                                        <option value="Center">Center</option>
+                                        <option value="Right">Right</option>
+                                    </select>
+                                    <div class="fieldDescription">Horizontal alignment of the static graphic on the poster.</div>
+                                </div>
+
+                                <div class="inputContainer">
+                                    <label for="txtGraphicWidth">Graphic Width (%):</label>
+                                    <input is="emby-input" type="number" id="txtGraphicWidth" min="1.0" max="100.0" data-setting="GraphicWidth" data-type="number" />
+                                    <div class="fieldDescription">Graphic width as a percentage of the poster width (1-100%).</div>
+                                </div>
+
+                                <div class="inputContainer">
+                                    <label for="txtGraphicHeight">Graphic Height (%):</label>
+                                    <input is="emby-input" type="number" id="txtGraphicHeight" min="1.0" max="100.0" data-setting="GraphicHeight" data-type="number" />
+                                    <div class="fieldDescription">Graphic height as a percentage of the poster height (1-100%).</div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- COLLAPSIBLE: Episode Information -->
+                    <div class="collapsibleSection">
+                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="episodeInfoContent" data-target="episodeInfoContent">
+                            <span class="collapsibleTitle">Episode Information</span>
+                            <span class="collapsibleIcon">&#9660;</span>
+                        </button>
+                        <div id="episodeInfoContent" class="collapsibleContent collapsed">
+
+                            <div class="inputContainer" id="showEpisodeContainer" data-hide-for-styles="Cutout,Numeral">
+                                <label class="checkboxContainer">
+                                    <input is="emby-checkbox" type="checkbox" id="chkShowEpisode" data-setting="ShowEpisode" />
+                                    <span>Show Episode</span>
+                                </label>
+                                <div class="fieldDescription">Display season and episode information on the poster.</div>
+                            </div>
+
+                            <div class="inputContainer" data-depends-on="chkShowEpisode">
+                                <label class="checkboxContainer">
+                                    <input is="emby-checkbox" type="checkbox" id="chkEpisodeUseCustomFont" data-setting="EpisodeUseCustomFont" />
+                                    <span>Use Custom Font</span>
+                                </label>
+                                <div class="fieldDescription">Enable to use a custom font file instead of a built-in font.</div>
+                            </div>
+
+                            <div class="inputContainer" data-depends-on="chkShowEpisode,chkEpisodeUseCustomFont">
+                                <label for="txtEpisodeFontPath">Font Path:</label>
+                                <input is="emby-input" type="text" id="txtEpisodeFontPath" placeholder="/path/to/font.ttf" data-setting="EpisodeFontPath" />
+                                <div class="fieldDescription">Path to a custom font file (TTF, OTF, TTC). Use absolute file paths accessible by the Jellyfin server.</div>
+                            </div>
+
+                            <div data-hide-when-checked="chkEpisodeUseCustomFont" data-depends-on="chkShowEpisode">
+                                <div class="inputContainer">
+                                    <label for="selectEpisodeFontFamily">Font:</label>
+                                    <select is="emby-select" id="selectEpisodeFontFamily" data-setting="EpisodeFontFamily">
+                                        <option value="Arial">Arial</option>
+                                        <option value="Arial Black">Arial Black</option>
+                                        <option value="Book Antiqua">Book Antiqua</option>
+                                        <option value="Calibri">Calibri</option>
+                                        <option value="Cambria">Cambria</option>
+                                        <option value="Candara">Candara</option>
+                                        <option value="Century Gothic">Century Gothic</option>
+                                        <option value="Comic Sans MS">Comic Sans MS</option>
+                                        <option value="Consolas">Consolas</option>
+                                        <option value="Courier New">Courier New</option>
+                                        <option value="Didot">Didot</option>
+                                        <option value="Franklin Gothic Medium">Franklin Gothic Medium</option>
+                                        <option value="Futura">Futura</option>
+                                        <option value="Garamond">Garamond</option>
+                                        <option value="Georgia">Georgia</option>
+                                        <option value="Gill Sans">Gill Sans</option>
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="Impact">Impact</option>
+                                        <option value="Lucida Console">Lucida Console</option>
+                                        <option value="Lucida Sans Unicode">Lucida Sans Unicode</option>
+                                        <option value="Monaco">Monaco</option>
+                                        <option value="Optima">Optima</option>
+                                        <option value="Palatino Linotype">Palatino Linotype</option>
+                                        <option value="Rockwell">Rockwell</option>
+                                        <option value="Segoe UI">Segoe UI</option>
+                                        <option value="Tahoma">Tahoma</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                        <option value="Trebuchet MS">Trebuchet MS</option>
+                                        <option value="Verdana">Verdana</option>
+                                    </select>
+                                    <div class="fieldDescription">Font family for the episode number and season information text.</div>
+                                </div>
+
+                                <div class="inputContainer">
+                                    <label for="selectEpisodeFontStyle">Font Style:</label>
+                                    <select is="emby-select" id="selectEpisodeFontStyle" data-setting="EpisodeFontStyle">
+                                        <option value="Normal">Normal</option>
+                                        <option value="Bold">Bold</option>
+                                        <option value="Italic">Italic</option>
+                                        <option value="Bold Italic">Bold Italic</option>
+                                    </select>
+                                    <div class="fieldDescription">Font style for the episode number and season information text.</div>
+                                </div>
+                            </div>
+
+                            <div class="inputContainer" data-hide-for-styles="Cutout,Numeral" data-depends-on="chkShowEpisode">
+                                <label for="txtEpisodeFontSize">Font Size:</label>
+                                <input is="emby-input" type="number" id="txtEpisodeFontSize" min="1.0" max="100.0" data-setting="EpisodeFontSize" data-type="number" />
+                                <div class="fieldDescription">Font size for episode information as a percentage of poster height (1-100%).</div>
+                            </div>
+
+                            <div class="inputContainer" data-hide-for-styles="Cutout" data-depends-on="chkShowEpisode">
+                                <label for="txtEpisodeFontColor">Font Color:</label>
+                                <div class="color-control-group">
+                                    <input type="color" id="colorEpisodeFontColor" class="color-picker" />
+                                    <input type="range" id="alphaEpisodeFontColor" class="alpha-slider" min="0" max="255" value="255" />
+                                    <span class="alpha-label">255</span>
+                                    <input is="emby-input" type="text" id="txtEpisodeFontColor" placeholder="#FFFFFFFF" data-setting="EpisodeFontColor" class="hex-input" aria-describedby="descEpisodeFontColor" />
+                                </div>
+                                <div id="descEpisodeFontColor" class="fieldDescription">ARGB hex color code for episode number text (e.g., #FFFFFFFF for white).</div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- COLLAPSIBLE: Episode Title -->
+                    <div class="collapsibleSection">
+                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="episodeTitleContent" data-target="episodeTitleContent">
+                            <span class="collapsibleTitle">Episode Title</span>
+                            <span class="collapsibleIcon">&#9660;</span>
+                        </button>
+                        <div id="episodeTitleContent" class="collapsibleContent collapsed">
+
+                            <div class="inputContainer" id="showTitleContainer" data-hide-for-styles="Frame">
+                                <label class="checkboxContainer">
+                                    <input is="emby-checkbox" type="checkbox" id="chkShowTitle" data-setting="ShowTitle" />
+                                    <span>Show Title</span>
+                                </label>
+                                <div class="fieldDescription">Display the episode title text on the poster.</div>
+                            </div>
+
+                            <div class="inputContainer" data-depends-on="chkShowTitle">
+                                <label class="checkboxContainer">
+                                    <input is="emby-checkbox" type="checkbox" id="chkTitleUseCustomFont" data-setting="TitleUseCustomFont" />
+                                    <span>Use Custom Font</span>
+                                </label>
+                                <div class="fieldDescription">Enable to use a custom font file instead of a built-in font.</div>
+                            </div>
+
+                            <div class="inputContainer" data-depends-on="chkShowTitle,chkTitleUseCustomFont">
+                                <label for="txtTitleFontPath">Font Path:</label>
+                                <input is="emby-input" type="text" id="txtTitleFontPath" placeholder="/path/to/font.ttf" data-setting="TitleFontPath" />
+                                <div class="fieldDescription">Path to a custom font file (TTF, OTF, TTC). Use absolute file paths accessible by the Jellyfin server.</div>
+                            </div>
+
+                            <div data-hide-when-checked="chkTitleUseCustomFont" data-depends-on="chkShowTitle">
+                                <div class="inputContainer">
+                                    <label for="selectTitleFontFamily">Font:</label>
+                                    <select is="emby-select" id="selectTitleFontFamily" data-setting="TitleFontFamily">
+                                        <option value="Arial">Arial</option>
+                                        <option value="Arial Black">Arial Black</option>
+                                        <option value="Book Antiqua">Book Antiqua</option>
+                                        <option value="Calibri">Calibri</option>
+                                        <option value="Cambria">Cambria</option>
+                                        <option value="Candara">Candara</option>
+                                        <option value="Century Gothic">Century Gothic</option>
+                                        <option value="Comic Sans MS">Comic Sans MS</option>
+                                        <option value="Consolas">Consolas</option>
+                                        <option value="Courier New">Courier New</option>
+                                        <option value="Didot">Didot</option>
+                                        <option value="Franklin Gothic Medium">Franklin Gothic Medium</option>
+                                        <option value="Futura">Futura</option>
+                                        <option value="Garamond">Garamond</option>
+                                        <option value="Georgia">Georgia</option>
+                                        <option value="Gill Sans">Gill Sans</option>
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="Impact">Impact</option>
+                                        <option value="Lucida Console">Lucida Console</option>
+                                        <option value="Lucida Sans Unicode">Lucida Sans Unicode</option>
+                                        <option value="Monaco">Monaco</option>
+                                        <option value="Optima">Optima</option>
+                                        <option value="Palatino Linotype">Palatino Linotype</option>
+                                        <option value="Rockwell">Rockwell</option>
+                                        <option value="Segoe UI">Segoe UI</option>
+                                        <option value="Tahoma">Tahoma</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                        <option value="Trebuchet MS">Trebuchet MS</option>
+                                        <option value="Verdana">Verdana</option>
+                                    </select>
+                                    <div class="fieldDescription">Font family for the episode title text.</div>
+                                </div>
+
+                                <div class="inputContainer">
+                                    <label for="selectTitleFontStyle">Font Style:</label>
+                                    <select is="emby-select" id="selectTitleFontStyle" data-setting="TitleFontStyle">
+                                        <option value="Normal">Normal</option>
+                                        <option value="Bold">Bold</option>
+                                        <option value="Italic">Italic</option>
+                                        <option value="Bold Italic">Bold Italic</option>
+                                    </select>
+                                    <div class="fieldDescription">Font style for the episode title text.</div>
+                                </div>
+                            </div>
+
+                            <div class="inputContainer" data-depends-on="chkShowTitle">
+                                <label for="txtTitleFontSize">Font Size:</label>
+                                <input is="emby-input" type="number" id="txtTitleFontSize" min="1.0" max="100.0" data-setting="TitleFontSize" data-type="number" />
+                                <div class="fieldDescription">Font size for episode title as a percentage of poster height (1-100%).</div>
+                            </div>
+
+                            <div class="inputContainer" data-depends-on="chkShowTitle">
+                                <label for="txtTitleFontColor">Font Color:</label>
+                                <div class="color-control-group">
+                                    <input type="color" id="colorTitleFontColor" class="color-picker" />
+                                    <input type="range" id="alphaTitleFontColor" class="alpha-slider" min="0" max="255" value="255" />
+                                    <span class="alpha-label">255</span>
+                                    <input is="emby-input" type="text" id="txtTitleFontColor" placeholder="#FFFFFFFF" data-setting="TitleFontColor" class="hex-input" aria-describedby="descTitleFontColor" />
+                                </div>
+                                <div id="descTitleFontColor" class="fieldDescription">ARGB hex color code for episode title text (e.g., #FFFFFFFF for white).</div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Save -->
+                    <div class="inputContainer">
+                        <button is="emby-button" type="submit" data-theme="b" class="raised button-submit block">
+                            <span>Save</span>
+                        </button>
+                        <span id="unsavedIndicator" class="unsaved-indicator">
+                            <span class="unsaved-indicator-dot"></span>
+                            Unsaved changes
+                        </span>
+                    </div>
+
+                </div>
+                <input type="file" id="templateFileInput" accept=".json" style="display: none;" />
+            </form>
+        </div>
+    </div>
+
+    <!-- Series Selection Modal -->
+    <div id="seriesSelectionModal" class="dialog" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="seriesModalTitle">
+        <div class="dialog-content series-modal-content">
+            <div class="series-modal-header">
+                <h2 id="seriesModalTitle">Select Series</h2>
+                <button type="button" id="btnCloseSeriesModal" class="dialog-close-btn" aria-label="Close">&times;</button>
+            </div>
+            <div class="series-modal-search">
+                <input is="emby-input" type="text" id="seriesSearchInput" placeholder="Search series..." />
+            </div>
+            <div class="series-modal-summary" id="seriesSelectionSummary"></div>
+            <div id="seriesCheckboxList" class="series-modal-list">
+                <!-- Series checkboxes populated dynamically -->
+            </div>
+            <div class="series-modal-footer">
+                <button is="emby-button" type="button" id="btnCancelSeriesSelection" class="raised">
+                    <span>Cancel</span>
+                </button>
+                <button is="emby-button" type="button" id="btnConfirmSeriesSelection" class="raised button-submit">
+                    <span>Save Selection</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Modal (replaces native prompt) -->
+    <div id="inputModal" class="dialog" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="inputModalTitle">
+        <div class="dialog-content input-modal-content">
+            <div class="input-modal-header">
+                <h2 id="inputModalTitle"></h2>
+                <button type="button" id="btnCloseInputModal" class="dialog-close-btn" aria-label="Close">&times;</button>
+            </div>
+            <div class="input-modal-body">
+                <div id="inputModalFields"></div>
+            </div>
+            <div class="input-modal-footer">
+                <button is="emby-button" type="button" id="btnCancelInputModal" class="raised">
+                    <span>Cancel</span>
+                </button>
+                <button is="emby-button" type="button" id="btnConfirmInputModal" class="raised button-submit">
+                    <span>OK</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="configurationpage?name=epg_shared.css">
+</div>

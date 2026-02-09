@@ -12,6 +12,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
     public class SoftwareFFmpegService : IFFmpegService
     {
+        private const double DefaultDurationSeconds = 3600;
+        private const double DefaultSeekStartPercent = 0.2;
+        private const double DefaultSeekEndPercent = 0.8;
+
         private readonly ILogger<SoftwareFFmpegService> _logger;
 
         // SoftwareFFmpegService
@@ -39,9 +43,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             var inputPath = video.EpisodeFilePath;
             var durationSeconds = video.VideoLengthTicks / (double)TimeSpan.TicksPerSecond;
-            if (durationSeconds <= 0) durationSeconds = 3600;
+            if (durationSeconds <= 0) durationSeconds = DefaultDurationSeconds;
 
-            var actualSeekSeconds = seekSeconds ?? new Random().Next((int)(durationSeconds * 0.2), (int)(durationSeconds * 0.8));
+            var actualSeekSeconds = seekSeconds ?? Random.Shared.Next((int)(durationSeconds * DefaultSeekStartPercent), (int)(durationSeconds * DefaultSeekEndPercent));
             var isHDR = video.VideoHdrType.IsHDR();
 
             var args = $"-y -ss {actualSeekSeconds} -i \"{inputPath}\"";

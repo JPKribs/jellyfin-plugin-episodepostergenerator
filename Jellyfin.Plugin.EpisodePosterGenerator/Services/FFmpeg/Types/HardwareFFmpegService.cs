@@ -13,6 +13,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
     public class HardwareFFmpegService : IFFmpegService
     {
+        private const double DefaultDurationSeconds = 3600;
+        private const double DefaultSeekStartPercent = 0.2;
+        private const double DefaultSeekEndPercent = 0.8;
+
         private readonly ILogger<HardwareFFmpegService> _logger;
         private readonly HardwareValidationService _validationService;
 
@@ -40,9 +44,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             var inputPath = video.EpisodeFilePath;
             var durationSeconds = video.VideoLengthTicks / (double)TimeSpan.TicksPerSecond;
-            if (durationSeconds <= 0) durationSeconds = 3600;
+            if (durationSeconds <= 0) durationSeconds = DefaultDurationSeconds;
 
-            var actualSeekSeconds = seekSeconds ?? new Random().Next((int)(durationSeconds * 0.2), (int)(durationSeconds * 0.8));
+            var actualSeekSeconds = seekSeconds ?? Random.Shared.Next((int)(durationSeconds * DefaultSeekStartPercent), (int)(durationSeconds * DefaultSeekEndPercent));
             var hwAccel = encodingOptions.HardwareAccelerationType;
             var isHDR = video.VideoHdrType.IsHDR();
 
@@ -68,8 +72,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 filterChain = ToneMapFilterService.GetToneMapFilter(encodingOptions, video, hwAccel, _logger);
             }
 
-            // hwdownload converts GPU frames to CPU memory for PNG encoding since hardware decoders output to GPU surfaces
-            if (hwAccel != HardwareAccelerationType.none)
+            // hwdownload converts GPU frames to CPU memory for PNG encoding since hardware decoders output to GPU surfaces.
+            // Skip if the filter chain already contains hwdownload (e.g. libplacebo for DV prepends it
+            // because it needs CPU frames before processing, unlike VPP/VT which operate on GPU).
+            var alreadyDownloaded = filterChain?.Contains("hwdownload", StringComparison.Ordinal) == true;
+            if (hwAccel != HardwareAccelerationType.none && !alreadyDownloaded)
             {
                 string downloadFilter = hwAccel == HardwareAccelerationType.videotoolbox
                     ? "hwdownload,format=nv12"
@@ -130,8 +137,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             if (hwAccel == HardwareAccelerationType.none) return false;
 
+            // Dolby Vision is HEVC underneath — FFmpeg decodes DV streams with the HEVC decoder,
+            // so check hardware support against HEVC rather than the DV codec identifier.
+            var codecName = video.VideoCodec == VideoCodec.DV ? "HEVC" : video.VideoCodec.ToString();
+
             var codecSupported = encodingOptions.HardwareDecodingCodecs
-                .Any(c => string.Equals(c, video.VideoCodec.ToString(), StringComparison.OrdinalIgnoreCase));
+                .Any(c => string.Equals(c, codecName, StringComparison.OrdinalIgnoreCase));
 
             if (!codecSupported) return false;
 

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services;
@@ -38,6 +39,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         private readonly PosterConfigurationService _posterConfigService;
         private readonly TemplateExportService _templateExportService;
 
+        private readonly SemaphoreSlim _dbInitGate = new SemaphoreSlim(0, 1);
+        private bool _dbInitialized;
         private bool _disposed;
 
         // Plugin
@@ -110,15 +113,30 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
                 try
                 {
                     await _trackingDatabase.InitializeAsync().ConfigureAwait(false);
+                    _dbInitialized = true;
                     _logger.LogInformation("Episode tracking database initialized successfully");
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to initialize episode tracking database");
                 }
+                finally
+                {
+                    _dbInitGate.Release();
+                }
             });
 
             _logger.LogInformation("Episode Poster Generator plugin initialized");
+        }
+
+        /// <summary>
+        /// Waits for database initialization to complete. Returns true if initialization succeeded.
+        /// </summary>
+        public async Task<bool> WaitForDatabaseAsync(CancellationToken cancellationToken = default)
+        {
+            await _dbInitGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            _dbInitGate.Release(); // Allow other waiters through
+            return _dbInitialized;
         }
 
         public ILoggerFactory LoggerFactory => _loggerFactory;
@@ -139,12 +157,38 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         // Returns the plugin configuration page information.
         public IEnumerable<PluginPageInfo> GetPages()
         {
+            var ns = typeof(Plugin).Namespace;
+
             yield return new PluginPageInfo
             {
-                Name = "EpisodePosterGenerator",
-                EmbeddedResourcePath = $"{typeof(Plugin).Namespace}.Configuration.configPage.html",
+                Name = "epg_posters",
+                EmbeddedResourcePath = $"{ns}.Configuration.epg_posters.html",
                 MenuSection = "plugin",
                 DisplayName = "Episode Poster Generator"
+            };
+
+            yield return new PluginPageInfo
+            {
+                Name = "epg_posters.js",
+                EmbeddedResourcePath = $"{ns}.Configuration.epg_posters.js"
+            };
+
+            yield return new PluginPageInfo
+            {
+                Name = "epg_settings",
+                EmbeddedResourcePath = $"{ns}.Configuration.epg_settings.html"
+            };
+
+            yield return new PluginPageInfo
+            {
+                Name = "epg_settings.js",
+                EmbeddedResourcePath = $"{ns}.Configuration.epg_settings.js"
+            };
+
+            yield return new PluginPageInfo
+            {
+                Name = "epg_shared.css",
+                EmbeddedResourcePath = $"{ns}.Configuration.epg_shared.css"
             };
         }
 
@@ -162,6 +206,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         {
             if (!_disposed && disposing)
             {
+                _dbInitGate?.Dispose();
                 _trackingDatabase?.Dispose();
                 _hardwareValidationService?.Dispose();
                 _disposed = true;

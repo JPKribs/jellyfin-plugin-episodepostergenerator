@@ -1,0 +1,77 @@
+<div id="EpgSettingsPage" data-role="page" class="page type-interior pluginConfigurationPage withTabs"
+     data-require="emby-input,emby-button,emby-select,emby-checkbox"
+     data-controller="__plugin/epg_settings.js">
+    <div data-role="content">
+        <div class="content-primary">
+            <form id="EpgSettingsForm">
+                <div class="verticalSection verticalSection-extrabottompadding">
+
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h1 class="sectionTitle">Settings</h1>
+                    </div>
+
+                    <!-- COLLAPSIBLE: Plugin -->
+                    <div class="collapsibleSection">
+                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="pluginContent" data-target="pluginContent">
+                            <span class="collapsibleTitle">Plugin</span>
+                            <span class="collapsibleIcon">&#9660;</span>
+                        </button>
+                        <div id="pluginContent" class="collapsibleContent collapsed">
+                            <div class="inputContainer">
+                                <label class="checkboxContainer">
+                                    <input is="emby-checkbox" type="checkbox" id="chkEnableProvider" />
+                                    <span>Enable Provider</span>
+                                </label>
+                                <div class="fieldDescription">Enable the plugin as a metadata provider for episode posters.</div>
+                            </div>
+
+                            <div class="inputContainer">
+                                <label class="checkboxContainer">
+                                    <input is="emby-checkbox" type="checkbox" id="chkEnableTask" />
+                                    <span>Enable Scheduled Task</span>
+                                </label>
+                                <div class="fieldDescription">Enable the plugin as a scheduled task for batch poster generation.</div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- COLLAPSIBLE: Troubleshooting -->
+                    <div class="collapsibleSection">
+                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="troubleshootingContent" data-target="troubleshootingContent">
+                            <span class="collapsibleTitle">Troubleshooting</span>
+                            <span class="collapsibleIcon">&#9660;</span>
+                        </button>
+                        <div id="troubleshootingContent" class="collapsibleContent collapsed">
+                            <div class="resetButtonGroup">
+                                <div class="resetButtonRow resetButtonRow-nuclear">
+                                    <div class="resetButtonInfo">
+                                        <div>Reset Processing History</div>
+                                        <div class="fieldDescription">Clear all episode processing history. All episodes will be reprocessed on the next run.</div>
+                                    </div>
+                                    <button is="emby-button" type="button" id="btnResetHistory" class="raised button-destructive button-small">
+                                        <span>Reset</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Save -->
+                    <div class="inputContainer">
+                        <button is="emby-button" type="button" id="btnSavePlugin" class="raised button-submit block">
+                            <span>Save</span>
+                        </button>
+                        <span id="unsavedIndicator" class="unsaved-indicator">
+                            <span class="unsaved-indicator-dot"></span>
+                            Unsaved changes
+                        </span>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="configurationpage?name=epg_shared.css">
+</div>

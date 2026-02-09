@@ -53,7 +53,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             title = title.ToUpperInvariant();
 
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
-            var typeface = FontUtils.CreateTypeface(config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
+            var typeface = FontUtils.ResolveTypeface(config.EffectiveTitleFontPath, config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
 
             using var titlePaint = new SKPaint
             {
@@ -126,7 +126,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 IsAntialias = true,
                 SubpixelText = true,
                 LcdRenderText = true,
-                Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
+                Typeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
                 TextAlign = SKTextAlign.Center,
                 TextEncoding = SKTextEncoding.Utf8
             };
@@ -138,7 +138,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 IsAntialias = true,
                 SubpixelText = true,
                 LcdRenderText = true,
-                Typeface = FontUtils.CreateTypeface(config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
+                Typeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle)),
                 TextAlign = SKTextAlign.Center,
                 TextEncoding = SKTextEncoding.Utf8
             };

@@ -135,9 +135,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                                     posterSettings.PosterFileType.GetMimeType(),
                                     ImageType.Primary,
                                     null,
-                                    CancellationToken.None).ConfigureAwait(false);
+                                    cancellationToken).ConfigureAwait(false);
 
-                                await episode.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, CancellationToken.None).ConfigureAwait(false);
+                                await episode.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, cancellationToken).ConfigureAwait(false);
 
                                 successCount++;
 

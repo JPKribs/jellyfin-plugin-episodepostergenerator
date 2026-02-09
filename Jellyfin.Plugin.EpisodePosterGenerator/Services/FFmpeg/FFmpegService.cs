@@ -19,11 +19,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
     public class FFmpegService
     {
         private const int MaxRetries = 30;
+        private const int MaxHardwareAttempts = 15;
+        private const int EarlyExitAttemptThreshold = 5;
         private const double BrightnessThreshold = 0.05;
+        private const double HdrBrightnessMultiplier = 0.5;
         private const double SharpnessThreshold = 100.0;
-
-        // Shared Random instance for thread-safe random number generation
-        private static readonly Random SharedRandom = new Random();
+        private const double HdrEarlyExitScoreThreshold = 0.6;
+        private const double DefaultDurationSeconds = 3600;
+        private const double DefaultSeekStartPercent = 0.2;
+        private const double DefaultSeekEndPercent = 0.8;
+        private const double HdrBrightnessWeight = 0.6;
+        private const double SdrBrightnessWeight = 0.4;
 
         private readonly ILogger<FFmpegService> _logger;
         private readonly IServerConfigurationManager _configurationManager;
@@ -68,12 +74,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             var encodingOptions = _configurationManager.GetEncodingOptions();
             var videoDurationSeconds = metadata.VideoMetadata.VideoLengthTicks / (double)TimeSpan.TicksPerSecond;
-            if (videoDurationSeconds <= 0) videoDurationSeconds = 3600;
+            if (videoDurationSeconds <= 0) videoDurationSeconds = DefaultDurationSeconds;
 
             var isHDR = metadata.VideoMetadata.VideoHdrType.IsHDR();
             var is10Bit = metadata.VideoMetadata.VideoColorBits >= 10;
             var needsToneMapping = isHDR || is10Bit;
-            var brightnessThreshold = isHDR ? BrightnessThreshold * 0.5 : BrightnessThreshold;
+            var brightnessThreshold = isHDR ? BrightnessThreshold * HdrBrightnessMultiplier : BrightnessThreshold;
 
             _logger.LogInformation("Video analysis: HDR={HDR}, 10-bit={TenBit}, Tone mapping needed={NeedsToneMapping}",
                 isHDR, is10Bit, needsToneMapping);
@@ -209,7 +215,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             double bestQualityScore = 0.0;
             double bestBrightness = 0.0;
             double bestSharpness = 0.0;
-            int maxAttemptsForStrategy = useHardware ? 15 : MaxRetries;
+            int maxAttemptsForStrategy = useHardware ? MaxHardwareAttempts : MaxRetries;
             var isHDR = metadata.VideoMetadata.VideoHdrType.IsHDR();
 
             for (int attempt = 0; attempt < maxAttemptsForStrategy; attempt++)
@@ -241,7 +247,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                 if (!success)
                 {
-                    if (File.Exists(outputPath)) File.Delete(outputPath);
+                    TryDeleteFile(outputPath);
 
                     // Hardware failures are usually systemic - give up early
                     if (useHardware && attempt < 3)
@@ -262,7 +268,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 using var frameBitmap = SKBitmap.Decode(stream);
                 if (frameBitmap == null)
                 {
-                    if (File.Exists(outputPath)) File.Delete(outputPath);
+                    TryDeleteFile(outputPath);
                     continue;
                 }
 
@@ -276,7 +282,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 var sharpnessOk = actualSharpness >= SharpnessThreshold;
                 var qualityOk = brightnessOk && sharpnessOk;
 
-                if (attempt < 5 || qualityOk)
+                if (attempt < EarlyExitAttemptThreshold || qualityOk)
                 {
                     _logger.LogDebug("{Method} attempt {Attempt}: Brightness {Brightness:F3} (OK: {BrightOk}), Sharpness {Sharpness:F1} (OK: {SharpOk}), Score {Score:F3}",
                         methodName, attempt + 1, actualBrightness, brightnessOk, actualSharpness, sharpnessOk, qualityScore);
@@ -285,8 +291,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 // Found a frame meeting both brightness and sharpness thresholds
                 if (qualityOk)
                 {
-                    if (bestFramePath != null && File.Exists(bestFramePath))
-                        File.Delete(bestFramePath);
+                    TryDeleteFile(bestFramePath);
                     _logger.LogInformation("{Method}: Found high-quality frame on attempt {Attempt} - Brightness: {Brightness:F3}, Sharpness: {Sharpness:F1}, Score: {Score:F3}",
                         methodName, attempt + 1, actualBrightness, actualSharpness, qualityScore);
                     return outputPath;
@@ -295,8 +300,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 // Track best frame seen so far
                 if (qualityScore > bestQualityScore)
                 {
-                    if (bestFramePath != null && File.Exists(bestFramePath))
-                        File.Delete(bestFramePath);
+                    TryDeleteFile(bestFramePath);
                     bestFramePath = outputPath;
                     bestQualityScore = qualityScore;
                     bestBrightness = actualBrightness;
@@ -304,11 +308,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 }
                 else
                 {
-                    if (File.Exists(outputPath)) File.Delete(outputPath);
+                    TryDeleteFile(outputPath);
                 }
 
                 // Early exit for HDR content if we have a reasonably good frame
-                if (isHDR && qualityScore > 0.6 && attempt > 5)
+                if (isHDR && qualityScore > HdrEarlyExitScoreThreshold && attempt > EarlyExitAttemptThreshold)
                 {
                     _logger.LogInformation("{Method}: Found reasonably good HDR frame after {Attempts} attempts (score: {Score:F3}), stopping search",
                         methodName, attempt + 1, qualityScore);
@@ -346,13 +350,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             {
                 _logger.LogWarning("Invalid extraction window: start {Start}% >= end {End}%, using default 20%-80%",
                     config.ExtractWindowStart, config.ExtractWindowEnd);
-                startPercent = 0.2;
-                endPercent = 0.8;
+                startPercent = DefaultSeekStartPercent;
+                endPercent = DefaultSeekEndPercent;
             }
 
             var startTime = videoDurationSeconds * startPercent;
             var endTime = videoDurationSeconds * endPercent;
-            return (int)(SharedRandom.NextDouble() * (endTime - startTime) + startTime);
+            return (int)(Random.Shared.NextDouble() * (endTime - startTime) + startTime);
         }
 
         // AnalysisSize
@@ -443,7 +447,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             double normalizedSharpness = Math.Min(sharpness / SharpnessThreshold, 1.0);
 
             // HDR content prioritizes brightness; SDR prioritizes sharpness
-            double brightnessWeight = isHDR ? 0.6 : 0.4;
+            double brightnessWeight = isHDR ? HdrBrightnessWeight : SdrBrightnessWeight;
             double sharpnessWeight = 1.0 - brightnessWeight;
 
             return (normalizedBrightness * brightnessWeight) + (normalizedSharpness * sharpnessWeight);
@@ -496,6 +500,19 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             }
         }
 
+        // TryDeleteFile
+        // Safely deletes a file without throwing on race conditions or missing files.
+        private static void TryDeleteFile(string? path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+            try
+            {
+                File.Delete(path);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+
         // AnalyzeFFmpegError
         // Categorizes FFmpeg stderr output into known error types for better diagnostics.
         private string AnalyzeFFmpegError(string stderr)
@@ -517,6 +534,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 return "Hardware decoder not found";
             if (lower.Contains("hwupload", StringComparison.Ordinal) || lower.Contains("hwdownload", StringComparison.Ordinal))
                 return "Hardware upload/download failed";
+            if (lower.Contains("libplacebo", StringComparison.Ordinal))
+                return "libplacebo filter unavailable (FFmpeg not compiled with Vulkan/libplacebo support)";
             if (lower.Contains("tonemap", StringComparison.Ordinal))
                 return "Tone mapping filter failed";
             if (lower.Contains("cannot open", StringComparison.Ordinal) || lower.Contains("no such file", StringComparison.Ordinal))
