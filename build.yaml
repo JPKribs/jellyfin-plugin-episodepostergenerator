@@ -1,7 +1,7 @@
 ---
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
-version: "10.11.14"
+version: "10.11.15"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Generate Custom Episode Posters"
@@ -13,13 +13,6 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   improvements:
-  - Use Jellyfin's built-in IMediaEncoder for frame extraction and tone mapping
-  - Remove custom FFmpeg tone mapping pipeline (ToneMapFilterService, HardwareFFmpegService, SoftwareFFmpegService, HardwareValidationService)
-  - Remove HWA (Hardware Acceleration) configuration option
-  - Remove file type selection, standardize output to JPEG
-  - Replace config action button labels with Material Icons for a more compact mobile layout
-  - Update example templates to include custom font properties and bump to 10.11.13
-  fixes:
-  - HDR content appears washed out (DV with HDR10+ fallback)
-  - Dolby Vision content appears purple (pure DV without fallback)
-  - Config action buttons overflow on mobile screens
+  - Rename FFmpegService to FrameExtractionService and relocate to Canvas services directory
+  - Remove dead BrightnessService dependency from frame extraction service
+  - Clean up JS, CSS, and HTML configuration pages (remove unused code, consolidate CSS variables, use Jellyfin built-in styles)

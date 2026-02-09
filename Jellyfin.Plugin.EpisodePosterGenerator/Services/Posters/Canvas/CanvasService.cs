@@ -9,32 +9,33 @@ using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
-    // CanvasService
-    // Creates poster canvases using SkiaSharp through an extract, crop, brighten, and encode pipeline.
+    /// <summary>
+    /// Orchestrates poster canvas creation by delegating to frame extraction,
+    /// cropping, and brightness services, or producing a blank canvas.
+    /// </summary>
     public class CanvasService
     {
         private readonly ILogger<CanvasService> _logger;
-        private readonly FFmpegService _ffmpegService;
+        private readonly FrameExtractionService _frameExtractionService;
         private readonly CroppingService _croppingService;
         private readonly BrightnessService _brightnessService;
 
-        // CanvasService
-        // Initializes a new instance with required service dependencies.
         public CanvasService(
             ILogger<CanvasService> logger,
-            FFmpegService ffmpegService,
+            FrameExtractionService frameExtractionService,
             CroppingService croppingService,
-            BrightnessService brightnessService
-        )
+            BrightnessService brightnessService)
         {
             _logger = logger;
-            _ffmpegService = ffmpegService;
+            _frameExtractionService = frameExtractionService;
             _croppingService = croppingService;
             _brightnessService = brightnessService;
         }
 
-        // GenerateCanvasAsync
-        // Generates a poster canvas by extracting a frame, cropping, and brightening it.
+        /// <summary>
+        /// Generates a poster canvas by extracting a frame, cropping, and brightening it,
+        /// or creating a transparent fallback canvas if extraction is disabled.
+        /// </summary>
         public async Task<SKBitmap?> GenerateCanvasAsync(Episode episode, EpisodeMetadata metadata, PosterSettings config, CancellationToken cancellationToken = default)
         {
             if (metadata?.VideoMetadata == null)
@@ -45,29 +46,28 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             var videoMeta = metadata.VideoMetadata;
             SKBitmap? canvasBitmap = null;
-            string? ffmpegOutputPath = null;
+            string? extractedFramePath = null;
 
             try
             {
                 // Branch: Extract poster from video or create transparent canvas
                 if (config.ExtractPoster)
                 {
-                    ffmpegOutputPath = await _ffmpegService.ExtractSceneAsync(
+                    extractedFramePath = await _frameExtractionService.ExtractFrameAsync(
                         episode,
                         config,
-                        cancellationToken
-                    ).ConfigureAwait(false);
+                        cancellationToken).ConfigureAwait(false);
 
-                    if (string.IsNullOrEmpty(ffmpegOutputPath) || !File.Exists(ffmpegOutputPath))
+                    if (string.IsNullOrEmpty(extractedFramePath) || !File.Exists(extractedFramePath))
                     {
-                        _logger.LogWarning("FFmpeg did not produce a valid poster file");
+                        _logger.LogWarning("Frame extraction did not produce a valid output file");
                         return null;
                     }
 
-                    using var bitmap = SKBitmap.Decode(ffmpegOutputPath);
+                    using var bitmap = SKBitmap.Decode(extractedFramePath);
                     if (bitmap == null)
                     {
-                        _logger.LogWarning("Failed to decode FFmpeg output");
+                        _logger.LogWarning("Failed to decode extracted frame");
                         return null;
                     }
 
@@ -107,15 +107,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             {
                 canvasBitmap?.Dispose();
 
-                if (!string.IsNullOrEmpty(ffmpegOutputPath) && File.Exists(ffmpegOutputPath))
+                if (!string.IsNullOrEmpty(extractedFramePath) && File.Exists(extractedFramePath))
                 {
                     try
                     {
-                        File.Delete(ffmpegOutputPath);
+                        File.Delete(extractedFramePath);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to cleanup temporary file: {FilePath}", ffmpegOutputPath);
+                        _logger.LogWarning(ex, "Failed to cleanup temporary file: {FilePath}", extractedFramePath);
                     }
                 }
             }

@@ -12,7 +12,11 @@ using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
-    public class FFmpegService
+    /// <summary>
+    /// Extracts high-quality video frames using Jellyfin's media encoder,
+    /// scoring candidates by brightness and sharpness to select the best frame.
+    /// </summary>
+    public class FrameExtractionService
     {
         private const int MaxRetries = 30;
         private const int EarlyExitAttemptThreshold = 5;
@@ -25,32 +29,30 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         private const double BrightnessWeight = 0.5;
         private const int AnalysisSize = 200;
 
-        private readonly ILogger<FFmpegService> _logger;
+        private readonly ILogger<FrameExtractionService> _logger;
         private readonly IMediaEncoder _mediaEncoder;
-        private readonly BrightnessService _brightnessService;
 
-        // Constructor
-        // Initializes FFmpeg service with Jellyfin's media encoder for frame extraction.
-        public FFmpegService(
-            ILogger<FFmpegService> logger,
-            IMediaEncoder mediaEncoder,
-            BrightnessService brightnessService)
+        public FrameExtractionService(
+            ILogger<FrameExtractionService> logger,
+            IMediaEncoder mediaEncoder)
         {
             _logger = logger;
             _mediaEncoder = mediaEncoder;
-            _brightnessService = brightnessService;
         }
 
-        // ExtractSceneAsync
-        // Extracts a high-quality frame from video using Jellyfin's built-in image extractor.
-        public async Task<string?> ExtractSceneAsync(
+        /// <summary>
+        /// Extracts the best available frame from an episode's video stream.
+        /// Tries multiple random offsets within the configured extraction window,
+        /// scoring each frame for brightness and sharpness.
+        /// </summary>
+        public async Task<string?> ExtractFrameAsync(
             Episode episode,
             PosterSettings config,
             CancellationToken cancellationToken = default)
         {
             if (episode == null || string.IsNullOrEmpty(episode.Path))
             {
-                _logger.LogError("Invalid episode provided to FFmpegService");
+                _logger.LogError("Invalid episode provided to FrameExtractionService");
                 return null;
             }
 
@@ -181,8 +183,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return null;
         }
 
-        // GenerateSeekTime
-        // Generates a random seek time within the configured extraction window.
         private int GenerateSeekTime(double videoDurationSeconds, int attempt, PosterSettings config)
         {
             var startPercent = config.ExtractWindowStart / 100.0;
@@ -201,8 +201,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return (int)(Random.Shared.NextDouble() * (endTime - startTime) + startTime);
         }
 
-        // CreateAnalysisBitmap
-        // Creates a small downscaled copy of a bitmap for fast quality analysis.
         private static SKBitmap? CreateAnalysisBitmap(SKBitmap source)
         {
             if (source == null) return null;
@@ -219,8 +217,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return resized;
         }
 
-        // GetFrameBrightness
-        // Calculates average brightness from a pre-downscaled analysis bitmap.
         private static double GetFrameBrightness(SKBitmap analysis)
         {
             var pixels = analysis.Pixels;
@@ -236,8 +232,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return total / pixels.Length;
         }
 
-        // GetFrameSharpness
-        // Calculates sharpness using Laplacian variance from a pre-downscaled analysis bitmap.
         private static double GetFrameSharpness(SKBitmap analysis)
         {
             int width = analysis.Width;
@@ -273,8 +267,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return count > 0 ? sum / count : 0.0;
         }
 
-        // CalculateQualityScore
-        // Combines brightness and sharpness into a weighted quality score.
         private static double CalculateQualityScore(double brightness, double sharpness)
         {
             double normalizedBrightness = Math.Min(brightness / BrightnessThreshold, 1.0);
@@ -284,8 +276,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return (normalizedBrightness * BrightnessWeight) + (normalizedSharpness * sharpnessWeight);
         }
 
-        // TryDeleteFile
-        // Safely deletes a file without throwing on race conditions or missing files.
         private static void TryDeleteFile(string? path)
         {
             if (string.IsNullOrEmpty(path)) return;

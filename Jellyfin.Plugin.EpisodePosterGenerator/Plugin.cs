@@ -26,7 +26,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         private readonly ILoggerFactory _loggerFactory;
         private readonly EpisodeTrackingService _trackingService;
         private readonly EpisodeTrackingDatabase _trackingDatabase;
-        private readonly FFmpegService _ffmpegService;
+        private readonly FrameExtractionService _frameExtractionService;
         private readonly CanvasService _canvasService;
         private readonly BrightnessService _brightnessService;
         private readonly CroppingService _croppingService;
@@ -72,17 +72,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
 
             _brightnessService = new BrightnessService(
                 loggerFactory.CreateLogger<BrightnessService>());
-            _ffmpegService = new FFmpegService(
-                loggerFactory.CreateLogger<FFmpegService>(),
-                mediaEncoder,
-                _brightnessService);
+            _frameExtractionService = new FrameExtractionService(
+                loggerFactory.CreateLogger<FrameExtractionService>(),
+                mediaEncoder);
 
             _croppingService = new CroppingService(
                 loggerFactory.CreateLogger<CroppingService>());
 
             _canvasService = new CanvasService(
                 loggerFactory.CreateLogger<CanvasService>(),
-                _ffmpegService,
+                _frameExtractionService,
                 _croppingService,
                 _brightnessService);
 
@@ -128,7 +127,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public EpisodeTrackingDatabase TrackingDatabase => _trackingDatabase;
         public CanvasService CanvasService => _canvasService;
         public CroppingService CroppingService => _croppingService;
-        public FFmpegService FFmpegService => _ffmpegService;
+        public FrameExtractionService FrameExtractionService => _frameExtractionService;
         public PosterService PosterService => _posterService;
         public PosterConfigurationService PosterConfigService => _posterConfigService;
         public TemplateExportService TemplateExportService => _templateExportService;
