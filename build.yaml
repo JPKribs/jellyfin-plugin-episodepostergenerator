@@ -12,12 +12,39 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
-  fixes:
-  - Fixed floating point equality comparisons in TextInfo
-  - Improved IDisposable handling to prevent resource leaks
-  - Fixed potential log forging vulnerability in ConfigurationController
+  new:
+  - Added per-section custom font support with checkbox toggle and file path input (TTF, OTF, TTC)
+  - Refactored configuration UI into 2-tab layout (Posters | Settings) with collapsible sections
+  - Added styled input modal replacing native browser prompt dialogs
+  - Added series selection modal with poster thumbnails, year, and overview
+  - Added unsaved changes tracking with visual indicator to both tabs
+  - Added mobile responsive layout with media queries for tablet and phone screens
+  - Added CSS custom properties (design tokens) for consistent theming
+  - Added dynamic poster style descriptions below style dropdown
   improvements:
-  - Replaced string concatenation with LINQ in TextUtils
-  - Improved LINQ usage for text measurement calculations
-  - Added readonly modifier to configuration lookup dictionary
-  - Replaced loop with LINQ Where in ConfigurationController
+  - Split monolithic config page into separate HTML/JS/CSS files following Jellyfin plugin best practices
+  - Reordered collapsible sections to match rendering pipeline (Poster → Canvas → Overlay → Static Graphic → Episode Information → Episode Title)
+  - Added collapsible sections for Poster, Episode Information, Episode Title, Overlay, and Static Graphic settings
+  - Moved plugin enable/disable and reset history to dedicated Settings tab
+  - Moved Save button outside collapsible sections for consistent visibility
+  - All collapsible sections default to closed on load
+  - Added close button, backdrop click, and escape key to dismiss all modals
+  - Added unsaved changes warning on tab switch and page navigation
+  - Added green save confirmation flash with animated indicator
+  - Added loading spinner in series selection modal during data fetch
+  - Added scroll to top when switching poster configurations
+  - Added responsive flex-wrap to configuration selector buttons
+  - Added focus trapping and focus return for all modals
+  - Added aria-controls, aria-describedby, aria-expanded, and aria-labelledby attributes
+  - Added 200ms debounce to series search filtering
+  - Added number input bounds validation on save
+  - Added empty state with warning icon when no series assigned
+  - Improved disabled series styling in selection modal
+  - Renamed confusing "Enable Poster Episode" label to "Extract Frame from Episode"
+  fixes:
+  - Fixed Dolby Vision tone mapping using libplacebo for proper DV RPU dynamic metadata handling
+  - Fixed DV codec mapped to HEVC for hardware decoding eligibility (DV content was forced to software-only)
+  - Fixed memory leak from duplicate color control event listeners on config switch
+  - Added save guard to prevent concurrent save operations on Settings tab
+  - Fixed series search to use addEventListener instead of inline handler
+  - Removed unused CSS rules
