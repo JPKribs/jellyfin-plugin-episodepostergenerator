@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/master/Jellyfin.Plugin.EpisodePosterGenerator/Logo.png",
     "versions": [
       {
+        "version": "10.11.15",
+        "changelog": "## Improvements\r\n- Rename FFmpegService to FrameExtractionService and relocate to Canvas services directory\r\n- Remove dead BrightnessService dependency from frame extraction service\r\n- Strip BrightnessService to single responsibility (brightness adjustment only), remove unused analysis methods\r\n- Remove unused public service properties from Plugin (CanvasService, CroppingService, FrameExtractionService, TrackingDatabase, TemplateExportService, LoggerFactory)\r\n- Clean up JS, CSS, and HTML configuration pages (remove unused code, consolidate CSS variables, use Jellyfin built-in styles)\r\n- Update example templates to 10.11.15",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.15/jellyfin-plugin-episodepostergenerator-10.11.15.zip",
+        "checksum": "615e157fa6e9295e2c0a667523fcd35d",
+        "timestamp": "2026-02-10T00:14:51Z"
+      },
+      {
         "version": "10.11.14",
         "changelog": "## Improvements\r\n- Use Jellyfin's built-in IMediaEncoder for frame extraction and tone mapping\r\n- Remove custom FFmpeg tone mapping pipeline (ToneMapFilterService, HardwareFFmpegService, SoftwareFFmpegService, HardwareValidationService)\r\n- Remove HWA (Hardware Acceleration) configuration option\r\n- Remove file type selection, standardize output to JPEG\r\n- Replace config action button labels with Material Icons for a more compact mobile layout\r\n- Update example templates to include custom font properties and bump to 10.11.13\r\n\r\n## Fixes\r\n- HDR content appears washed out (DV with HDR10+ fallback)\r\n- Dolby Vision content appears purple (pure DV without fallback)\r\n- Config action buttons overflow on mobile screens",
         "targetAbi": "10.11.0.0",
