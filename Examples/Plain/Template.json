@@ -2,7 +2,7 @@
   "name": "Plain",
   "description": "Plain poster with no text. Just an extracted image, letterboxing removed, and cut to the appropriate dimensions.",
   "author": "Joseph Kribs",
-  "version": "10.11.13",
+  "version": "10.11.15",
   "createdDate": "2025-10-21T12:37:52.450Z",
   "settings": {
     "ExtractPoster": true,

@@ -2,7 +2,7 @@
   "name": "Frame",
   "description": "Frame poster with a thin, black overlay and all episode details visible.",
   "author": "Joseph Kribs",
-  "version": "10.11.13",
+  "version": "10.11.15",
   "createdDate": "2025-10-21T12:51:17.440Z",
   "settings": {
     "ExtractPoster": true,

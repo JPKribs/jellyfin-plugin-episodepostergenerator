@@ -23,16 +23,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public static Plugin? Instance { get; private set; }
 
         private readonly ILogger<Plugin> _logger;
-        private readonly ILoggerFactory _loggerFactory;
         private readonly EpisodeTrackingService _trackingService;
         private readonly EpisodeTrackingDatabase _trackingDatabase;
-        private readonly FrameExtractionService _frameExtractionService;
-        private readonly CanvasService _canvasService;
-        private readonly BrightnessService _brightnessService;
-        private readonly CroppingService _croppingService;
         private readonly PosterService _posterService;
         private readonly PosterConfigurationService _posterConfigService;
-        private readonly TemplateExportService _templateExportService;
 
         private readonly SemaphoreSlim _dbInitGate = new SemaphoreSlim(0, 1);
         private bool _dbInitialized;
@@ -51,9 +45,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         {
             Instance = this;
             _logger = logger;
-            _loggerFactory = loggerFactory;
-
-            var configHashService = new ConfigurationHashService();
 
             _trackingDatabase = new EpisodeTrackingDatabase(
                 loggerFactory.CreateLogger<EpisodeTrackingDatabase>(),
@@ -61,33 +52,28 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _trackingService = new EpisodeTrackingService(
                 loggerFactory.CreateLogger<EpisodeTrackingService>(),
                 _trackingDatabase,
-                configHashService);
+                new ConfigurationHashService());
 
             _posterConfigService = new PosterConfigurationService(
                 loggerFactory.CreateLogger<PosterConfigurationService>());
             _posterConfigService.Initialize(Configuration);
 
-            _templateExportService = new TemplateExportService(
-                loggerFactory.CreateLogger<TemplateExportService>());
-
-            _brightnessService = new BrightnessService(
+            var brightnessService = new BrightnessService(
                 loggerFactory.CreateLogger<BrightnessService>());
-            _frameExtractionService = new FrameExtractionService(
+            var frameExtractionService = new FrameExtractionService(
                 loggerFactory.CreateLogger<FrameExtractionService>(),
                 mediaEncoder);
-
-            _croppingService = new CroppingService(
+            var croppingService = new CroppingService(
                 loggerFactory.CreateLogger<CroppingService>());
-
-            _canvasService = new CanvasService(
+            var canvasService = new CanvasService(
                 loggerFactory.CreateLogger<CanvasService>(),
-                _frameExtractionService,
-                _croppingService,
-                _brightnessService);
+                frameExtractionService,
+                croppingService,
+                brightnessService);
 
             _posterService = new PosterService(
                 loggerFactory.CreateLogger<PosterService>(),
-                _canvasService,
+                canvasService,
                 configurationManager,
                 loggerFactory);
 
@@ -122,15 +108,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             return _dbInitialized;
         }
 
-        public ILoggerFactory LoggerFactory => _loggerFactory;
         public EpisodeTrackingService TrackingService => _trackingService;
-        public EpisodeTrackingDatabase TrackingDatabase => _trackingDatabase;
-        public CanvasService CanvasService => _canvasService;
-        public CroppingService CroppingService => _croppingService;
-        public FrameExtractionService FrameExtractionService => _frameExtractionService;
         public PosterService PosterService => _posterService;
         public PosterConfigurationService PosterConfigService => _posterConfigService;
-        public TemplateExportService TemplateExportService => _templateExportService;
 
 
         // GetPages

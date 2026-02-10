@@ -2,7 +2,7 @@
   "name": "Gradient Cutout",
   "description": "Cutout poster with a gradient overlay in Jellyfin colors.",
   "author": "Joseph Kribs",
-  "version": "10.11.13",
+  "version": "10.11.15",
   "createdDate": "2025-10-21T12:21:54.022Z",
   "settings": {
     "ExtractPoster": true,

@@ -2,7 +2,7 @@
   "name": "Logo",
   "description": "Logo poster with a thin, black overlay and episode title visible.",
   "author": "Joseph Kribs",
-  "version": "10.11.13",
+  "version": "10.11.15",
   "createdDate": "2025-10-21T13:01:12.801Z",
   "settings": {
     "ExtractPoster": true,

@@ -2,7 +2,7 @@
   "name": "Simply",
   "description": "Standard poster with a thin, black overlay and the episode number visible.",
   "author": "Joseph Kribs",
-  "version": "10.11.13",
+  "version": "10.11.15",
   "createdDate": "2025-10-21T12:48:17.418Z",
   "settings": {
     "ExtractPoster": true,

@@ -2,7 +2,7 @@
   "name": "Numeral",
   "description": "Numeral poster with a thin, black overlay and episode number visible.",
   "author": "Joseph Kribs",
-  "version": "10.11.13",
+  "version": "10.11.15",
   "createdDate": "2025-10-21T13:29:28.076Z",
   "settings": {
     "ExtractPoster": true,

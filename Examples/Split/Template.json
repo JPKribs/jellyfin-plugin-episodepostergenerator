@@ -2,7 +2,7 @@
   "name": "Default",
   "description": "Standard poster with a thin, black overlay and the episode number visible, split with the series poster.",
   "author": "Joseph Kribs",
-  "version": "10.11.13",
+  "version": "10.11.15",
   "createdDate": "2026-01-25T11:13:32.635Z",
   "settings": {
     "ExtractPoster": true,

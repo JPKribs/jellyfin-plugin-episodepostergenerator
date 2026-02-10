@@ -2,7 +2,7 @@
   "name": "Standard Cutout",
   "description": "Cutout poster with a thin, black overlay and the episode name visible.",
   "author": "Joseph Kribs",
-  "version": "10.11.13",
+  "version": "10.11.15",
   "createdDate": "2025-10-21T12:28:53.437Z",
   "settings": {
     "ExtractPoster": true,

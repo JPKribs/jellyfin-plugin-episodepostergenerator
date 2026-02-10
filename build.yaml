@@ -15,4 +15,7 @@ changelog:
   improvements:
   - Rename FFmpegService to FrameExtractionService and relocate to Canvas services directory
   - Remove dead BrightnessService dependency from frame extraction service
+  - Strip BrightnessService to single responsibility (brightness adjustment only), remove unused analysis methods
+  - Remove unused public service properties from Plugin (CanvasService, CroppingService, FrameExtractionService, TrackingDatabase, TemplateExportService, LoggerFactory)
   - Clean up JS, CSS, and HTML configuration pages (remove unused code, consolidate CSS variables, use Jellyfin built-in styles)
+  - Update example templates to 10.11.15
