@@ -9,6 +9,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "10.11.16",
+        "changelog": "## Fix\r\n- Missing poster image\r\n- Remove invalid image embedding",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.16/jellyfin-plugin-episodepostergenerator-10.11.16.zip",
+        "checksum": "9612685c09bc0453f75bd971cb880220",
+        "timestamp": "2026-04-02T03:29:58Z"
+      },
+      {
         "version": "10.11.15",
         "changelog": "## Improvements\r\n- Rename FFmpegService to FrameExtractionService and relocate to Canvas services directory\r\n- Remove dead BrightnessService dependency from frame extraction service\r\n- Strip BrightnessService to single responsibility (brightness adjustment only), remove unused analysis methods\r\n- Remove unused public service properties from Plugin (CanvasService, CroppingService, FrameExtractionService, TrackingDatabase, TemplateExportService, LoggerFactory)\r\n- Clean up JS, CSS, and HTML configuration pages (remove unused code, consolidate CSS variables, use Jellyfin built-in styles)\r\n- Update example templates to 10.11.15",
         "targetAbi": "10.11.0.0",
