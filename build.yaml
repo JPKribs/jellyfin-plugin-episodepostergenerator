@@ -8,7 +8,7 @@ framework: "net9.0"
 overview: "Generate Custom Episode Posters"
 description: >
   Episode Poster Generator is a Jellyfin plugin that automatically creates custom episode posters using intelligent multi-quality frame analysis, blur detection, and professional-grade rendering. Features advanced brightness and sharpness scoring to avoid dark scenes and motion blur, combined with studio-quality text rendering and image processing.
-category: "Metadata"
+category: "MoviesAndShows"
 owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
