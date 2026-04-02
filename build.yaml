@@ -2,7 +2,7 @@
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
 imageUrl: "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/refs/heads/master/Jellyfin.Plugin.EpisodePosterGenerator/Assets/Logo.png"
-version: "10.11.17"
+version: "10.11.16"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Generate Custom Episode Posters"
