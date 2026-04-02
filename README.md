@@ -1,6 +1,18 @@
-![Episode Poster Generator](Jellyfin.Plugin.EpisodePosterGenerator/Assets/Logo.png)
+# ![Episode Poster Generator](Jellyfin.Plugin.EpisodePosterGenerator/Assets/Logo.png)
 
 A Jellyfin plugin that automatically generates custom episode posters using smart frame analysis, black frame detection, letterbox detection, and configurable text styling. Perfect for filling in missing or generic episode artwork with clean, consistent visuals.
+
+---
+
+## How It Works
+Episode Poster Generator scans each episode file, evaluates multiple frames, and selects a strong candidate while avoiding fades, black screens, and letterboxed shots. The selected frame is turned into a poster and optionally styled with configurable text such as episode title or numbering.
+
+Posters are uploaded directly into Jellyfin as a metadata provider.
+
+## Use At Your Own Risk
+This plugin overrides image metadata in your Jellyfin library. While extensively tested, I cannot account for every server configuration or edge case. **Always maintain backups of your Jellyfin data and configuration.\** By using this plugin, you accept full responsibility for any overriden images or issues that may occur.
+
+---
 
 ## Poster Styles
 
