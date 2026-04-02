@@ -31,16 +31,24 @@ The plugin supports multiple poster configurations, allowing different series to
 ### Configuration Actions
 
 #### + New
-**Type:** Button  
+**Type:** Button
 **Effect:** Creates a new poster configuration. Prompts for a configuration name (required and must be unique). The new configuration is created with default settings and becomes the active configuration. New configurations must be assigned to specific series to be used.
 
 #### Rename
-**Type:** Button  
+**Type:** Button
 **Effect:** Renames the currently active configuration. Only available for non-default configurations. Prompts for a new name (required and must be unique). The default configuration cannot be renamed.
 
 #### Delete
-**Type:** Button  
+**Type:** Button
 **Effect:** Deletes the currently active configuration. Only available for non-default configurations. Requires confirmation before deletion. Series assigned to deleted configurations will fall back to the default configuration. The default configuration cannot be deleted.
+
+#### Export
+**Type:** Button
+**Effect:** Exports the currently active configuration to a JSON file. Useful for backing up configurations or sharing them across Jellyfin instances.
+
+#### Import
+**Type:** Button
+**Effect:** Imports a configuration from a JSON file. The imported configuration is added as a new configuration and becomes the active selection.
 
 ### Assigned Series
 **Visibility:** Hidden for default configuration  
@@ -77,16 +85,10 @@ These settings are configured per poster configuration. Each configuration can h
 **Effect:** Sets the ending point for frame extraction as a percentage of the episode duration. The plugin will stop extracting frames at X% of the episode to avoid end credits and outro sequences.
 
 #### Brighten HDR (%)
-**Type:** Number (0-100)  
-**Default:** 25  
-**Requires:** Enable Poster Episode  
+**Type:** Number (0-100)
+**Default:** 25
+**Requires:** Enable Poster Episode
 **Effect:** Applies brightness adjustment specifically to HDR content as a percentage increase. This helps HDR frames appear properly exposed in poster images, as HDR content can appear dark when converted to standard images.
-
-#### Enable Hardware Accelerated Decoding
-**Type:** Checkbox  
-**Default:** Disabled  
-**Requires:** Enable Poster Episode  
-**Effect:** Uses Jellyfin's hardware acceleration settings for video decoding during frame extraction. When enabled, the plugin will attempt to use GPU-accelerated decoding for faster processing. Falls back to software decoding if hardware acceleration fails.
 
 ### Letterbox Detection
 
@@ -111,15 +113,17 @@ These settings are configured per poster configuration. Each configuration can h
 ### Poster Style
 
 #### Style
-**Type:** Dropdown  
-**Options:** Standard, Cutout, Frame, Logo, Numeral  
-**Default:** Standard  
+**Type:** Dropdown
+**Options:** Standard, Cutout, Frame, Logo, Numeral, Brush, Split
+**Default:** Standard
 **Effect:** Determines the overall poster design and layout approach:
 - **Standard:** Classic poster with background image and bottom-aligned text
 - **Cutout:** Large text with transparent cutout effect revealing background
 - **Frame:** Decorative border frame with episode title
 - **Logo:** Series logo-focused design with clean typography
 - **Numeral:** Roman numeral episode numbers with elegant styling
+- **Brush:** Bold brushstroke graphic behind episode text
+- **Split:** Poster split into two panels with contrasting sections
 
 #### Enable Cutout Text Border
 **Type:** Checkbox  
@@ -178,80 +182,95 @@ These settings are configured per poster configuration. Each configuration can h
 **Default:** 5  
 **Effect:** Sets the percentage of vertical and horizontal space preserved around poster edges as a safe area. Text and graphic elements are positioned within this safe area to ensure they don't appear too close to edges.
 
-#### File Type
-**Type:** Dropdown  
-**Options:** JPEG, PNG, WEBP  
-**Default:** WEBP  
-**Effect:** Determines the file format for generated poster images:
-- **JPEG:** Good compression, widely supported, no transparency
-- **PNG:** Lossless quality, transparency support, larger files
-- **WEBP:** Excellent compression, modern format, good quality
-
 ### Episode Information
 
 #### Show Episode
-**Type:** Checkbox  
-**Default:** Enabled  
+**Type:** Checkbox
+**Default:** Enabled
 **Effect:** Controls whether season and episode information (e.g., "S01E05") is displayed on the poster. Always enabled for Cutout and Numeral styles as episode information is central to their design.
 
+#### Use Custom Font
+**Type:** Checkbox
+**Default:** Disabled
+**Requires:** Show Episode
+**Effect:** Enables loading a custom font file instead of the built-in font list. When enabled, the Font Path field is used instead of the Font Family dropdown.
+
+#### Font Path
+**Type:** Text input
+**Default:** Empty
+**Requires:** Use Custom Font
+**Effect:** Absolute path to a custom font file (TTF, OTF, or TTC) to use for episode information text.
+
 #### Font
-**Type:** Dropdown  
-**Default:** Arial  
-**Requires:** Show Episode  
-**Effect:** Sets the font family for episode number and season information text. Available fonts include Arial, Helvetica, Times New Roman, and many others.
+**Type:** Dropdown
+**Default:** Arial
+**Requires:** Show Episode (Use Custom Font disabled)
+**Effect:** Sets the font family for episode number and season information text.
 
 #### Font Style
-**Type:** Dropdown  
-**Options:** Normal, Bold, Italic, Bold Italic  
-**Default:** Bold  
-**Requires:** Show Episode  
+**Type:** Dropdown
+**Options:** Normal, Bold, Italic, Bold Italic
+**Default:** Bold
+**Requires:** Show Episode
 **Effect:** Controls the weight and style of episode information text.
 
 #### Font Size
-**Type:** Number (1-100)  
-**Default:** 7  
-**Requires:** Show Episode  
-**Visibility:** Not available for Cutout and Numeral styles  
+**Type:** Number (1-100)
+**Default:** 7
+**Requires:** Show Episode
+**Visibility:** Not available for Cutout and Numeral styles
 **Effect:** Sets the font size for episode information as a percentage of poster height.
 
 #### Font Color
-**Type:** Color picker with alpha  
-**Default:** #FFFFFFFF (white)  
-**Requires:** Show Episode  
-**Visibility:** Not available for Cutout style  
+**Type:** Color picker with alpha
+**Default:** #FFFFFFFF (white)
+**Requires:** Show Episode
+**Visibility:** Not available for Cutout style
 **Effect:** Sets the ARGB hex color for episode number text. Format is #AARRGGBB where AA=alpha, RR=red, GG=green, BB=blue.
 
 ### Episode Title
 
 #### Show Title
-**Type:** Checkbox  
-**Default:** Enabled  
-**Visibility:** Not available for Frame style  
+**Type:** Checkbox
+**Default:** Enabled
+**Visibility:** Not available for Frame style
 **Effect:** Controls whether the episode title text is displayed on the poster.
 
+#### Use Custom Font
+**Type:** Checkbox
+**Default:** Disabled
+**Requires:** Show Title
+**Effect:** Enables loading a custom font file instead of the built-in font list. When enabled, the Font Path field is used instead of the Font Family dropdown.
+
+#### Font Path
+**Type:** Text input
+**Default:** Empty
+**Requires:** Use Custom Font
+**Effect:** Absolute path to a custom font file (TTF, OTF, or TTC) to use for episode title text.
+
 #### Font
-**Type:** Dropdown  
-**Default:** Arial  
-**Requires:** Show Title  
+**Type:** Dropdown
+**Default:** Arial
+**Requires:** Show Title (Use Custom Font disabled)
 **Effect:** Sets the font family for episode title text.
 
 #### Font Style
-**Type:** Dropdown  
-**Options:** Normal, Bold, Italic, Bold Italic  
-**Default:** Bold  
-**Requires:** Show Title  
+**Type:** Dropdown
+**Options:** Normal, Bold, Italic, Bold Italic
+**Default:** Bold
+**Requires:** Show Title
 **Effect:** Controls the weight and style of episode title text.
 
 #### Font Size
-**Type:** Number (1-100)  
-**Default:** 10  
-**Requires:** Show Title  
+**Type:** Number (1-100)
+**Default:** 10
+**Requires:** Show Title
 **Effect:** Sets the font size for episode title as a percentage of poster height.
 
 #### Font Color
-**Type:** Color picker with alpha  
-**Default:** #FFFFFFFF (white)  
-**Requires:** Show Title  
+**Type:** Color picker with alpha
+**Default:** #FFFFFFFF (white)
+**Requires:** Show Title
 **Effect:** Sets the ARGB hex color for episode title text.
 
 ### Overlay
