@@ -72,7 +72,6 @@ validate_resources() {
         "$PROJECT_DIR/Configuration/epg_settings.html"
         "$PROJECT_DIR/Configuration/epg_settings.js"
         "$PROJECT_DIR/Configuration/epg_shared.css"
-        "$PROJECT_DIR/Logo.png"
     )
     
     for file in "${config_files[@]}"; do
