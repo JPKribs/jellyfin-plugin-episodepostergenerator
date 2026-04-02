@@ -9,6 +9,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "10.11.17",
+        "changelog": "## Chores\r\n- Cleanup documentation and add build logic",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.17/jellyfin-plugin-episodepostergenerator-10.11.17.zip",
+        "checksum": "d2fc9ed59f4e976ce0f245f65fc94827",
+        "timestamp": "2026-04-02T03:45:02Z"
+      },
+      {
         "version": "10.11.16",
         "changelog": "## Fix\r\n- Missing poster image\r\n- Remove invalid image embedding",
         "targetAbi": "10.11.0.0",
