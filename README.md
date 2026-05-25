@@ -24,7 +24,7 @@ Classic episode posters with overlay text and episode information.
 | ![Standard Example 1](Examples/Standard/Example1.png) | ![Standard Example 2](Examples/Standard/Example2.png) | ![Standard Example 3](Examples/Standard/Example3.png) |
 
 ### Brush Style  
-Large episode numbers displayed as transparent cutouts revealing the screenshot beneath.
+Flat color with a transparent brush cutout revealing the screenshot beneath.
 
 | Example 1 | Example 2 | Example 3 |
 |-----------|-----------|-----------|
