@@ -9,6 +9,14 @@
     "category": "MoviesAndShows",
     "versions": [
       {
+        "version": "10.11.18",
+        "changelog": "## Fixes\r\n- Build fixes for 10.11.18\r\n\r\n## Features\r\n- Fix the Brush Poster Type from looking just truly terrible",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.18/jellyfin-plugin-episodepostergenerator-10.11.18.zip",
+        "checksum": "63ed1809971108a41d073fd34387c94b",
+        "timestamp": "2026-05-25T03:10:33Z"
+      },
+      {
         "version": "10.11.17",
         "changelog": "## Chores\r\n- Cleanup documentation and add build logic",
         "targetAbi": "10.11.0.0",
