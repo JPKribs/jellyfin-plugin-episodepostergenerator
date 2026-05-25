@@ -13,5 +13,5 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
-  chores:
-  - Cleanup documentation and add build logic
+  features:
+  - Fix the Brush Poster Type from looking just truly terrible
