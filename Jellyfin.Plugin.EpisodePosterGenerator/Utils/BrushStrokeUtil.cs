@@ -14,13 +14,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utils
         }
 
         // BuildStrokePath
-        // Composes a stack of brush strokes out of many bristle paths so the result
-        // reads as real brush hair drag marks. Layout is chosen deterministically from
-        // the seed: either 2 strokes at 40% canvas height each, or 3 at 30% each.
-        // Adjacent strokes overlap by a random 0-5% canvas height (auto-tightened when
-        // the stack would overflow the usable area).
-        // Every subpath is built with clockwise winding so simple AddPath under Winding
-        // fill behaves as a union (no XOR carve-outs from inconsistent outline winding).
         public SKPath BuildStrokePath(SKRect bounds, SKRect textArea, float canvasHeight)
         {
             var combined = new SKPath { FillType = SKPathFillType.Winding };
