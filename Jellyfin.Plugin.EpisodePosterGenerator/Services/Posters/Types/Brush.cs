@@ -33,10 +33,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var rect = SKRect.Create(width, height);
             var safeArea = GetSafeAreaBounds(width, height, settings);
             var textArea = CalculateTextKeepClearArea(safeArea, settings, height);
-            
-            var strokeBuilder = new BrushStrokeUtil(episodeMetadata.EpisodeNumberStart ?? 1);
-            float baseWidth = height * 0.12f;
-            using var brushMask = strokeBuilder.BuildStrokePath(safeArea, textArea, baseWidth);
+
+            // Seed from the episode's file path so the same episode always produces the
+            // same stroke layout, but different episodes vary. Falls back to series id +
+            // season + episode if the file path isn't populated (e.g. demo generator).
+            var seed = GenerateBrushSeed(episodeMetadata);
+            var strokeBuilder = new BrushStrokeUtil(seed);
+            using var brushMask = strokeBuilder.BuildStrokePath(safeArea, textArea, height);
             
             skCanvas.Save();
             skCanvas.ClipPath(brushMask, SKClipOperation.Difference, antialias: true);
@@ -71,59 +74,40 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             skCanvas.Restore();
         }
 
-        // GenerateBrushStrokePath
-        // Generates a random brush stroke path that avoids the text area.
-        private SKPath GenerateBrushStrokePath(int width, int height, SKRect safeArea, SKRect textArea, int seed)
+        // GenerateBrushSeed
+        // Produces a deterministic int seed for an episode using a stable FNV-1a hash of
+        // the episode's file path. The string overload of GetHashCode() is randomized per
+        // process on modern .NET, so we hash the bytes ourselves to keep posters stable
+        // across server restarts.
+        private static int GenerateBrushSeed(EpisodeMetadata metadata)
         {
-            var random = new Random(seed);
-
-            using var centerPath = new SKPath();
-
-            float textTop = textArea.Top;
-            float usableHeight = textTop - safeArea.Top - 100f;
-            float startY = safeArea.Top + (usableHeight * 0.3f) + (float)(random.NextDouble() - 0.5) * usableHeight * 0.2f;
-            float endY = safeArea.Top + (usableHeight * 0.7f) + (float)(random.NextDouble() - 0.5) * usableHeight * 0.2f;
-
-            int segments = 150;
-            float frequency = 8f + (float)random.NextDouble() * 4f;
-            float tightAmplitude = usableHeight * 0.08f;
-
-            for (int i = 0; i <= segments; i++)
+            var path = metadata.VideoMetadata?.EpisodeFilePath;
+            if (!string.IsNullOrEmpty(path))
             {
-                float t = i / (float)segments;
-                float x = safeArea.Left + (t * safeArea.Width);
-
-                float baseY = startY + (endY - startY) * t;
-
-                float tightSwoop = (float)Math.Sin(t * Math.PI * frequency) * tightAmplitude;
-
-                float wobble = (float)(random.NextDouble() - 0.5) * 8f;
-
-                float y = baseY + tightSwoop + wobble;
-
-                if (i == 0)
+                unchecked
                 {
-                    centerPath.MoveTo(x, y);
-                }
-                else
-                {
-                    centerPath.LineTo(x, y);
+                    int hash = (int)2166136261;
+                    foreach (char c in path)
+                    {
+                        hash ^= c;
+                        hash *= 16777619;
+                    }
+                    return hash;
                 }
             }
 
-            float baseWidth = width * 0.16f;
-            float widthVariation = (float)random.NextDouble() * 0.3f + 0.85f;
-
-            using var strokePaint = new SKPaint
+            int fallback = 0;
+            if (metadata.SeriesId != Guid.Empty)
             {
-                Style = SKPaintStyle.Stroke,
-                StrokeWidth = baseWidth * widthVariation,
-                StrokeCap = SKStrokeCap.Round,
-                StrokeJoin = SKStrokeJoin.Round,
-                IsAntialias = true
-            };
-
-            return strokePaint.GetFillPath(centerPath);
+                var bytes = metadata.SeriesId.ToByteArray();
+                fallback = BitConverter.ToInt32(bytes, 0)
+                    ^ BitConverter.ToInt32(bytes, 4)
+                    ^ BitConverter.ToInt32(bytes, 8)
+                    ^ BitConverter.ToInt32(bytes, 12);
+            }
+            fallback = (fallback * 397) ^ (metadata.SeasonNumber ?? 0);
+            fallback = (fallback * 397) ^ (metadata.EpisodeNumberStart ?? 1);
+            return fallback;
         }
 
         // CalculateTextKeepClearArea
