@@ -9,6 +9,14 @@
     "category": "MoviesAndShows",
     "versions": [
       {
+        "version": "10.11.22.1",
+        "changelog": "## Fixes\r\n- JS changes to ensure that buttons actually hide when unusable\r\n- CSS changes to make this easier to maintain & less janky",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.22.1/jellyfin-plugin-episodepostergenerator-10.11.22.1.zip",
+        "checksum": "c68f4e7493283571d40c424a1b45ecc8",
+        "timestamp": "2026-05-30T19:11:49Z"
+      },
+      {
         "version": "10.11.22.0",
         "changelog": "## Features\r\n- Live poster preview in the config page\r\n\r\n## Developer\r\n- New version numbering: \r\n- README updates\r\n- Build updates for example images",
         "targetAbi": "10.11.0.0",
