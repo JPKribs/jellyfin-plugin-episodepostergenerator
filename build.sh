@@ -176,11 +176,39 @@ main() {
     log "INFO" "Copying DLL to package directory"
     cp "$dll_path" "$temp_dir/"
 
-    # Copy Assets directory if it exists
-    local assets_path="$PROJECT_DIR/bin/$CONFIGURATION/net9.0/Assets"
-    if [[ -d "$assets_path" ]]; then
-        log "INFO" "Copying Assets directory to package"
-        cp -r "$assets_path" "$temp_dir/"
+    # Bundle the plugin image AND a meta.json inside the package, exactly like
+    # the official Jellyfin plugins (their release zips ship a meta.json too).
+    # We go one step further and set "imagePath" + ship Logo.png, so Jellyfin
+    # serves the installed-plugin icon (/Plugins/{id}/{ver}/Image) straight from
+    # disk with ZERO dependency on the server downloading imageUrl at install.
+    # Jellyfin's ReconcileManifest preserves a non-empty bundled imagePath.
+    local logo_src="$PROJECT_DIR/Assets/Logo.png"
+    if [[ -f "$logo_src" ]]; then
+        log "INFO" "Bundling plugin image: Logo.png"
+        cp "$logo_src" "$temp_dir/Logo.png"
+
+        local target_abi=$(grep '^targetAbi:' build.yaml | cut -d':' -f2 | tr -d ' "')
+        [[ -z "$target_abi" ]] && target_abi="10.11.0.0"
+        local meta_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+        # Omit name/description/etc on purpose: ReconcileManifest lets a non-empty
+        # bundled value override the repo entry, so we only ship fields that must
+        # be correct (guid must match or the plugin is marked Malfunctioned).
+        log "INFO" "Generating bundled meta.json with imagePath"
+        cat > "$temp_dir/meta.json" <<EOF
+{
+    "guid": "$PLUGIN_GUID",
+    "version": "$VERSION",
+    "targetAbi": "$target_abi",
+    "timestamp": "$meta_timestamp",
+    "imagePath": "Logo.png",
+    "assemblies": [
+        "Jellyfin.Plugin.EpisodePosterGenerator.dll"
+    ]
+}
+EOF
+    else
+        log "WARN" "Plugin image not found at $logo_src - installed icon will rely on imageUrl download"
     fi
 
     # Create ZIP with all files in temp directory
