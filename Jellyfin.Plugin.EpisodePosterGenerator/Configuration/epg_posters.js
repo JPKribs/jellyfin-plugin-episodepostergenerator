@@ -985,9 +985,27 @@ export default function (view) {
 
     // ── Visibility ──────────────────────────────────────────
 
+    // Styles that REQUIRE a given toggle to be on (the style always renders that element).
+    // For these, the checkbox is force-checked and its row hidden — single source of truth,
+    // so the checkbox state and visibility can never disagree. This must run BEFORE the
+    // dependency rules below, which read checkbox state to decide what to show.
+    var forcedToggles = [
+        { checkbox: 'chkShowEpisode', row: 'showEpisodeRow', styles: ['Cutout', 'Numeral', 'Brush'] },
+        { checkbox: 'chkShowTitle', row: 'showTitleRow', styles: ['Frame', 'Brush'] }
+    ];
+
     function updateVisibility() {
         var posterStyle = view.querySelector('#selectPosterStyle').value;
         var posterFill = view.querySelector('#selectPosterFill').value;
+
+        // Apply forced toggles first so dependency rules see the corrected checkbox state.
+        forcedToggles.forEach(function (rule) {
+            var cb = view.querySelector('#' + rule.checkbox);
+            var row = view.querySelector('#' + rule.row);
+            var forced = rule.styles.includes(posterStyle);
+            if (cb && forced) cb.checked = true;
+            if (row) row.style.display = forced ? 'none' : 'block';
+        });
 
         // Show/hide elements based on supported poster styles
         view.querySelectorAll('[data-poster-styles]').forEach(function (el) {
@@ -1034,14 +1052,6 @@ export default function (view) {
             var cb = view.querySelector('#' + el.getAttribute('data-hide-when-checked'));
             el.style.display = (cb && cb.checked) ? 'none' : 'block';
         });
-
-        // Force-enable checkboxes for styles that require them
-        if (posterStyle === 'Cutout' || posterStyle === 'Numeral' || posterStyle === 'Brush') {
-            view.querySelector('#chkShowEpisode').checked = true;
-        }
-        if (posterStyle === 'Frame' || posterStyle === 'Brush') {
-            view.querySelector('#chkShowTitle').checked = true;
-        }
     }
 
     // ── Event Binding ───────────────────────────────────────
