@@ -64,17 +64,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 return null;
             }
 
-            IPosterGenerator generator = posterSettings.PosterStyle switch
-            {
-                PosterStyle.Logo => new LogoPosterGenerator(_loggerFactory.CreateLogger<LogoPosterGenerator>()),
-                PosterStyle.Numeral => new NumeralPosterGenerator(_loggerFactory.CreateLogger<NumeralPosterGenerator>()),
-                PosterStyle.Cutout => new CutoutPosterGenerator(_loggerFactory.CreateLogger<CutoutPosterGenerator>()),
-                PosterStyle.Standard => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>()),
-                PosterStyle.Frame => new FramePosterGenerator(_loggerFactory.CreateLogger<FramePosterGenerator>()),
-                PosterStyle.Brush => new BrushPosterGenerator(_loggerFactory.CreateLogger<BrushPosterGenerator>()),
-                PosterStyle.Split => new SplitPosterGenerator(_loggerFactory.CreateLogger<SplitPosterGenerator>()),
-                _ => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>())
-            };
+            IPosterGenerator generator = PreviewService.CreateGenerator(posterSettings.PosterStyle, _loggerFactory);
 
             var tempFilePath = GetTemporaryPosterPath(episode.Id);
 

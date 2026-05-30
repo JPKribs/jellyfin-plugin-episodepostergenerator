@@ -123,6 +123,23 @@ For additional template examples and downloadable configurations, visit [EXAMPLE
 
 [Explanation of settings can be found here!](SETTINGS.md)
 
+## Versioning
+
+Releases use a four-part version, `JJ.JJ.F.B`, that matches the supported Jellyfin version with the plugin's own feature/bug count:
+
+```
+10.11.1.2
+└───┘ └┬┘
+  │    └── **1** = plugin feature release, **2** = plugin bug/patch within that feature
+  └──────── **10.11** = Jellyfin version this build was tested/released for
+```
+
+- **`10.11`** — the Jellyfin version this build targets. Bumps when the plugin is updated for a new Jellyfin release.
+- **`1`** — feature release. Increment when adding new functionality.
+- **`2`** — bug/patch release. Increment for fixes within the current feature line; reset to `0` on a new feature.
+
+The four-part form is also required for the plugin image to resolve once installed (Jellyfin matches plugins by exact four-part assembly version).
+
 ## Installation
 
 ### Step 1: Add Plugin Repository

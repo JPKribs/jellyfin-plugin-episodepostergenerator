@@ -9,6 +9,7 @@ export default function (view) {
     var _dirty = false;
     var _savedConfigSnapshot = null;
     var _seriesModalTrigger = null;
+    var _previewObjectUrl = null;
 
     function getTabs() {
         return [
@@ -120,6 +121,7 @@ export default function (view) {
             var indicator = view.querySelector('#unsavedIndicator');
             if (indicator) indicator.classList.remove('visible');
         }
+        debouncedPreview();
     }
 
     // ── Input Modal ─────────────────────────────────────────
@@ -339,6 +341,7 @@ export default function (view) {
         updateVisibility();
         updateStyleDescription();
         syncColorControls();
+        debouncedPreview();
     }
 
     function getCurrentConfig() {
@@ -904,6 +907,82 @@ export default function (view) {
         if (el) el.textContent = posterStyleDescriptions[style] || '';
     }
 
+    // ── Live Preview ────────────────────────────────────────
+
+    function renderPreview() {
+        if (!fullConfig) return;
+        saveCurrentConfigSettings();
+        var config = getCurrentConfig();
+        if (!config || !config.Settings) return;
+
+        var img = view.querySelector('#posterPreviewImage');
+        var status = view.querySelector('#posterPreviewStatus');
+        if (!img || !status) return;
+
+        status.textContent = 'Rendering…';
+        status.style.display = 'block';
+
+        // Use ApiClient.ajax so Jellyfin's auth headers are attached the same way the
+        // working Configuration calls authenticate. Without a dataType it resolves to
+        // the raw Response, so we can read the JPEG body as a blob.
+        var url = ApiClient.getUrl('Plugins/EpisodePosterGenerator/Preview');
+
+        ApiClient.ajax({
+            type: 'POST',
+            url: url,
+            data: JSON.stringify(config.Settings),
+            contentType: 'application/json'
+        }).then(function (response) {
+            if (!response.ok) throw new Error('Preview failed: ' + response.status);
+            return response.blob();
+        }).then(function (blob) {
+            if (_previewObjectUrl) URL.revokeObjectURL(_previewObjectUrl);
+            _previewObjectUrl = URL.createObjectURL(blob);
+            img.src = _previewObjectUrl;
+            img.style.display = 'block';
+            status.style.display = 'none';
+        }).catch(function (error) {
+            console.error('Poster preview error:', error);
+            status.textContent = 'Preview unavailable';
+            status.style.display = 'block';
+        });
+    }
+
+    var debouncedPreview = debounce(renderPreview, 350);
+
+    function loadPreviewComponents() {
+        view.querySelectorAll('.poster-component-img').forEach(function (img) {
+            var component = img.getAttribute('data-component');
+            img.src = ApiClient.getUrl('Plugins/EpisodePosterGenerator/Preview/Component/' + component);
+            img.onerror = function () {
+                var wrapper = img.closest('.poster-component');
+                if (wrapper) wrapper.style.display = 'none';
+            };
+        });
+
+        var lightbox = view.querySelector('#componentLightbox');
+        var lightboxImg = view.querySelector('#componentLightboxImage');
+
+        view.querySelectorAll('.poster-component').forEach(function (comp) {
+            comp.addEventListener('click', function () {
+                var img = comp.querySelector('.poster-component-img');
+                if (!img || !img.src) return;
+                lightboxImg.src = img.src;
+                lightbox.classList.add('visible');
+            });
+        });
+
+        function closeLightbox() {
+            lightbox.classList.remove('visible');
+            lightboxImg.src = '';
+        }
+
+        lightbox.addEventListener('click', closeLightbox);
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && lightbox.classList.contains('visible')) closeLightbox();
+        });
+    }
+
     // ── Visibility ──────────────────────────────────────────
 
     function updateVisibility() {
@@ -1046,6 +1125,7 @@ export default function (view) {
             initCollapsibles();
             bindEventListeners();
             bindColorControls();
+            loadPreviewComponents();
         }
 
         window.addEventListener('beforeunload', onBeforeUnload);

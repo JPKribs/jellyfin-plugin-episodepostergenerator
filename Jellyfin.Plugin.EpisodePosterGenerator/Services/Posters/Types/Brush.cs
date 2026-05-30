@@ -32,7 +32,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
             var rect = SKRect.Create(width, height);
             var safeArea = GetSafeAreaBounds(width, height, settings);
-            var textArea = CalculateTextKeepClearArea(safeArea, settings, height);
+            var textArea = CalculateTextKeepClearArea(safeArea, settings, height, episodeMetadata);
 
             // Seed from the episode's file path so the same episode always produces the
             // same stroke layout, but different episodes vary. Falls back to series id +
@@ -112,14 +112,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // CalculateTextKeepClearArea
         // Calculates the area that should remain clear for text elements.
-        private SKRect CalculateTextKeepClearArea(SKRect safeArea, PosterSettings settings, int height)
+        private SKRect CalculateTextKeepClearArea(SKRect safeArea, PosterSettings settings, int height, EpisodeMetadata episodeMetadata)
         {
             var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(settings.EpisodeFontSize, height, settings.PosterSafeArea);
-            var titleFontSize = FontUtils.CalculateFontSizeFromPercentage(settings.TitleFontSize, height, settings.PosterSafeArea);
-            
+
             var episodeHeight = episodeFontSize;
             var spacing = episodeFontSize * 0.3f;
-            var titleHeight = titleFontSize * 2.5f;
+            var titleHeight = MeasureTitleHeight(episodeMetadata, settings, safeArea, height);
             var totalTextHeight = episodeHeight + spacing + titleHeight;
             
             var textWidth = safeArea.Width * 0.5f;
@@ -180,15 +179,44 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             };
             
             var metrics = textPaint.FontMetrics;
-            var titleFontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height, config.PosterSafeArea);
-            var titleHeight = titleFontSize * 2.5f;
             var spacing = fontSize * 0.3f;
-            
+
+            // Reserve only the title's ACTUAL rendered height (it may wrap to 1+ lines),
+            // not a fixed multiple, so the gap between the code and title stays tight
+            // regardless of title length.
+            var titleHeight = MeasureTitleHeight(episodeMetadata, config, safeArea, height);
+
             float x = safeArea.Left;
             float y = safeArea.Bottom - titleHeight - spacing - Math.Abs(metrics.Descent);
             
             canvas.DrawText(episodeCode, x + 2f, y + 2f, shadowPaint);
             canvas.DrawText(episodeCode, x, y, textPaint);
+        }
+
+        // MeasureTitleHeight
+        // Returns the title's actual rendered height using the same font, wrapping, and line
+        // height as DrawTitle, so the episode code can sit directly above it. Returns 0 when
+        // there is no title.
+        private float MeasureTitleHeight(EpisodeMetadata episodeMetadata, PosterSettings config, SKRect safeArea, int height)
+        {
+            var title = episodeMetadata.EpisodeName;
+            if (string.IsNullOrWhiteSpace(title))
+                return 0f;
+
+            var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height, config.PosterSafeArea);
+            var typeface = FontUtils.ResolveTypeface(config.EffectiveTitleFontPath, config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
+
+            using var titlePaint = new SKPaint
+            {
+                TextSize = fontSize,
+                Typeface = typeface,
+                TextAlign = SKTextAlign.Left
+            };
+
+            var maxTextWidth = safeArea.Width * 0.6f;
+            var lines = TextUtils.FitTextToWidth(title, titlePaint, maxTextWidth);
+            float lineHeight = fontSize * 1.2f;
+            return lines.Count * lineHeight;
         }
 
         // DrawTitle

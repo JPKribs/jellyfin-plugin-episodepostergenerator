@@ -27,6 +27,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         private readonly EpisodeTrackingDatabase _trackingDatabase;
         private readonly PosterService _posterService;
         private readonly PosterConfigurationService _posterConfigService;
+        private readonly Services.Posters.PreviewService _previewService;
 
         private readonly SemaphoreSlim _dbInitGate = new SemaphoreSlim(0, 1);
         private bool _dbInitialized;
@@ -77,6 +78,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
                 configurationManager,
                 loggerFactory);
 
+            _previewService = new Services.Posters.PreviewService(loggerFactory);
+
             _ = Task.Run(async () =>
             {
                 try
@@ -111,6 +114,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
         public EpisodeTrackingService TrackingService => _trackingService;
         public PosterService PosterService => _posterService;
         public PosterConfigurationService PosterConfigService => _posterConfigService;
+        public Services.Posters.PreviewService PreviewService => _previewService;
 
 
         // GetPages

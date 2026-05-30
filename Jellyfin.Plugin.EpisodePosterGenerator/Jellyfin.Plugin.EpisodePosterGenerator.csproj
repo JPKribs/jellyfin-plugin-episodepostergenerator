@@ -30,6 +30,10 @@
     <EmbeddedResource Include="Configuration\epg_settings.html" />
     <EmbeddedResource Include="Configuration\epg_settings.js" />
     <EmbeddedResource Include="Configuration\epg_shared.css" />
+    <EmbeddedResource Include="Assets\Demo\demo-base.png" />
+    <EmbeddedResource Include="Assets\Demo\demo-logo.png" />
+    <EmbeddedResource Include="Assets\Demo\demo-graphic.png" />
+    <EmbeddedResource Include="Assets\Demo\demo-poster.jpg" />
   </ItemGroup>
 
 </Project>

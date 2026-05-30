@@ -13,34 +13,50 @@
 /* ── Config Selector ─────────────────────────────────── */
 .config-selector {
     display: flex;
+    flex-direction: column;
     gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
     margin-bottom: 1.5em;
 }
 
 .config-selector-dropdown {
-    flex: 1;
-    min-width: 200px;
+    width: 100%;
+    /* Chevron affordance so it reads as a dropdown. Inline SVG (currentColor-style
+       light stroke) on the right, with padding so the selected text never overlaps it. */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
 }
 
 .config-selector-actions {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
+}
+
+/* Full-width action buttons sharing the row evenly, stacked under the dropdown. */
+.config-selector-actions .icon-btn {
+    flex: 1;
 }
 
 /* ── Icon Buttons ────────────────────────────────────── */
 .icon-btn {
     min-width: 0 !important;
-    padding: 6px 10px !important;
+    padding: 0.9em 10px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    gap: 6px;
 }
 
 .icon-btn .material-icons {
     font-size: 20px;
+}
+
+.icon-btn-label {
+    font-size: 0.95em;
 }
 
 .icon-btn.hidden {
@@ -549,18 +565,17 @@
 
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 768px) {
-    .config-selector {
+    .poster-preview-layout {
         flex-direction: column;
-        align-items: stretch;
     }
-    .config-selector-dropdown {
-        min-width: 0;
+    .poster-preview-components {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
     }
-    .config-selector-actions {
-        justify-content: stretch;
-    }
-    .config-selector-actions .icon-btn {
-        flex: 1;
+    .poster-component {
+        width: 120px;
     }
     .color-control-group {
         flex-direction: column;
@@ -597,7 +612,7 @@
         gap: 4px;
     }
     .icon-btn {
-        padding: 6px 8px !important;
+        padding: 0.9em 8px !important;
     }
     .collapsibleHeader {
         padding: 10px 12px;
@@ -640,4 +655,121 @@
         font-size: 11px;
         padding: 3px 8px;
     }
+}
+
+/* ── Live Poster Preview ─────────────────────────────── */
+.poster-preview-section {
+    margin-bottom: 1.5em;
+}
+
+.poster-preview-layout {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.poster-preview-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Right column: the raw input components that feed the preview, each labeled. */
+.poster-preview-components {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 150px;
+    flex-shrink: 0;
+}
+
+.poster-component {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 2px;
+    transition: background 0.15s;
+}
+
+.poster-component:hover {
+    background: var(--epg-bg-surface);
+}
+
+.poster-component-img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    background: var(--epg-bg-input);
+    border: 1px solid var(--epg-border-medium);
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.poster-component-label {
+    color: var(--epg-text-secondary);
+    font-size: 0.78em;
+    line-height: 1.2;
+}
+
+/* ── Component Lightbox ──────────────────────────────── */
+.component-lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.85);
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    padding: 5vh 5vw;
+}
+
+.component-lightbox.visible {
+    display: flex;
+}
+
+.component-lightbox-image {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.poster-preview-frame {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    aspect-ratio: 16 / 9;
+    background: var(--epg-bg-input);
+    border: 1px solid var(--epg-border-medium);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.poster-preview-image {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    display: none;
+}
+
+.poster-preview-status {
+    position: absolute;
+    color: var(--epg-text-secondary);
+    font-size: 0.9em;
+}
+
+.poster-preview-caption {
+    margin-top: 0.5em;
+    color: var(--epg-text-secondary);
+    font-size: 0.85em;
 }

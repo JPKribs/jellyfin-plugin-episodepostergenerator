@@ -16,18 +16,23 @@
                         <div class="config-selector-actions">
                             <button is="emby-button" type="button" id="btnRenameConfig" class="raised icon-btn" title="Rename">
                                 <span class="material-icons" aria-hidden="true">edit</span>
+                                <span class="icon-btn-label">Rename</span>
                             </button>
                             <button is="emby-button" type="button" id="btnExportConfig" class="raised icon-btn" title="Export">
                                 <span class="material-icons" aria-hidden="true">file_upload</span>
+                                <span class="icon-btn-label">Upload</span>
                             </button>
                             <button is="emby-button" type="button" id="btnImportConfig" class="raised icon-btn" title="Import">
                                 <span class="material-icons" aria-hidden="true">file_download</span>
+                                <span class="icon-btn-label">Download</span>
                             </button>
                             <button is="emby-button" type="button" id="btnNewConfig" class="raised icon-btn button-submit" title="New">
                                 <span class="material-icons" aria-hidden="true">add</span>
+                                <span class="icon-btn-label">New</span>
                             </button>
                             <button is="emby-button" type="button" id="btnDeleteConfig" class="raised icon-btn button-delete" title="Delete">
                                 <span class="material-icons" aria-hidden="true">delete</span>
+                                <span class="icon-btn-label">Delete</span>
                             </button>
                         </div>
                     </div>
@@ -40,6 +45,36 @@
                             <span>Edit Series</span>
                         </button>
                         <div class="fieldDescription">Select which series should use this poster configuration.</div>
+                    </div>
+
+                    <!-- Live Preview -->
+                    <div id="posterPreviewSection" class="poster-preview-section">
+                        <div class="poster-preview-layout">
+                            <div class="poster-preview-main">
+                                <div class="poster-preview-frame">
+                                    <img id="posterPreviewImage" class="poster-preview-image" alt="Live poster preview" />
+                                    <div id="posterPreviewStatus" class="poster-preview-status">Loading preview…</div>
+                                </div>
+                                <div class="poster-preview-caption">Live preview rendered from sample artwork</div>
+                            </div>
+                            <div class="poster-preview-components">
+                                <div class="poster-component" data-component="canvas" title="Click to expand">
+                                    <img class="poster-component-img" src="" alt="Canvas image" data-component="canvas" />
+                                    <span class="poster-component-label">Canvas Image</span>
+                                </div>
+                                <div class="poster-component" data-component="poster" title="Click to expand">
+                                    <img class="poster-component-img" src="" alt="Series poster" data-component="poster" />
+                                    <span class="poster-component-label">Series Poster</span>
+                                </div>
+                                <div class="poster-component" data-component="logo" title="Click to expand">
+                                    <img class="poster-component-img" src="" alt="Series logo" data-component="logo" />
+                                    <span class="poster-component-label">Series Logo</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="componentLightbox" class="component-lightbox">
+                            <img id="componentLightboxImage" class="component-lightbox-image" src="" alt="Expanded component" />
+                        </div>
                     </div>
 
                     <!-- Poster -->

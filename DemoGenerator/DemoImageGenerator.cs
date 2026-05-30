@@ -16,10 +16,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.DemoGenerator
     /// </summary>
     public class DemoImageGenerator
     {
-        private const string BaseImagePath = "Assets/demo-base.png";
-        private const string LogoImagePath = "Assets/demo-logo.png";
-        private const string GraphicImagePath = "Assets/demo-graphic.png";
-        private const string SeriesPosterPath = "Assets/demo-poster.jpg";
         private const string ExamplesDirectory = "../Examples";
 
         private const string ShowName = "TV Show";
@@ -28,13 +24,26 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.DemoGenerator
 
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<DemoImageGenerator> _logger;
-        private readonly CroppingService _croppingService;
+        private readonly PreviewService _previewService;
+
+        // Demo artwork is sourced from the plugin's embedded assets (extracted by PreviewService),
+        // so there is a single copy of the art shared with the live preview.
+        private readonly string _baseImagePath;
+        private readonly string _logoImagePath;
+        private readonly string _graphicImagePath;
+        private readonly string _seriesPosterPath;
 
         public DemoImageGenerator()
         {
             _loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
             _logger = _loggerFactory.CreateLogger<DemoImageGenerator>();
-            _croppingService = new CroppingService(_loggerFactory.CreateLogger<CroppingService>());
+            _previewService = new PreviewService(_loggerFactory);
+
+            var assetDir = _previewService.GetDemoAssetDirectory();
+            _baseImagePath = Path.Combine(assetDir, "demo-base.png");
+            _logoImagePath = Path.Combine(assetDir, "demo-logo.png");
+            _graphicImagePath = Path.Combine(assetDir, "demo-graphic.png");
+            _seriesPosterPath = Path.Combine(assetDir, "demo-poster.jpg");
         }
 
         public async Task GenerateAllDemosAsync()
@@ -90,10 +99,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.DemoGenerator
             var settings = template.Settings;
 
             // Load and prepare base image
-            using var baseImage = SKBitmap.Decode(BaseImagePath);
+            using var baseImage = SKBitmap.Decode(_baseImagePath);
             if (baseImage == null)
             {
-                throw new FileNotFoundException($"Base image not found: {BaseImagePath}");
+                throw new FileNotFoundException($"Base image not found: {_baseImagePath}");
             }
 
             // Create mock video metadata for the CroppingService
@@ -106,20 +115,29 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.DemoGenerator
             // Set logo for Logo poster styles
             if (settings.PosterStyle == PosterStyle.Logo)
             {
-                var absoluteLogoPath = Path.GetFullPath(LogoImagePath);
-                if (File.Exists(absoluteLogoPath))
+                if (File.Exists(_logoImagePath))
                 {
-                    videoMetadata.SeriesLogoFilePath = absoluteLogoPath;
+                    videoMetadata.SeriesLogoFilePath = _logoImagePath;
                 }
             }
 
             // Set series poster for Split poster styles
             if (settings.PosterStyle == PosterStyle.Split)
             {
-                var absolutePosterPath = Path.GetFullPath(SeriesPosterPath);
-                if (File.Exists(absolutePosterPath))
+                if (File.Exists(_seriesPosterPath))
                 {
-                    videoMetadata.SeriesPosterFilePath = absolutePosterPath;
+                    videoMetadata.SeriesPosterFilePath = _seriesPosterPath;
+                }
+            }
+
+            // For example generation WE supply the static graphic: if the template enables a
+            // graphic, point it at the demo asset so the rendered examples show it. (The live
+            // preview, by contrast, uses the user's own GraphicPath untouched.)
+            if (!string.IsNullOrEmpty(settings.GraphicPath))
+            {
+                if (File.Exists(_graphicImagePath))
+                {
+                    settings.GraphicPath = _graphicImagePath;
                 }
             }
 
@@ -133,30 +151,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.DemoGenerator
                 VideoMetadata = videoMetadata
             };
 
-            // Apply the poster fill/crop logic using CroppingService (same as actual plugin)
-            var canvasBitmap = _croppingService.CropPoster(baseImage, videoMetadata, settings);
-
-            // Create appropriate poster generator using the same factory pattern as PosterService
-            IPosterGenerator generator = settings.PosterStyle switch
-            {
-                PosterStyle.Logo => new LogoPosterGenerator(_loggerFactory.CreateLogger<LogoPosterGenerator>()),
-                PosterStyle.Numeral => new NumeralPosterGenerator(_loggerFactory.CreateLogger<NumeralPosterGenerator>()),
-                PosterStyle.Cutout => new CutoutPosterGenerator(_loggerFactory.CreateLogger<CutoutPosterGenerator>()),
-                PosterStyle.Standard => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>()),
-                PosterStyle.Frame => new FramePosterGenerator(_loggerFactory.CreateLogger<FramePosterGenerator>()),
-                PosterStyle.Brush => new BrushPosterGenerator(_loggerFactory.CreateLogger<BrushPosterGenerator>()),
-                PosterStyle.Split => new SplitPosterGenerator(_loggerFactory.CreateLogger<SplitPosterGenerator>()),
-                _ => new StandardPosterGenerator(_loggerFactory.CreateLogger<StandardPosterGenerator>())
-            };
-
-            // Generate the poster and save to the template directory
+            // Render using the shared crop + generate pipeline (the same code path the live
+            // preview and runtime use), so demos and previews can never drift apart.
             var outputPath = Path.Combine(templateDir, $"Example{episodeNumber}.png");
-            var result = generator.Generate(canvasBitmap, metadata, settings, outputPath);
-
-            if (canvasBitmap != baseImage)
-            {
-                canvasBitmap.Dispose();
-            }
+            var result = _previewService.RenderPoster(baseImage, metadata, settings, outputPath);
 
             if (result == null)
             {

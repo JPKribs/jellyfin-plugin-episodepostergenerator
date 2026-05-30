@@ -2,7 +2,7 @@
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
 imageUrl: "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/refs/heads/master/Jellyfin.Plugin.EpisodePosterGenerator/Assets/Logo.png"
-version: "10.11.21.0"
+version: "10.11.22.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Generate Custom Episode Posters"
@@ -13,5 +13,7 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
-  fixes:
-  - Attempt 4) to fix the plugin image
+  features:
+  - Live poster preview in the config page
+  chores:
+  - New version numbering: JJ.JJ.F.B (Jellyfin.Jellyfin.Feature.Build)

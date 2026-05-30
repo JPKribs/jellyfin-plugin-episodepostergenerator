@@ -12,8 +12,4 @@
     <ProjectReference Include="../Jellyfin.Plugin.EpisodePosterGenerator/Jellyfin.Plugin.EpisodePosterGenerator.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="Assets/**" CopyToOutputDirectory="Never" />
-  </ItemGroup>
-
 </Project>

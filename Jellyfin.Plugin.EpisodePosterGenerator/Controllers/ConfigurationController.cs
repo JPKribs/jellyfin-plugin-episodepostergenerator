@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
+using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using MediaBrowser.Controller;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -71,6 +72,60 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
                 _logger.LogError(ex, "Failed to update configuration.");
                 return BadRequest(new { success = false, error = ex.Message });
             }
+        }
+
+        // MARK: Preview
+        [HttpPost("Preview")]
+        public IActionResult GeneratePreview([FromBody] PosterSettings settings)
+        {
+            if (settings == null)
+            {
+                return BadRequest("Poster settings are required.");
+            }
+
+            var plugin = Plugin.Instance;
+            if (plugin == null)
+            {
+                _logger.LogError("Plugin instance was null in Preview.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Plugin not initialized.");
+            }
+
+            try
+            {
+                var imageBytes = plugin.PreviewService.GeneratePreview(settings);
+                if (imageBytes == null)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, "Failed to render preview.");
+                }
+
+                return File(imageBytes, "image/jpeg");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to generate poster preview.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to render preview.");
+            }
+        }
+
+        // MARK: PreviewComponent
+        [HttpGet("Preview/Component/{component}")]
+        [AllowAnonymous]
+        public IActionResult GetPreviewComponent([FromRoute] string component)
+        {
+            var plugin = Plugin.Instance;
+            if (plugin == null)
+            {
+                _logger.LogError("Plugin instance was null in PreviewComponent.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Plugin not initialized.");
+            }
+
+            var result = plugin.PreviewService.GetComponentImage(component);
+            if (result == null)
+            {
+                return NotFound();
+            }
+
+            return File(result.Value.Bytes, result.Value.ContentType);
         }
 
         // MARK: ResetHistory
