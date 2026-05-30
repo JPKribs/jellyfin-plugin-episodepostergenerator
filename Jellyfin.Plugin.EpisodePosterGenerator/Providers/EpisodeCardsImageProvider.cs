@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
+using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Drawing;
 using MediaBrowser.Model.Entities;
@@ -17,15 +18,18 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
     {
         private readonly ILogger<EpisodePosterImageProvider> _logger;
         private readonly IApplicationPaths _appPaths;
+        private readonly IProviderManager _providerManager;
 
         // EpisodePosterImageProvider
         // Initializes the image provider with logging and application paths.
         public EpisodePosterImageProvider(
             ILogger<EpisodePosterImageProvider> logger,
-            IApplicationPaths appPaths)
+            IApplicationPaths appPaths,
+            IProviderManager providerManager)
         {
             _logger = logger;
             _appPaths = appPaths;
+            _providerManager = providerManager;
         }
 
         public string Name => "Episode Poster Generator";
@@ -88,15 +92,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
             {
                 _logger.LogInformation("Starting to create poster for {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
 
-                var posterPath = await posterService.GeneratePosterAsync(episode).ConfigureAwait(false);
+                var result = await posterService.GeneratePosterAsync(episode).ConfigureAwait(false);
 
-                if (string.IsNullOrEmpty(posterPath) || !File.Exists(posterPath))
+                if (result == null || string.IsNullOrEmpty(result.PosterPath) || !File.Exists(result.PosterPath))
                 {
                     _logger.LogWarning("Failed to generate image for episode: {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
                     return new DynamicImageResponse { HasImage = false };
                 }
 
-                var imageBytes = await File.ReadAllBytesAsync(posterPath, cancellationToken).ConfigureAwait(false);
+                await SaveBackdropIfPresentAsync(episode, result.BackdropPath, cancellationToken).ConfigureAwait(false);
+
+                var imageBytes = await File.ReadAllBytesAsync(result.PosterPath, cancellationToken).ConfigureAwait(false);
 
                 // Ownership note: DynamicImageResponse takes ownership of the stream and disposes it
                 var imageStream = new MemoryStream(imageBytes);
@@ -127,6 +133,36 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
             {
                 _logger.LogError(ex, "Error generating image for episode: {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
                 return new DynamicImageResponse { HasImage = false };
+            }
+        }
+
+        // SaveBackdropIfPresentAsync
+        // Uploads the generated backdrop image to the episode when one was produced.
+        private async Task SaveBackdropIfPresentAsync(Episode episode, string? backdropPath, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrEmpty(backdropPath) || !File.Exists(backdropPath))
+            {
+                return;
+            }
+
+            try
+            {
+                using (var backdropStream = File.OpenRead(backdropPath))
+                {
+                    await _providerManager.SaveImage(
+                        episode,
+                        backdropStream,
+                        "image/jpeg",
+                        ImageType.Backdrop,
+                        null,
+                        cancellationToken).ConfigureAwait(false);
+                }
+
+                await episode.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to save backdrop image for episode: {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
             }
         }
     }

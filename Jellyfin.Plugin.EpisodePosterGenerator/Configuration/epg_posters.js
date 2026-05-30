@@ -329,13 +329,25 @@ export default function (view) {
             var val = settings[key];
 
             if (el.type === 'checkbox') {
-                el.checked = val !== false;
+                // Checkboxes default to checked unless explicitly false, except those
+                // flagged data-default-unchecked which default to off when unset.
+                if (el.hasAttribute('data-default-unchecked')) {
+                    el.checked = val === true;
+                } else {
+                    el.checked = val !== false;
+                }
             } else if (el.getAttribute('data-type') === 'number') {
                 el.value = val || 0;
             } else {
                 el.value = val || '';
             }
         });
+
+        // Migrate legacy ExtractPoster (pre-10.11.23) for display when CanvasSource is unset.
+        var canvasSelect = view.querySelector('#selectCanvasSource');
+        if (canvasSelect && !canvasSelect.value) {
+            canvasSelect.value = (settings.ExtractPoster === false) ? 'None' : 'Extract';
+        }
 
         updateSeriesAssignment();
         updateVisibility();
@@ -610,7 +622,8 @@ export default function (view) {
                 Id: generateGuid(),
                 Name: name.trim(),
                 Settings: {
-                    ExtractPoster: true,
+                    CanvasSource: 'Extract',
+                    GenerateBackdrop: false,
                     EnableLetterboxDetection: true,
                     LetterboxBlackThreshold: 25,
                     LetterboxConfidence: 85.0,
@@ -997,6 +1010,13 @@ export default function (view) {
     function updateVisibility() {
         var posterStyle = view.querySelector('#selectPosterStyle').value;
         var posterFill = view.querySelector('#selectPosterFill').value;
+        var canvasSourceEl = view.querySelector('#selectCanvasSource');
+        var canvasSource = canvasSourceEl ? canvasSourceEl.value : 'Extract';
+
+        function canvasOk(el) {
+            var allowed = el.getAttribute('data-depends-on-canvas');
+            return !allowed || allowed.split(',').includes(canvasSource);
+        }
 
         // Apply forced toggles first so dependency rules see the corrected checkbox state.
         forcedToggles.forEach(function (rule) {
@@ -1022,7 +1042,12 @@ export default function (view) {
             el.style.display = el.getAttribute('data-hide-for-styles').split(',').includes(posterStyle) ? 'none' : 'block';
         });
 
-        // Checkbox dependency chains
+        // Canvas source dependency (elements with only a canvas constraint)
+        view.querySelectorAll('[data-depends-on-canvas]:not([data-depends-on])').forEach(function (el) {
+            el.style.display = canvasOk(el) ? 'block' : 'none';
+        });
+
+        // Checkbox dependency chains (also honoring any canvas constraint)
         view.querySelectorAll('[data-depends-on]').forEach(function (el) {
             var deps = el.getAttribute('data-depends-on').split(',');
             var met = deps.every(function (id) {
@@ -1032,7 +1057,7 @@ export default function (view) {
 
             var hideForStyles = el.getAttribute('data-hide-for-styles');
             var hiddenByStyle = hideForStyles && hideForStyles.split(',').includes(posterStyle);
-            el.style.display = (met && !hiddenByStyle) ? 'block' : 'none';
+            el.style.display = (met && !hiddenByStyle && canvasOk(el)) ? 'block' : 'none';
         });
 
         // Gradient dependency
@@ -1090,7 +1115,7 @@ export default function (view) {
 
         // Controls that affect visibility
         var visibilityControls = [
-            '#selectPosterStyle', '#chkShowTitle', '#chkShowEpisode', '#chkExtractPoster',
+            '#selectPosterStyle', '#chkShowTitle', '#chkShowEpisode', '#selectCanvasSource',
             '#chkEnableLetterboxDetection', '#selectPosterFill', '#selectOverlayGradient',
             '#chkEpisodeUseCustomFont', '#chkTitleUseCustomFont'
         ];

@@ -8,6 +8,7 @@ using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
 using Microsoft.Extensions.Logging;
 using MediaBrowser.Common.Configuration;
+using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
@@ -33,8 +34,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // GeneratePosterAsync
-        // Generates a poster for an episode and returns the path to the generated file.
-        public async Task<string?> GeneratePosterAsync(Episode episode)
+        // Generates a poster for an episode and returns the path to the generated file,
+        // along with an optional backdrop image derived from the extracted canvas.
+        public async Task<PosterGenerationResult?> GeneratePosterAsync(Episode episode)
         {
             if (Plugin.Instance == null)
             {
@@ -64,6 +66,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 return null;
             }
 
+            // Capture the cropped canvas as a backdrop before the poster layers are rendered onto it.
+            string? backdropPath = null;
+            if (posterSettings.CanvasSource == CanvasSource.Extract && posterSettings.GenerateBackdrop)
+            {
+                backdropPath = GetTemporaryBackdropPath(episode.Id);
+                if (!TrySaveBackdrop(bitmap, backdropPath))
+                {
+                    backdropPath = null;
+                }
+            }
+
             IPosterGenerator generator = PreviewService.CreateGenerator(posterSettings.PosterStyle, _loggerFactory);
 
             var tempFilePath = GetTemporaryPosterPath(episode.Id);
@@ -73,6 +86,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             if (generatedPath == null)
             {
                 _logger.LogError("Failed to generate poster for episode: {EpisodeName}", episode.Name);
+                DeleteTemporaryFile(backdropPath);
                 return null;
             }
 
@@ -80,7 +94,58 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 episode.Series?.Name ?? "Unknown Series",
                 episode.Name ?? "Unknown Episode");
 
-            return generatedPath;
+            return new PosterGenerationResult
+            {
+                PosterPath = generatedPath,
+                BackdropPath = backdropPath
+            };
+        }
+
+        // TrySaveBackdrop
+        // Encodes the canvas bitmap to a JPEG file for use as the episode backdrop.
+        private bool TrySaveBackdrop(SKBitmap bitmap, string outputPath)
+        {
+            try
+            {
+                using var image = SKImage.FromBitmap(bitmap);
+                using var data = image.Encode(SKEncodedImageFormat.Jpeg, 100);
+                using var stream = File.Create(outputPath);
+                data.SaveTo(stream);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to save backdrop image to {OutputPath}", outputPath);
+                return false;
+            }
+        }
+
+        // DeleteTemporaryFile
+        // Removes a temporary file, ignoring any cleanup errors.
+        private void DeleteTemporaryFile(string? path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            {
+                return;
+            }
+
+            try
+            {
+                File.Delete(path);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to clean up temporary file: {Path}", path);
+            }
+        }
+
+        // GetTemporaryBackdropPath
+        // Constructs the temporary file path for the generated backdrop.
+        private string GetTemporaryBackdropPath(Guid episodeId)
+        {
+            var tempDir = _configurationManager.GetTranscodePath();
+            var fileName = $"{episodeId}-backdrop.jpg";
+            return Path.Combine(tempDir, fileName);
         }
 
         // GetTemporaryPosterPath

@@ -20,9 +20,21 @@ public class ConfigurationHashService
     {
         ArgumentNullException.ThrowIfNull(settings);
 
+        // Canvas state is encoded into the legacy "extractPoster" slot so that upgrading from
+        // pre-10.11.23 does not needlessly reprocess every episode. The two states that existed
+        // before (Extract / None with no backdrop) reproduce the old boolean hash exactly, so
+        // unchanged configs keep their stored hash. SeriesBackdrop and an enabled backdrop are
+        // genuinely new output states and intentionally change the hash to trigger reprocessing.
+        object canvasState = (settings.CanvasSource, settings.GenerateBackdrop) switch
+        {
+            (CanvasSource.Extract, false) => true,
+            (CanvasSource.None, false) => false,
+            _ => $"{settings.CanvasSource}:{settings.GenerateBackdrop}"
+        };
+
         var hashConfig = new
         {
-            settings.ExtractPoster,
+            ExtractPoster = canvasState,
             settings.EnableLetterboxDetection,
             settings.LetterboxBlackThreshold,
             settings.LetterboxConfidence,

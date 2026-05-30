@@ -50,46 +50,61 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             try
             {
-                // Branch: Extract poster from video or create transparent canvas
-                if (config.ExtractPoster)
+                // Branch on the configured canvas background source.
+                switch (config.CanvasSource)
                 {
-                    extractedFramePath = await _frameExtractionService.ExtractFrameAsync(
-                        episode,
-                        config,
-                        cancellationToken).ConfigureAwait(false);
+                    case CanvasSource.Extract:
+                        extractedFramePath = await _frameExtractionService.ExtractFrameAsync(
+                            episode,
+                            config,
+                            cancellationToken).ConfigureAwait(false);
 
-                    if (string.IsNullOrEmpty(extractedFramePath) || !File.Exists(extractedFramePath))
-                    {
-                        _logger.LogWarning("Frame extraction did not produce a valid output file");
-                        return null;
-                    }
+                        if (string.IsNullOrEmpty(extractedFramePath) || !File.Exists(extractedFramePath))
+                        {
+                            _logger.LogWarning("Frame extraction did not produce a valid output file");
+                            return null;
+                        }
 
-                    using var bitmap = SKBitmap.Decode(extractedFramePath);
-                    if (bitmap == null)
-                    {
-                        _logger.LogWarning("Failed to decode extracted frame");
-                        return null;
-                    }
+                        using (var bitmap = SKBitmap.Decode(extractedFramePath))
+                        {
+                            if (bitmap == null)
+                            {
+                                _logger.LogWarning("Failed to decode extracted frame");
+                                return null;
+                            }
 
-                    canvasBitmap = bitmap.Copy();
+                            canvasBitmap = bitmap.Copy();
+                        }
 
-                    var croppedBitmap = _croppingService.CropPoster(canvasBitmap, metadata.VideoMetadata, config);
-                    if (croppedBitmap != canvasBitmap)
-                    {
-                        using (canvasBitmap) { }
-                        canvasBitmap = croppedBitmap;
-                    }
+                        var croppedBitmap = _croppingService.CropPoster(canvasBitmap, metadata.VideoMetadata, config);
+                        if (croppedBitmap != canvasBitmap)
+                        {
+                            using (canvasBitmap) { }
+                            canvasBitmap = croppedBitmap;
+                        }
 
-                    if (config.BrightenHDR > 0)
-                    {
-                        _logger.LogDebug("Applying HDR brightening: +{Brightness}%", config.BrightenHDR);
-                        _brightnessService.BrightenBitmap(canvasBitmap, config.BrightenHDR);
-                    }
-                }
-                else
-                {
-                    // Branch: Create transparent canvas when not extracting poster
-                    canvasBitmap = CreateFallbackCanvas(videoMeta.VideoWidth, videoMeta.VideoHeight);
+                        if (config.BrightenHDR > 0)
+                        {
+                            _logger.LogDebug("Applying HDR brightening: +{Brightness}%", config.BrightenHDR);
+                            _brightnessService.BrightenBitmap(canvasBitmap, config.BrightenHDR);
+                        }
+                        break;
+
+                    case CanvasSource.SeriesBackdrop:
+                        canvasBitmap = LoadSeriesBackdropCanvas(metadata.VideoMetadata, config);
+                        if (canvasBitmap == null)
+                        {
+                            _logger.LogInformation("Series backdrop unavailable for {SeriesName}, using transparent canvas",
+                                metadata.SeriesName);
+                            canvasBitmap = CreateFallbackCanvas(videoMeta.VideoWidth, videoMeta.VideoHeight);
+                        }
+                        break;
+
+                    case CanvasSource.None:
+                    default:
+                        // Branch: Create transparent canvas when no background is requested
+                        canvasBitmap = CreateFallbackCanvas(videoMeta.VideoWidth, videoMeta.VideoHeight);
+                        break;
                 }
 
                 // Return ownership of bitmap to caller (caller is responsible for disposing)
@@ -119,6 +134,39 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     }
                 }
             }
+        }
+
+        // LoadSeriesBackdropCanvas
+        // Loads the series backdrop image and crops it to the configured poster dimensions.
+        // Returns null when no backdrop is available or it cannot be decoded.
+        private SKBitmap? LoadSeriesBackdropCanvas(VideoMetadata videoMeta, PosterSettings config)
+        {
+            var backdropPath = videoMeta.SeriesBackdropFilePath;
+            if (string.IsNullOrEmpty(backdropPath) || !File.Exists(backdropPath))
+            {
+                return null;
+            }
+
+            SKBitmap? canvasBitmap;
+            using (var bitmap = SKBitmap.Decode(backdropPath))
+            {
+                if (bitmap == null)
+                {
+                    _logger.LogWarning("Failed to decode series backdrop: {BackdropPath}", backdropPath);
+                    return null;
+                }
+
+                canvasBitmap = bitmap.Copy();
+            }
+
+            var cropped = _croppingService.CropPoster(canvasBitmap, videoMeta, config);
+            if (cropped != canvasBitmap)
+            {
+                using (canvasBitmap) { }
+                canvasBitmap = cropped;
+            }
+
+            return canvasBitmap;
         }
 
         // CreateFallbackCanvas

@@ -16,7 +16,19 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         [JsonIgnore]
         public string? EffectiveTitleFontPath => TitleUseCustomFont ? TitleFontPath : null;
 
-        public bool ExtractPoster { get; set; } = true;
+        /// <summary>
+        /// Legacy flag retained only for migration of pre-10.11.23 configurations.
+        /// Null on new configurations; when present it is migrated to <see cref="CanvasSource"/>.
+        /// </summary>
+        public bool? ExtractPoster { get; set; }
+
+        public CanvasSource CanvasSource { get; set; } = CanvasSource.Extract;
+
+        /// <summary>
+        /// When the canvas is an extracted frame, also upload the cropped canvas
+        /// as the episode's backdrop image (the rendered poster remains the primary image).
+        /// </summary>
+        public bool GenerateBackdrop { get; set; }
 
         public bool EnableLetterboxDetection { get; set; } = true;
 

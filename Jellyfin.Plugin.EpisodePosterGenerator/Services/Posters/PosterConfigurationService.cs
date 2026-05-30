@@ -26,6 +26,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         // Uses atomic swap to avoid race conditions with concurrent readers.
         public void Initialize(PluginConfiguration config)
         {
+            MigrateLegacySettings(config);
+
             PosterSettings? newDefaultSettings = null;
 
             var defaults = config.PosterConfigurations.Where(c => c.IsDefault).ToList();
@@ -78,6 +80,31 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             _logger.LogInformation("Poster configuration initialized: {Count} series-specific configs, {DuplicateCount} duplicates ignored",
                 _seriesLookup.Count, duplicates.Count);
+        }
+
+        // MigrateLegacySettings
+        // Migrates the pre-10.11.23 ExtractPoster boolean to the CanvasSource enum.
+        // Persists the configuration once if any settings were migrated.
+        private void MigrateLegacySettings(PluginConfiguration config)
+        {
+            var migrated = false;
+
+            foreach (var posterConfig in config.PosterConfigurations)
+            {
+                var settings = posterConfig.Settings;
+                if (settings.ExtractPoster.HasValue)
+                {
+                    settings.CanvasSource = settings.ExtractPoster.Value ? CanvasSource.Extract : CanvasSource.None;
+                    settings.ExtractPoster = null;
+                    migrated = true;
+                }
+            }
+
+            if (migrated)
+            {
+                _logger.LogInformation("Migrated legacy ExtractPoster setting to CanvasSource");
+                Plugin.Instance?.SaveConfiguration();
+            }
         }
 
         // GetSettingsForEpisode

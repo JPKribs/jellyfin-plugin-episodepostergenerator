@@ -121,9 +121,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                             episode.Series?.Name ?? "Unknown Series",
                             episode.Name ?? "Unknown Episode");
 
-                        var posterPath = await posterService.GeneratePosterAsync(episode).ConfigureAwait(false);
+                        var result = await posterService.GeneratePosterAsync(episode).ConfigureAwait(false);
 
-                        if (!string.IsNullOrEmpty(posterPath) && File.Exists(posterPath))
+                        if (result != null && !string.IsNullOrEmpty(result.PosterPath) && File.Exists(result.PosterPath))
                         {
                             try
                             {
@@ -135,15 +135,29 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                                     continue;
                                 }
 
-                                using var imageStream = File.OpenRead(posterPath);
+                                using (var imageStream = File.OpenRead(result.PosterPath))
+                                {
+                                    await _providerManager.SaveImage(
+                                        episode,
+                                        imageStream,
+                                        "image/jpeg",
+                                        ImageType.Primary,
+                                        null,
+                                        cancellationToken).ConfigureAwait(false);
+                                }
 
-                                await _providerManager.SaveImage(
-                                    episode,
-                                    imageStream,
-                                    "image/jpeg",
-                                    ImageType.Primary,
-                                    null,
-                                    cancellationToken).ConfigureAwait(false);
+                                if (!string.IsNullOrEmpty(result.BackdropPath) && File.Exists(result.BackdropPath))
+                                {
+                                    using var backdropStream = File.OpenRead(result.BackdropPath);
+
+                                    await _providerManager.SaveImage(
+                                        episode,
+                                        backdropStream,
+                                        "image/jpeg",
+                                        ImageType.Backdrop,
+                                        null,
+                                        cancellationToken).ConfigureAwait(false);
+                                }
 
                                 await episode.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, cancellationToken).ConfigureAwait(false);
 

@@ -85,7 +85,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
             try
             {
-                var result = RenderPoster(baseImage, metadata, settings, outputPath);
+                var result = settings.CanvasSource == CanvasSource.None
+                    ? RenderTransparentPoster(baseImage.Width, baseImage.Height, metadata, settings, outputPath)
+                    : RenderPoster(baseImage, metadata, settings, outputPath);
                 if (result == null || !File.Exists(outputPath))
                 {
                     _logger.LogWarning("Preview generation returned no output for style {Style}", settings.PosterStyle);
@@ -133,6 +135,22 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                     canvas.Dispose();
                 }
             }
+        }
+
+        // RenderTransparentPoster
+        // Mirrors the runtime CanvasSource.None path: renders the style generator over a blank
+        // transparent canvas (no crop, since cropping a transparent bitmap would trip letterbox
+        // detection) so the preview honestly reflects a poster with no background image.
+        private string? RenderTransparentPoster(int width, int height, EpisodeMetadata metadata, PosterSettings settings, string outputPath)
+        {
+            using var canvas = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+            using (var skCanvas = new SKCanvas(canvas))
+            {
+                skCanvas.Clear(SKColors.Transparent);
+            }
+
+            var generator = CreateGenerator(settings.PosterStyle, _loggerFactory);
+            return generator.Generate(canvas, metadata, settings, outputPath);
         }
 
         // CreateGenerator

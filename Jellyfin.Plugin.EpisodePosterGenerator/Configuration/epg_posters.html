@@ -155,14 +155,16 @@
                         <div id="canvasContent" class="collapsibleContent collapsed">
 
                             <div class="inputContainer">
-                                <label class="checkboxContainer">
-                                    <input is="emby-checkbox" type="checkbox" id="chkExtractPoster" data-setting="ExtractPoster" />
-                                    <span>Extract Frame from Episode</span>
-                                </label>
-                                <div class="fieldDescription">Capture a video frame from the episode to use as the poster background.</div>
+                                <label for="selectCanvasSource">Canvas Background:</label>
+                                <select is="emby-select" id="selectCanvasSource" data-setting="CanvasSource">
+                                    <option value="None">No Background</option>
+                                    <option value="Extract">Extract Frame from Episode</option>
+                                    <option value="SeriesBackdrop">Use Series Backdrop</option>
+                                </select>
+                                <div class="fieldDescription">Choose the poster background: a transparent canvas, a frame extracted from the episode, or the parent series' backdrop image.</div>
                             </div>
 
-                            <div class="nested-settings" data-depends-on="chkExtractPoster">
+                            <div class="nested-settings" data-depends-on-canvas="Extract">
                                 <div class="inputContainer">
                                     <label for="txtExtractWindowStart">Extraction Start (%):</label>
                                     <input is="emby-input" type="number" id="txtExtractWindowStart" min="0" max="100" step="1" data-setting="ExtractWindowStart" data-type="number" />
@@ -178,9 +180,16 @@
                                     <input is="emby-input" type="number" id="txtBrightenHDR" min="0" max="100" data-setting="BrightenHDR" data-type="number" />
                                     <div class="fieldDescription">Brightness adjustment for HDR content as percentage (0-100%).</div>
                                 </div>
+                                <div class="inputContainer">
+                                    <label class="checkboxContainer">
+                                        <input is="emby-checkbox" type="checkbox" id="chkGenerateBackdrop" data-setting="GenerateBackdrop" data-default-unchecked />
+                                        <span>Save Extracted Frame as Episode Backdrop</span>
+                                    </label>
+                                    <div class="fieldDescription">Also upload the cropped extracted frame as the episode's backdrop image. The fully rendered poster is still used as the primary image.</div>
+                                </div>
                             </div>
 
-                            <div class="inputContainer" data-depends-on="chkExtractPoster">
+                            <div class="inputContainer" data-depends-on-canvas="Extract">
                                 <label class="checkboxContainer">
                                     <input is="emby-checkbox" type="checkbox" id="chkEnableLetterboxDetection" data-setting="EnableLetterboxDetection" />
                                     <span>Enable Letterbox Detection</span>
@@ -188,7 +197,7 @@
                                 <div class="fieldDescription">Automatically detect and crop black letterbox borders from poster images.</div>
                             </div>
 
-                            <div class="nested-settings" data-depends-on="chkExtractPoster,chkEnableLetterboxDetection">
+                            <div class="nested-settings" data-depends-on="chkEnableLetterboxDetection" data-depends-on-canvas="Extract">
                                 <div class="inputContainer">
                                     <label for="txtLetterboxBlackThreshold">Black Threshold:</label>
                                     <input is="emby-input" type="number" id="txtLetterboxBlackThreshold" min="0" max="255" data-setting="LetterboxBlackThreshold" data-type="number" />
