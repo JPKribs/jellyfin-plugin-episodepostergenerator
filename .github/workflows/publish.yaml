@@ -16,6 +16,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Attach the plugin image as a release asset so it is served from the
+      # same github.com release CDN as the .zip artifact. The manifest's
+      # imageUrl points at releases/latest/download/Logo.png, so Jellyfin's
+      # server can fetch the installed-plugin icon from the same origin it
+      # already uses to download the package.
+      - name: Upload Logo to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "Jellyfin.Plugin.EpisodePosterGenerator/Assets/Logo.png" \
+            --clobber
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
