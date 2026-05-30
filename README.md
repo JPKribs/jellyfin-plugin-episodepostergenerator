@@ -164,3 +164,11 @@ The four-part form is also required for the plugin image to resolve once install
 ### Verification Check
 
 * After restart, navigate to Dashboard → Plugins → Episode Poster Generator to confirm the plugin configuration page loads properly.
+
+---
+
+# AI Disclaimer
+
+Claude Code was utilized for this project to resolve issues with GitHub Actions & Build Scripts. For project code, it was used to locally to cleanup inline comments and create first drafts of documentation.
+
+**All code was written and tested by humans.**
