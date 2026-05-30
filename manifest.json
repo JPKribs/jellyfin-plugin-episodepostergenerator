@@ -9,6 +9,14 @@
     "category": "MoviesAndShows",
     "versions": [
       {
+        "version": "10.11.20",
+        "changelog": "## Fixes\r\n- Attempt 3) to fix the plugin image",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.20/jellyfin-plugin-episodepostergenerator-10.11.20.zip",
+        "checksum": "53e8362c40325d3792730a1f9024f716",
+        "timestamp": "2026-05-30T05:44:41Z"
+      },
+      {
         "version": "10.11.19",
         "changelog": "## Fixes\r\n- Attempt 2) to fix the plugin image",
         "targetAbi": "10.11.0.0",
