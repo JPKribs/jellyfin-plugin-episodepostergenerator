@@ -4,6 +4,14 @@ A Jellyfin plugin that automatically generates custom episode posters using smar
 
 ---
 
+**All plugins are made for my personal use cases. I've made these publicly available for anyone who has the same use cases and can benefit from this work. I have no desire to advertise or market for these plugins as these are for personal usage only.**
+
+**Thank you,**
+
+*Joe Kribs*
+
+---
+
 ## How It Works
 Episode Poster Generator scans each episode file, evaluates multiple frames, and selects a strong candidate while avoiding fades, black screens, and letterboxed shots. The selected frame is turned into a poster and optionally styled with configurable text such as episode title or numbering.
 
@@ -163,8 +171,8 @@ Releases use a four-part version, `JJ.JJ.F.B`, that matches the supported Jellyf
 
 ---
 
-# AI Disclaimer
+## AI Disclaimer
 
-Claude Code was utilized for this project to resolve issues with GitHub Actions & Build Scripts. For project code, it was used to locally to cleanup inline comments and create first drafts of documentation.
+Claude Code was utilized in the initial structure of this project and first drafts of documentation. All code has been manually reviewed, tested, and revised after its generation. This disclaimer exists in the interest of transparency.
 
-**All code was written and tested by humans.**
+**All code was written, or code reviewed and tested, by humans.**
