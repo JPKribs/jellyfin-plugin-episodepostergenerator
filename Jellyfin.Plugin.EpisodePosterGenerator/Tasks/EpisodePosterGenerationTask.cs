@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services;
+using JPKribs.Jellyfin.Base;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
@@ -18,7 +19,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
 {
-    public class EpisodePosterGenerationTask : IScheduledTask
+    public class EpisodePosterGenerationTask : PluginScheduledTask
     {
         private readonly ILogger<EpisodePosterGenerationTask> _logger;
         private readonly ILibraryManager _libraryManager;
@@ -36,30 +37,24 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
             _providerManager = providerManager;
         }
 
-        public string Name => "Generate Episode Posters";
+        public override string Name => "Generate Episode Posters";
 
-        public string Description => "Generates poster images for episodes that don't have them or need updating";
+        public override string Description => "Generates poster images for episodes that don't have them or need updating";
 
-        public string Category => "Library";
+        public override string Category => "Library";
 
-        public string Key => "EpisodePosterGeneration";
-
-        public bool IsHidden => false;
-
-        public bool IsEnabled => true;
-
-        public bool IsLogged => true;
+        public override string Key => "EpisodePosterGeneration";
 
         // GetDefaultTriggers
         // Returns an empty collection of task triggers.
-        public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
+        public override IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
         {
             return Array.Empty<TaskTriggerInfo>();
         }
 
         // ExecuteAsync
         // Processes all episodes that need poster generation.
-        public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
+        public override async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
         {
             if (Plugin.Instance == null)
             {

@@ -10,103 +10,9 @@
     --epg-success-text: rgba(76, 175, 80, 0.85);
 }
 
-/* ── Config Selector ─────────────────────────────────── */
-.config-selector {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 1.5em;
-}
-
-.config-selector-dropdown {
-    width: 100%;
-    /* Chevron affordance so it reads as a dropdown. Inline SVG (currentColor-style
-       light stroke) on the right, with padding so the selected text never overlaps it. */
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    padding-right: 36px;
-}
-
-.config-selector-actions {
-    display: flex;
-    gap: 8px;
-}
-
-/* Full-width action buttons sharing the row evenly, stacked under the dropdown. */
-.config-selector-actions .icon-btn {
-    flex: 1;
-}
-
-/* ── Icon Buttons ────────────────────────────────────── */
-.icon-btn {
-    min-width: 0 !important;
-    padding: 0.9em 10px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 6px;
-}
-
-.icon-btn .material-icons {
-    font-size: 20px;
-}
-
-.icon-btn-label {
-    font-size: 0.95em;
-}
-
-.icon-btn.hidden {
-    display: none !important;
-}
-
-/* ── Collapsible Sections ────────────────────────────── */
-.collapsibleSection {
-    margin-bottom: 8px;
-    border: 1px solid var(--epg-border-subtle);
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.collapsibleHeader {
-    width: 100%;
-    padding: 12px 16px;
-    background: var(--epg-bg-surface);
-    border: none;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: inherit;
-    font-size: 1.1em;
-    font-weight: 500;
-    text-align: left;
-}
-
-.collapsibleHeader:hover {
-    background: rgba(255, 255, 255, 0.08);
-}
-
-.collapsibleTitle { flex: 1; }
-
-.collapsibleIcon {
-    font-size: 0.8em;
-    transition: transform 0.2s;
-}
-
-.collapsibleHeader.collapsed .collapsibleIcon {
-    transform: rotate(-90deg);
-}
-
-.collapsibleContent {
-    padding: 16px;
-    border-top: 1px solid var(--epg-border-subtle);
-}
-
-.collapsibleContent.collapsed { display: none; }
+/* Config selector (.jpk-selector*), icon buttons (.jpk-icon-btn), the dropdown
+   chevron (.pluginConfigurationPage select), the emby-checkbox label spacing, and
+   collapsible sections (.jpk-collapsible-*) all come from the base shared CSS. */
 
 /* ── Nested/Grouped Settings ─────────────────────────── */
 .cutout-logo-group {
@@ -159,49 +65,8 @@
     min-width: 120px;
 }
 
-/* ── Reset/Destructive Buttons ───────────────────────── */
-.button-destructive {
-    background-color: #d9534f !important;
-    color: #fff !important;
-}
-
-.button-destructive:hover {
-    background-color: #c9302c !important;
-}
-
-.resetButtonGroup {
-    margin-bottom: 16px;
-}
-
-.resetButtonRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--epg-border-subtle);
-}
-
-.resetButtonRow:last-child {
-    border-bottom: none;
-}
-
-.resetButtonRow-nuclear {
-    background: rgba(217, 83, 79, 0.08);
-    border-radius: 4px;
-    border-bottom: none;
-}
-
-.resetButtonInfo {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    flex: 1;
-    margin-right: 16px;
-}
-
-.resetButtonInfo .fieldDescription {
-    margin-top: 2px;
-}
+/* Reset group (.jpk-reset-*) and the destructive button (.jpk-button-destructive)
+   come from the base shared CSS. */
 
 /* ── Reset Messages ──────────────────────────────────── */
 .reset-warning {
@@ -281,70 +146,20 @@
     color: rgba(231, 76, 60, 1);
 }
 
-/* ── Dialog / Modal ──────────────────────────────────── */
-.dialog {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-}
+/* The dialog/modal shell (.jpk-dialog, .jpk-dialog-content[-narrow],
+   .jpk-dialog-close, .jpk-modal-title/-body/-field/-button-row/-button) all come
+   from the base shared CSS. Only the EPG-specific bits inside the dialogs live here. */
 
-.dialog-content {
-    background: var(--theme-background-primary, #1c1c1c);
-    padding: 24px;
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-}
-
-.dialog-close-btn {
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 28px;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0 4px;
-    transition: color 0.2s ease;
-    flex-shrink: 0;
-}
-
-.dialog-close-btn:hover {
-    color: rgba(255, 255, 255, 1);
-}
-
-/* ── Series Selection Modal ──────────────────────────── */
+/* ── Series Selection Modal (list/search inside a base dialog) ────────── */
 .series-modal-content {
     width: 90vw;
     max-width: 600px;
-    max-height: 85vh;
     display: flex;
     flex-direction: column;
-    padding: 0;
-    overflow: hidden;
-}
-
-.series-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px 12px;
-    border-bottom: 1px solid var(--epg-border-subtle);
-}
-
-.series-modal-header h2 {
-    margin: 0;
-    font-size: 1.3em;
-    font-weight: 600;
 }
 
 .series-modal-search {
-    padding: 12px 24px;
+    margin-bottom: 12px;
 }
 
 .series-modal-search input {
@@ -352,7 +167,7 @@
 }
 
 .series-modal-summary {
-    padding: 0 24px 8px;
+    margin-bottom: 8px;
     font-size: 13px;
     color: var(--epg-text-secondary);
 }
@@ -360,9 +175,9 @@
 .series-modal-list {
     flex: 1;
     overflow-y: auto;
-    padding: 0 12px;
     min-height: 0;
     max-height: 50vh;
+    margin: 0 -8px;
 }
 
 .series-modal-loading {
@@ -382,19 +197,7 @@
     border: 3px solid var(--epg-border-subtle);
     border-top-color: var(--epg-text-secondary);
     border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-.series-modal-footer {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    padding: 16px 24px 20px;
-    border-top: 1px solid var(--epg-border-subtle);
+    animation: jpk-spin 0.8s linear infinite;
 }
 
 /* ── Series Checkbox Items ───────────────────────────── */
@@ -488,80 +291,10 @@
     margin-top: 2px;
 }
 
-/* ── Input Modal ─────────────────────────────────────── */
-.input-modal-content {
-    width: 90vw;
-    max-width: 460px;
-    padding: 0;
-    overflow: hidden;
-}
+/* Input modal is now built entirely from base dialog/modal components
+   (.jpk-dialog-content-narrow, .jpk-modal-title/-body/-field/-button-row). */
 
-.input-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 24px 12px;
-    border-bottom: 1px solid var(--epg-border-subtle);
-}
-
-.input-modal-header h2 {
-    margin: 0;
-    font-size: 1.2em;
-    font-weight: 600;
-}
-
-.input-modal-body {
-    padding: 16px 24px;
-}
-
-.input-modal-body .inputContainer {
-    margin-bottom: 16px;
-}
-
-.input-modal-body .inputContainer:last-child {
-    margin-bottom: 0;
-}
-
-.input-modal-footer {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    padding: 16px 24px 20px;
-    border-top: 1px solid var(--epg-border-subtle);
-}
-
-/* ── Unsaved Changes Indicator ───────────────────────── */
-.unsaved-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--epg-warning-text);
-    padding: 4px 10px;
-    margin: 8px auto 0;
-    background: rgba(255, 200, 50, 0.08);
-    border: 1px solid rgba(255, 200, 50, 0.2);
-    border-radius: 4px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.unsaved-indicator.visible {
-    opacity: 1;
-}
-
-.unsaved-indicator.save-success {
-    color: var(--epg-success-text);
-    background: rgba(76, 175, 80, 0.08);
-    border-color: rgba(76, 175, 80, 0.2);
-}
-
-.unsaved-indicator-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--epg-warning-text);
-}
+/* Unsaved indicator (.jpk-unsaved) comes from the base shared CSS. */
 
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 768px) {
@@ -593,10 +326,6 @@
     }
     .series-modal-content {
         width: 95vw;
-        max-height: 90vh;
-    }
-    .input-modal-content {
-        width: 95vw;
     }
     .series-tag {
         font-size: 13px;
@@ -608,19 +337,6 @@
 }
 
 @media (max-width: 480px) {
-    .config-selector-actions {
-        gap: 4px;
-    }
-    .icon-btn {
-        padding: 0.9em 8px !important;
-    }
-    .collapsibleHeader {
-        padding: 10px 12px;
-        font-size: 1em;
-    }
-    .collapsibleContent {
-        padding: 12px;
-    }
     .series-checkbox-item {
         padding: 8px;
         gap: 8px;
@@ -635,25 +351,10 @@
     .series-item-overview {
         display: none;
     }
-    .series-modal-header,
-    .input-modal-header {
-        padding: 16px 16px 10px;
-    }
-    .series-modal-footer,
-    .input-modal-footer {
-        padding: 12px 16px 16px;
-    }
-    .series-modal-search {
-        padding: 10px 16px;
-    }
     .cutout-logo-group,
     .nested-settings {
         margin-left: 0.75em;
         padding-left: 0.5em;
-    }
-    .unsaved-indicator {
-        font-size: 11px;
-        padding: 3px 8px;
     }
 }
 

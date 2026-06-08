@@ -1,7 +1,10 @@
+import { initCollapsibles, setTabs, createShared } from '/web/configurationpage?name=epg_jpkribs_shared.js';
+
 export default function (view) {
     'use strict';
 
     var pluginId = 'b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e';
+    var shared = createShared(view, pluginId, 'Plugins/EpisodePosterGenerator');
     var _initialized = false;
     var _saving = false;
     var _dirty = false;
@@ -44,7 +47,7 @@ export default function (view) {
 
         indicator.innerHTML = '';
         var dot = document.createElement('span');
-        dot.className = 'unsaved-indicator-dot';
+        dot.className = 'jpk-unsaved-dot';
         dot.style.background = 'var(--epg-success-text)';
         indicator.appendChild(dot);
         indicator.appendChild(document.createTextNode(' Saved!'));
@@ -53,7 +56,7 @@ export default function (view) {
         setTimeout(function () {
             indicator.classList.remove('visible', 'save-success');
             setTimeout(function () {
-                indicator.innerHTML = '<span class="unsaved-indicator-dot"></span> Unsaved changes';
+                indicator.innerHTML = '<span class="jpk-unsaved-dot"></span> Unsaved changes';
             }, 300);
         }, 2000);
     }
@@ -73,28 +76,11 @@ export default function (view) {
         }
     }
 
-    // ===== Collapsibles =====
-
-    function initCollapsibles() {
-        view.querySelectorAll('.collapsibleHeader').forEach(function (header) {
-            header.addEventListener('click', function () {
-                var targetId = this.dataset.target;
-                var content = view.querySelector('#' + targetId);
-                if (content) {
-                    this.classList.toggle('collapsed');
-                    content.classList.toggle('collapsed');
-                    var isExpanded = !this.classList.contains('collapsed');
-                    this.setAttribute('aria-expanded', String(isExpanded));
-                }
-            });
-        });
-    }
-
     // ===== Config =====
 
     function loadConfig() {
         Dashboard.showLoadingMsg();
-        ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+        shared.getConfig().then(function (config) {
             view.querySelector('#chkEnableProvider').checked = config.EnableProvider !== false;
             view.querySelector('#chkEnableTask').checked = config.EnableTask !== false;
             takeSnapshot();
@@ -111,10 +97,10 @@ export default function (view) {
         _saving = true;
 
         Dashboard.showLoadingMsg();
-        ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+        shared.getConfig().then(function (config) {
             config.EnableProvider = view.querySelector('#chkEnableProvider').checked;
             config.EnableTask = view.querySelector('#chkEnableTask').checked;
-            return ApiClient.updatePluginConfiguration(pluginId, config);
+            return shared.saveConfig(config);
         }).then(function (result) {
             markClean();
             flashSaveSuccess();
@@ -148,24 +134,15 @@ export default function (view) {
     function performReset() {
         Dashboard.showLoadingMsg();
 
-        fetch('/Plugins/EpisodePosterGenerator/ResetHistory', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Emby-Token': ApiClient.accessToken()
-            }
-        })
-        .then(function (response) {
-            return response.ok ? response.json() : Promise.reject('Failed');
-        })
-        .then(function (data) {
-            Dashboard.hideLoadingMsg();
-            Dashboard.alert((data.clearedCount || 0) + ' Records Deleted', 'History Reset Complete');
-        })
-        .catch(function (error) {
-            Dashboard.hideLoadingMsg();
-            Dashboard.alert('Failed to reset processing history.', 'Error');
-        });
+        shared.apiRequest('ResetHistory', 'POST')
+            .then(function (data) {
+                Dashboard.hideLoadingMsg();
+                Dashboard.alert(((data && data.clearedCount) || 0) + ' Records Deleted', 'History Reset Complete');
+            })
+            .catch(function (error) {
+                Dashboard.hideLoadingMsg();
+                Dashboard.alert('Failed to reset processing history.', 'Error');
+            });
     }
 
     // ===== Lifecycle =====
@@ -178,11 +155,11 @@ export default function (view) {
     }
 
     view.addEventListener('viewshow', function () {
-        LibraryMenu.setTabs('epg', 1, getTabs);
+        setTabs('epg', 1, getTabs());
 
         if (!_initialized) {
             _initialized = true;
-            initCollapsibles();
+            initCollapsibles(view);
             view.querySelector('#btnSavePlugin').addEventListener('click', savePluginSettings);
             view.querySelector('#btnResetHistory').addEventListener('click', resetHistory);
             view.querySelector('#chkEnableProvider').addEventListener('change', checkDirty);
@@ -200,7 +177,7 @@ export default function (view) {
             var confirmed = confirm('You have unsaved changes. Are you sure you want to leave?');
             if (!confirmed) {
                 e.preventDefault();
-                LibraryMenu.setTabs('epg', 1, getTabs);
+                setTabs('epg', 1, getTabs());
             }
         }
     });

@@ -13,6 +13,6 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
-  features:
-  - Allow using the extracted image as a backdrop
-  - Allow using the series backdrop instead of needing to be extracted or nothing
+  developer:
+  - Migrate to shared web components
+  - Bump to base 2026.6.20

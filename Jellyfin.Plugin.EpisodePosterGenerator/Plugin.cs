@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services.Database;
+using JPKribs.Jellyfin.Base;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Controller.Configuration;
@@ -15,12 +16,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator
 {
-    public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IDisposable
+    public class Plugin : PluginBase<Plugin, PluginConfiguration>, IDisposable
     {
         public override string Name => "Episode Poster Generator";
         public override Guid Id => Guid.Parse("b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e");
         public override string Description => "Automatically generates episode poster cards with titles overlaid on representative frames from video files.";
-        public static Plugin? Instance { get; private set; }
 
         private readonly ILogger<Plugin> _logger;
         private readonly EpisodeTrackingService _trackingService;
@@ -44,7 +44,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             IMediaEncoder mediaEncoder)
             : base(applicationPaths, xmlSerializer)
         {
-            Instance = this;
             _logger = logger;
 
             _trackingDatabase = new EpisodeTrackingDatabase(
@@ -119,7 +118,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
 
         // GetPages
         // Returns the plugin configuration page information.
-        public IEnumerable<PluginPageInfo> GetPages()
+        public override IEnumerable<PluginPageInfo> GetPages()
         {
             var ns = typeof(Plugin).Namespace;
 
@@ -154,6 +153,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
                 Name = "epg_shared.css",
                 EmbeddedResourcePath = $"{ns}.Configuration.epg_shared.css"
             };
+
+            foreach (var page in GetSharedPages("epg"))
+            {
+                yield return page;
+            }
         }
 
         // Dispose

@@ -11,28 +11,28 @@
                     </div>
 
                     <!-- Config Selector -->
-                    <div class="config-selector">
-                        <select is="emby-select" id="selectPosterConfig" class="config-selector-dropdown"></select>
-                        <div class="config-selector-actions">
-                            <button is="emby-button" type="button" id="btnRenameConfig" class="raised icon-btn" title="Rename">
+                    <div class="jpk-selector">
+                        <select is="emby-select" id="selectPosterConfig" class="jpk-selector-dropdown"></select>
+                        <div class="jpk-selector-actions">
+                            <button is="emby-button" type="button" id="btnRenameConfig" class="raised jpk-icon-btn" title="Rename">
                                 <span class="material-icons" aria-hidden="true">edit</span>
-                                <span class="icon-btn-label">Rename</span>
+                                <span class="jpk-icon-btn-label">Rename</span>
                             </button>
-                            <button is="emby-button" type="button" id="btnExportConfig" class="raised icon-btn" title="Export">
+                            <button is="emby-button" type="button" id="btnExportConfig" class="raised jpk-icon-btn" title="Export">
                                 <span class="material-icons" aria-hidden="true">file_upload</span>
-                                <span class="icon-btn-label">Upload</span>
+                                <span class="jpk-icon-btn-label">Upload</span>
                             </button>
-                            <button is="emby-button" type="button" id="btnImportConfig" class="raised icon-btn" title="Import">
+                            <button is="emby-button" type="button" id="btnImportConfig" class="raised jpk-icon-btn" title="Import">
                                 <span class="material-icons" aria-hidden="true">file_download</span>
-                                <span class="icon-btn-label">Download</span>
+                                <span class="jpk-icon-btn-label">Download</span>
                             </button>
-                            <button is="emby-button" type="button" id="btnNewConfig" class="raised icon-btn button-submit" title="New">
+                            <button is="emby-button" type="button" id="btnNewConfig" class="raised jpk-icon-btn button-submit" title="New">
                                 <span class="material-icons" aria-hidden="true">add</span>
-                                <span class="icon-btn-label">New</span>
+                                <span class="jpk-icon-btn-label">New</span>
                             </button>
-                            <button is="emby-button" type="button" id="btnDeleteConfig" class="raised icon-btn button-delete" title="Delete">
+                            <button is="emby-button" type="button" id="btnDeleteConfig" class="raised jpk-icon-btn button-delete" title="Delete">
                                 <span class="material-icons" aria-hidden="true">delete</span>
-                                <span class="icon-btn-label">Delete</span>
+                                <span class="jpk-icon-btn-label">Delete</span>
                             </button>
                         </div>
                     </div>
@@ -78,12 +78,12 @@
                     </div>
 
                     <!-- Poster -->
-                    <div class="collapsibleSection">
-                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="posterContent" data-target="posterContent">
-                            <span class="collapsibleTitle">Poster</span>
-                            <span class="collapsibleIcon">&#9660;</span>
+                    <div class="jpk-collapsible-section">
+                        <button type="button" class="jpk-collapsible-header collapsed" aria-expanded="false" aria-controls="posterContent" data-target="posterContent">
+                            <span class="jpk-collapsible-title">Poster</span>
+                            <span class="jpk-collapsible-icon">&#9660;</span>
                         </button>
-                        <div id="posterContent" class="collapsibleContent collapsed">
+                        <div id="posterContent" class="jpk-collapsible-content collapsed">
 
                             <div class="inputContainer">
                                 <label for="selectPosterStyle">Style:</label>
@@ -100,10 +100,10 @@
                             </div>
 
                             <div class="cutout-logo-group" id="cutoutOptions" data-poster-styles="Cutout">
-                                <div class="inputContainer">
-                                    <label class="checkboxContainer">
+                                <div class="checkboxContainer">
+                                    <label class="emby-checkbox-label">
                                         <input is="emby-checkbox" type="checkbox" id="chkCutoutBorder" data-setting="CutoutBorder" />
-                                        <span>Enable Cutout Text Border</span>
+                                        <span class="checkboxLabel">Enable Cutout Text Border</span>
                                     </label>
                                     <div class="fieldDescription">Add a contrasting border around the cutout text for better visibility.</div>
                                 </div>
@@ -147,12 +147,12 @@
                     </div>
 
                     <!-- Canvas -->
-                    <div class="collapsibleSection">
-                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="canvasContent" data-target="canvasContent">
-                            <span class="collapsibleTitle">Canvas</span>
-                            <span class="collapsibleIcon">&#9660;</span>
+                    <div class="jpk-collapsible-section">
+                        <button type="button" class="jpk-collapsible-header collapsed" aria-expanded="false" aria-controls="canvasContent" data-target="canvasContent">
+                            <span class="jpk-collapsible-title">Canvas</span>
+                            <span class="jpk-collapsible-icon">&#9660;</span>
                         </button>
-                        <div id="canvasContent" class="collapsibleContent collapsed">
+                        <div id="canvasContent" class="jpk-collapsible-content collapsed">
 
                             <div class="inputContainer">
                                 <label for="selectCanvasSource">Canvas Background:</label>
@@ -180,19 +180,19 @@
                                     <input is="emby-input" type="number" id="txtBrightenHDR" min="0" max="100" data-setting="BrightenHDR" data-type="number" />
                                     <div class="fieldDescription">Brightness adjustment for HDR content as percentage (0-100%).</div>
                                 </div>
-                                <div class="inputContainer">
-                                    <label class="checkboxContainer">
+                                <div class="checkboxContainer">
+                                    <label class="emby-checkbox-label">
                                         <input is="emby-checkbox" type="checkbox" id="chkGenerateBackdrop" data-setting="GenerateBackdrop" data-default-unchecked />
-                                        <span>Save Extracted Frame as Episode Backdrop</span>
+                                        <span class="checkboxLabel">Save Extracted Frame as Episode Backdrop</span>
                                     </label>
                                     <div class="fieldDescription">Also upload the cropped extracted frame as the episode's backdrop image. The fully rendered poster is still used as the primary image.</div>
                                 </div>
                             </div>
 
-                            <div class="inputContainer" data-depends-on-canvas="Extract">
-                                <label class="checkboxContainer">
+                            <div class="checkboxContainer" data-depends-on-canvas="Extract">
+                                <label class="emby-checkbox-label">
                                     <input is="emby-checkbox" type="checkbox" id="chkEnableLetterboxDetection" data-setting="EnableLetterboxDetection" />
-                                    <span>Enable Letterbox Detection</span>
+                                    <span class="checkboxLabel">Enable Letterbox Detection</span>
                                 </label>
                                 <div class="fieldDescription">Automatically detect and crop black letterbox borders from poster images.</div>
                             </div>
@@ -236,12 +236,12 @@
                     </div>
 
                     <!-- Overlay -->
-                    <div class="collapsibleSection">
-                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="overlayContent" data-target="overlayContent">
-                            <span class="collapsibleTitle">Overlay</span>
-                            <span class="collapsibleIcon">&#9660;</span>
+                    <div class="jpk-collapsible-section">
+                        <button type="button" class="jpk-collapsible-header collapsed" aria-expanded="false" aria-controls="overlayContent" data-target="overlayContent">
+                            <span class="jpk-collapsible-title">Overlay</span>
+                            <span class="jpk-collapsible-icon">&#9660;</span>
                         </button>
-                        <div id="overlayContent" class="collapsibleContent collapsed">
+                        <div id="overlayContent" class="jpk-collapsible-content collapsed">
 
                             <div class="inputContainer">
                                 <label for="txtOverlayColor">Overlay Color:</label>
@@ -283,12 +283,12 @@
                     </div>
 
                     <!-- Static Graphic -->
-                    <div class="collapsibleSection">
-                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="graphicContent" data-target="graphicContent">
-                            <span class="collapsibleTitle">Static Graphic</span>
-                            <span class="collapsibleIcon">&#9660;</span>
+                    <div class="jpk-collapsible-section">
+                        <button type="button" class="jpk-collapsible-header collapsed" aria-expanded="false" aria-controls="graphicContent" data-target="graphicContent">
+                            <span class="jpk-collapsible-title">Static Graphic</span>
+                            <span class="jpk-collapsible-icon">&#9660;</span>
                         </button>
-                        <div id="graphicContent" class="collapsibleContent collapsed">
+                        <div id="graphicContent" class="jpk-collapsible-content collapsed">
 
                             <div class="inputContainer">
                                 <label for="txtGraphicPath">Graphic File Path:</label>
@@ -331,25 +331,25 @@
                     </div>
 
                     <!-- Episode Information -->
-                    <div class="collapsibleSection">
-                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="episodeInfoContent" data-target="episodeInfoContent">
-                            <span class="collapsibleTitle">Episode Information</span>
-                            <span class="collapsibleIcon">&#9660;</span>
+                    <div class="jpk-collapsible-section">
+                        <button type="button" class="jpk-collapsible-header collapsed" aria-expanded="false" aria-controls="episodeInfoContent" data-target="episodeInfoContent">
+                            <span class="jpk-collapsible-title">Episode Information</span>
+                            <span class="jpk-collapsible-icon">&#9660;</span>
                         </button>
-                        <div id="episodeInfoContent" class="collapsibleContent collapsed">
+                        <div id="episodeInfoContent" class="jpk-collapsible-content collapsed">
 
-                            <div class="inputContainer" id="showEpisodeRow">
-                                <label class="checkboxContainer">
+                            <div class="checkboxContainer" id="showEpisodeRow">
+                                <label class="emby-checkbox-label">
                                     <input is="emby-checkbox" type="checkbox" id="chkShowEpisode" data-setting="ShowEpisode" />
-                                    <span>Show Episode</span>
+                                    <span class="checkboxLabel">Show Episode</span>
                                 </label>
                                 <div class="fieldDescription">Display season and episode information on the poster.</div>
                             </div>
 
-                            <div class="inputContainer" data-depends-on="chkShowEpisode">
-                                <label class="checkboxContainer">
+                            <div class="checkboxContainer" data-depends-on="chkShowEpisode">
+                                <label class="emby-checkbox-label">
                                     <input is="emby-checkbox" type="checkbox" id="chkEpisodeUseCustomFont" data-setting="EpisodeUseCustomFont" />
-                                    <span>Use Custom Font</span>
+                                    <span class="checkboxLabel">Use Custom Font</span>
                                 </label>
                                 <div class="fieldDescription">Enable to use a custom font file instead of a built-in font.</div>
                             </div>
@@ -429,25 +429,25 @@
                     </div>
 
                     <!-- Episode Title -->
-                    <div class="collapsibleSection">
-                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="episodeTitleContent" data-target="episodeTitleContent">
-                            <span class="collapsibleTitle">Episode Title</span>
-                            <span class="collapsibleIcon">&#9660;</span>
+                    <div class="jpk-collapsible-section">
+                        <button type="button" class="jpk-collapsible-header collapsed" aria-expanded="false" aria-controls="episodeTitleContent" data-target="episodeTitleContent">
+                            <span class="jpk-collapsible-title">Episode Title</span>
+                            <span class="jpk-collapsible-icon">&#9660;</span>
                         </button>
-                        <div id="episodeTitleContent" class="collapsibleContent collapsed">
+                        <div id="episodeTitleContent" class="jpk-collapsible-content collapsed">
 
-                            <div class="inputContainer" id="showTitleRow">
-                                <label class="checkboxContainer">
+                            <div class="checkboxContainer" id="showTitleRow">
+                                <label class="emby-checkbox-label">
                                     <input is="emby-checkbox" type="checkbox" id="chkShowTitle" data-setting="ShowTitle" />
-                                    <span>Show Title</span>
+                                    <span class="checkboxLabel">Show Title</span>
                                 </label>
                                 <div class="fieldDescription">Display the episode title text on the poster.</div>
                             </div>
 
-                            <div class="inputContainer" data-depends-on="chkShowTitle">
-                                <label class="checkboxContainer">
+                            <div class="checkboxContainer" data-depends-on="chkShowTitle">
+                                <label class="emby-checkbox-label">
                                     <input is="emby-checkbox" type="checkbox" id="chkTitleUseCustomFont" data-setting="TitleUseCustomFont" />
-                                    <span>Use Custom Font</span>
+                                    <span class="checkboxLabel">Use Custom Font</span>
                                 </label>
                                 <div class="fieldDescription">Enable to use a custom font file instead of a built-in font.</div>
                             </div>
@@ -531,8 +531,8 @@
                         <button is="emby-button" type="submit" data-theme="b" class="raised button-submit block">
                             <span>Save</span>
                         </button>
-                        <span id="unsavedIndicator" class="unsaved-indicator">
-                            <span class="unsaved-indicator-dot"></span>
+                        <span id="unsavedIndicator" class="jpk-unsaved">
+                            <span class="jpk-unsaved-dot"></span>
                             Unsaved changes
                         </span>
                     </div>
@@ -544,22 +544,20 @@
     </div>
 
     <!-- Series Selection Modal -->
-    <div id="seriesSelectionModal" class="dialog" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="seriesModalTitle">
-        <div class="dialog-content series-modal-content">
-            <div class="series-modal-header">
-                <h2 id="seriesModalTitle">Select Series</h2>
-                <button type="button" id="btnCloseSeriesModal" class="dialog-close-btn" aria-label="Close">&times;</button>
-            </div>
+    <div id="seriesSelectionModal" class="jpk-dialog" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="seriesModalTitle">
+        <div class="jpk-dialog-content series-modal-content">
+            <button type="button" id="btnCloseSeriesModal" class="jpk-dialog-close" aria-label="Close">&times;</button>
+            <h2 id="seriesModalTitle" class="jpk-modal-title">Select Series</h2>
             <div class="series-modal-search">
                 <input is="emby-input" type="text" id="seriesSearchInput" placeholder="Search series..." />
             </div>
             <div class="series-modal-summary" id="seriesSelectionSummary"></div>
             <div id="seriesCheckboxList" class="series-modal-list"></div>
-            <div class="series-modal-footer">
-                <button is="emby-button" type="button" id="btnCancelSeriesSelection" class="raised">
+            <div class="jpk-modal-button-row">
+                <button is="emby-button" type="button" id="btnCancelSeriesSelection" class="raised jpk-modal-button">
                     <span>Cancel</span>
                 </button>
-                <button is="emby-button" type="button" id="btnConfirmSeriesSelection" class="raised button-submit">
+                <button is="emby-button" type="button" id="btnConfirmSeriesSelection" class="raised button-submit jpk-modal-button">
                     <span>Save Selection</span>
                 </button>
             </div>
@@ -567,25 +565,24 @@
     </div>
 
     <!-- Input Modal -->
-    <div id="inputModal" class="dialog" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="inputModalTitle">
-        <div class="dialog-content input-modal-content">
-            <div class="input-modal-header">
-                <h2 id="inputModalTitle"></h2>
-                <button type="button" id="btnCloseInputModal" class="dialog-close-btn" aria-label="Close">&times;</button>
-            </div>
-            <div class="input-modal-body">
+    <div id="inputModal" class="jpk-dialog" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="inputModalTitle">
+        <div class="jpk-dialog-content jpk-dialog-content-narrow">
+            <button type="button" id="btnCloseInputModal" class="jpk-dialog-close" aria-label="Close">&times;</button>
+            <h2 id="inputModalTitle" class="jpk-modal-title"></h2>
+            <div class="jpk-modal-body">
                 <div id="inputModalFields"></div>
             </div>
-            <div class="input-modal-footer">
-                <button is="emby-button" type="button" id="btnCancelInputModal" class="raised">
+            <div class="jpk-modal-button-row">
+                <button is="emby-button" type="button" id="btnCancelInputModal" class="raised jpk-modal-button">
                     <span>Cancel</span>
                 </button>
-                <button is="emby-button" type="button" id="btnConfirmInputModal" class="raised button-submit">
+                <button is="emby-button" type="button" id="btnConfirmInputModal" class="raised button-submit jpk-modal-button">
                     <span>OK</span>
                 </button>
             </div>
         </div>
     </div>
 
+    <link rel="stylesheet" href="configurationpage?name=epg_jpkribs_shared.css">
     <link rel="stylesheet" href="configurationpage?name=epg_shared.css">
 </div>

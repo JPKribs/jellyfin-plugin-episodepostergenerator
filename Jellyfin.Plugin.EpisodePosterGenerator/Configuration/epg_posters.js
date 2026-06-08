@@ -1,7 +1,10 @@
+import { initCollapsibles, setTabs, createShared } from '/web/configurationpage?name=epg_jpkribs_shared.js';
+
 export default function (view) {
     'use strict';
 
     var pluginId = 'b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e';
+    var shared = createShared(view, pluginId, 'Plugins/EpisodePosterGenerator');
     var fullConfig = null;
     var currentConfigId = null;
     var allSeries = [];
@@ -96,7 +99,7 @@ export default function (view) {
 
         indicator.innerHTML = '';
         var dot = document.createElement('span');
-        dot.className = 'unsaved-indicator-dot';
+        dot.className = 'jpk-unsaved-dot';
         dot.style.background = 'var(--epg-success-text)';
         indicator.appendChild(dot);
         indicator.appendChild(document.createTextNode(' Saved!'));
@@ -105,7 +108,7 @@ export default function (view) {
         setTimeout(function () {
             indicator.classList.remove('visible', 'save-success');
             setTimeout(function () {
-                indicator.innerHTML = '<span class="unsaved-indicator-dot"></span> Unsaved changes';
+                indicator.innerHTML = '<span class="jpk-unsaved-dot"></span> Unsaved changes';
             }, 300);
         }, 2000);
     }
@@ -129,7 +132,7 @@ export default function (view) {
     function showInputModal(title, fields, callback) {
         var triggerElement = document.activeElement;
         var modal = view.querySelector('#inputModal');
-        var modalContent = view.querySelector('.input-modal-content');
+        var modalContent = view.querySelector('#inputModal .jpk-dialog-content');
         var fieldsContainer = view.querySelector('#inputModalFields');
         var btnConfirm = view.querySelector('#btnConfirmInputModal');
         var btnCancel = view.querySelector('#btnCancelInputModal');
@@ -140,9 +143,10 @@ export default function (view) {
 
         fields.forEach(function (field, index) {
             var container = document.createElement('div');
-            container.className = 'inputContainer';
+            container.className = 'jpk-modal-field';
 
             var label = document.createElement('label');
+            label.className = 'jpk-modal-field-label';
             label.setAttribute('for', 'inputModalField_' + index);
             label.textContent = field.label;
             container.appendChild(label);
@@ -208,21 +212,6 @@ export default function (view) {
         document.addEventListener('keydown', onKeydown);
     }
 
-    // ── Collapsibles ────────────────────────────────────────
-
-    function initCollapsibles() {
-        view.querySelectorAll('.collapsibleHeader').forEach(function (header) {
-            header.addEventListener('click', function () {
-                var content = view.querySelector('#' + this.dataset.target);
-                if (content) {
-                    this.classList.toggle('collapsed');
-                    content.classList.toggle('collapsed');
-                    this.setAttribute('aria-expanded', String(!this.classList.contains('collapsed')));
-                }
-            });
-        });
-    }
-
     // ── Color Controls ──────────────────────────────────────
 
     function updateHexFromControls(container) {
@@ -271,7 +260,7 @@ export default function (view) {
 
     function loadConfig() {
         Dashboard.showLoadingMsg();
-        ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+        shared.getConfig().then(function (config) {
             fullConfig = config;
 
             if (!config.PosterConfigurations || config.PosterConfigurations.length === 0) {
@@ -803,7 +792,7 @@ export default function (view) {
             if (!description || !description.trim()) { Dashboard.alert('Description is required.'); return; }
 
             Dashboard.showLoadingMsg();
-            ApiClient.getPluginConfiguration(pluginId).then(function (pluginConfig) {
+            shared.getConfig().then(function (pluginConfig) {
                 var ver = pluginConfig.Version;
                 var json = JSON.stringify({
                     name: config.Name,
@@ -895,7 +884,7 @@ export default function (view) {
         }
 
         Dashboard.showLoadingMsg();
-        ApiClient.updatePluginConfiguration(pluginId, fullConfig).then(function (result) {
+        shared.saveConfig(fullConfig).then(function (result) {
             markClean();
             flashSaveSuccess();
             Dashboard.processPluginConfigurationUpdateResult(result);
@@ -1153,11 +1142,11 @@ export default function (view) {
     }
 
     view.addEventListener('viewshow', function () {
-        LibraryMenu.setTabs('epg', 0, getTabs);
+        setTabs('epg', 0, getTabs());
 
         if (!_initialized) {
             _initialized = true;
-            initCollapsibles();
+            initCollapsibles(view);
             bindEventListeners();
             bindColorControls();
             loadPreviewComponents();
@@ -1174,7 +1163,7 @@ export default function (view) {
             var confirmed = confirm('You have unsaved changes. Are you sure you want to leave?');
             if (!confirmed) {
                 e.preventDefault();
-                LibraryMenu.setTabs('epg', 0, getTabs);
+                setTabs('epg', 0, getTabs());
             }
         }
     });

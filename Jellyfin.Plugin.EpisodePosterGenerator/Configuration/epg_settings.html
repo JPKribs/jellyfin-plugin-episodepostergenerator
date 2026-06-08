@@ -11,24 +11,24 @@
                     </div>
 
                     <!-- COLLAPSIBLE: Plugin -->
-                    <div class="collapsibleSection">
-                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="pluginContent" data-target="pluginContent">
-                            <span class="collapsibleTitle">Plugin</span>
-                            <span class="collapsibleIcon">&#9660;</span>
+                    <div class="jpk-collapsible-section">
+                        <button type="button" class="jpk-collapsible-header collapsed" aria-expanded="false" aria-controls="pluginContent" data-target="pluginContent">
+                            <span class="jpk-collapsible-title">Plugin</span>
+                            <span class="jpk-collapsible-icon">&#9660;</span>
                         </button>
-                        <div id="pluginContent" class="collapsibleContent collapsed">
-                            <div class="inputContainer">
-                                <label class="checkboxContainer">
+                        <div id="pluginContent" class="jpk-collapsible-content collapsed">
+                            <div class="checkboxContainer">
+                                <label class="emby-checkbox-label">
                                     <input is="emby-checkbox" type="checkbox" id="chkEnableProvider" />
-                                    <span>Enable Provider</span>
+                                    <span class="checkboxLabel">Enable Provider</span>
                                 </label>
                                 <div class="fieldDescription">Enable the plugin as a metadata provider for episode posters.</div>
                             </div>
 
-                            <div class="inputContainer">
-                                <label class="checkboxContainer">
+                            <div class="checkboxContainer">
+                                <label class="emby-checkbox-label">
                                     <input is="emby-checkbox" type="checkbox" id="chkEnableTask" />
-                                    <span>Enable Scheduled Task</span>
+                                    <span class="checkboxLabel">Enable Scheduled Task</span>
                                 </label>
                                 <div class="fieldDescription">Enable the plugin as a scheduled task for batch poster generation.</div>
                             </div>
@@ -37,19 +37,19 @@
                     </div>
 
                     <!-- COLLAPSIBLE: Troubleshooting -->
-                    <div class="collapsibleSection">
-                        <button type="button" class="collapsibleHeader collapsed" aria-expanded="false" aria-controls="troubleshootingContent" data-target="troubleshootingContent">
-                            <span class="collapsibleTitle">Troubleshooting</span>
-                            <span class="collapsibleIcon">&#9660;</span>
+                    <div class="jpk-collapsible-section">
+                        <button type="button" class="jpk-collapsible-header collapsed" aria-expanded="false" aria-controls="troubleshootingContent" data-target="troubleshootingContent">
+                            <span class="jpk-collapsible-title">Troubleshooting</span>
+                            <span class="jpk-collapsible-icon">&#9660;</span>
                         </button>
-                        <div id="troubleshootingContent" class="collapsibleContent collapsed">
-                            <div class="resetButtonGroup">
-                                <div class="resetButtonRow resetButtonRow-nuclear">
-                                    <div class="resetButtonInfo">
+                        <div id="troubleshootingContent" class="jpk-collapsible-content collapsed">
+                            <div class="jpk-reset-group">
+                                <div class="jpk-reset-row jpk-reset-row-nuclear">
+                                    <div class="jpk-reset-info">
                                         <div>Reset Processing History</div>
                                         <div class="fieldDescription">Clear all episode processing history. All episodes will be reprocessed on the next run.</div>
                                     </div>
-                                    <button is="emby-button" type="button" id="btnResetHistory" class="raised button-destructive button-small">
+                                    <button is="emby-button" type="button" id="btnResetHistory" class="raised jpk-button-destructive jpk-button-small">
                                         <span>Reset</span>
                                     </button>
                                 </div>
@@ -62,8 +62,8 @@
                         <button is="emby-button" type="button" id="btnSavePlugin" class="raised button-submit block">
                             <span>Save</span>
                         </button>
-                        <span id="unsavedIndicator" class="unsaved-indicator">
-                            <span class="unsaved-indicator-dot"></span>
+                        <span id="unsavedIndicator" class="jpk-unsaved">
+                            <span class="jpk-unsaved-dot"></span>
                             Unsaved changes
                         </span>
                     </div>
@@ -73,5 +73,6 @@
         </div>
     </div>
 
+    <link rel="stylesheet" href="configurationpage?name=epg_jpkribs_shared.css">
     <link rel="stylesheet" href="configurationpage?name=epg_shared.css">
 </div>
