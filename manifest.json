@@ -9,6 +9,14 @@
     "category": "MoviesAndShows",
     "versions": [
       {
+        "version": "10.11.23.1",
+        "changelog": "## Developer\r\n- Migrate to shared web components\r\n- Bump to base 2026.6.20",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.23.1/jellyfin-plugin-episodepostergenerator-10.11.23.1.zip",
+        "checksum": "69a6a9ca5adb8b165a953a39ab0e58c8",
+        "timestamp": "2026-06-08T02:40:28Z"
+      },
+      {
         "version": "10.11.23.0",
         "changelog": "## Features\r\n- Allow using the extracted image as a backdrop\r\n- Allow using the series backdrop instead of needing to be extracted or nothing",
         "targetAbi": "10.11.0.0",
