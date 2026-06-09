@@ -4,11 +4,11 @@ using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Utilities
 {
-    public class BrushStrokeUtil
+    public class BrushStrokeBuilder
     {
         private readonly Random _random;
 
-        public BrushStrokeUtil(int seed)
+        public BrushStrokeBuilder(int seed)
         {
             _random = new Random(seed);
         }

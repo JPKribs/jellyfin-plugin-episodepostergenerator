@@ -105,7 +105,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         {
             var safeArea = GetSafeAreaBounds(canvasWidth, canvasHeight, config);
 
-            string episodeText = EpisodeCodeUtil.FormatEpisodeText(config.CutoutType,
+            string episodeText = EpisodeCodeUtils.FormatEpisodeText(config.CutoutType,
                 episodeMetadata.SeasonNumber ?? 0,
                 episodeMetadata.EpisodeNumberStart ?? 0);
             var words = episodeText.Split(WordSeparators, StringSplitOptions.RemoveEmptyEntries);

@@ -46,7 +46,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             // same stroke layout, but different episodes vary. Falls back to series id +
             // season + episode if the file path isn't populated (e.g. demo generator).
             var seed = GenerateBrushSeed(episodeMetadata);
-            var strokeBuilder = new BrushStrokeUtil(seed);
+            var strokeBuilder = new BrushStrokeBuilder(seed);
             using var brushMask = strokeBuilder.BuildStrokePath(safeArea, textArea, height);
             
             skCanvas.Save();
@@ -153,7 +153,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         // Draws the episode code in the bottom-left corner of the poster.
         private void DrawEpisodeCode(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, SKRect safeArea, int height)
         {
-            var episodeCode = EpisodeCodeUtil.FormatEpisodeCode(
+            var episodeCode = EpisodeCodeUtils.FormatEpisodeCode(
                 episodeMetadata.SeasonNumber ?? 0,
                 episodeMetadata.EpisodeNumberStart ?? 0);
             

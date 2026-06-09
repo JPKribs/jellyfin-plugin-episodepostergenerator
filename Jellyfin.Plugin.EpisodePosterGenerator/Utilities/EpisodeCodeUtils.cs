@@ -3,7 +3,7 @@ using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Utilities;
 
-public static class EpisodeCodeUtil
+public static class EpisodeCodeUtils
 {
     // FormatEpisodeCode
     // Formats season and episode numbers into standard SxxExx notation.

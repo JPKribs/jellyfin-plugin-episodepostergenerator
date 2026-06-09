@@ -113,18 +113,17 @@ The top layer containing all text elements, episode information, and series logo
 ### Rendering Pipeline
 Each poster style follows this exact 4-layer sequence. The modular approach allows for easy customization and additional poster styles.
 
-## Usage & Tools
+## Usage & Documentation
+
+### Settings
+For an explanation of the settings, visit [SETTINGS.md](docs/SETTINGS.md).
 
 ### Template examples & downloads
 For additional template examples and downloadable configurations, visit [EXAMPLES.md](docs/EXAMPLES.md).
 
 ### Preview your poster
 When creating your poster, you can preview how this looks by selecting the `Preview` button at the top of the page.
-# ![Preview Modal](Jellyfin.Plugin.EpisodePosterGenerator/Assets/Preview\ Modal.png)
-
-## Settings
-
-[Explanation of settings can be found here!](docs/SETTINGS.md)
+![Preview Modal](Jellyfin.Plugin.EpisodePosterGenerator/Assets/Preview-Modal.png)
 
 ---
 

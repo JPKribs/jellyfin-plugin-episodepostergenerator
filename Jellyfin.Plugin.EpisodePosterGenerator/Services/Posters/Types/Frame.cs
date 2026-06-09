@@ -151,7 +151,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 TextEncoding = SKTextEncoding.Utf8
             };
 
-            var episodeText = EpisodeCodeUtil.FormatFullText(seasonNumber, episodeNumber, true, true);
+            var episodeText = EpisodeCodeUtils.FormatFullText(seasonNumber, episodeNumber, true, true);
             var centerX = safeArea.MidX;
 
             var fontMetrics = episodePaint.FontMetrics;

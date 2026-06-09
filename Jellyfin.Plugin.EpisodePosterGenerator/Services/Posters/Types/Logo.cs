@@ -200,7 +200,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface);
 
             var safeArea = GetSafeAreaBounds(width, height, config);
-            var code = EpisodeCodeUtil.FormatEpisodeCode(seasonNumber, episodeNumber);
+            var code = EpisodeCodeUtils.FormatEpisodeCode(seasonNumber, episodeNumber);
             var centerX = safeArea.MidX;
 
             PaintFactory.DrawTextWithShadow(canvas, code, centerX, bottomY, paint, shadowPaint);
