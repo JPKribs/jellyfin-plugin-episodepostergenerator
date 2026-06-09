@@ -1,16 +1,6 @@
 # ![Episode Poster Generator](Jellyfin.Plugin.EpisodePosterGenerator/Assets/Logo.png)
 
-A Jellyfin plugin that automatically generates custom episode posters using smart frame analysis, black frame detection, letterbox detection, and configurable text styling. Perfect for filling in missing or generic episode artwork with clean, consistent visuals.
-
----
-
-**All plugins are made for my personal use cases. I've made these publicly available for anyone who has the same use cases and can benefit from this work. I have no desire to advertise or market for these plugins as these are for personal usage only.**
-
-**Thank you,**
-
-*Joe Kribs*
-
----
+A Jellyfin plugin that automatically generates custom episode posters using smart frame analysis, black frame detection, letterbox detection, and configurable styling. Perfect for filling in missing or generic episode artwork with clean, consistent visuals.
 
 ## How It Works
 Episode Poster Generator scans each episode file, evaluates multiple frames, and selects a strong candidate while avoiding fades, black screens, and letterboxed shots. The selected frame is turned into a poster and optionally styled with configurable text such as episode title or numbering.
@@ -25,25 +15,25 @@ This plugin overrides image metadata in your Jellyfin library. While extensively
 ## Poster Styles
 
 ### Standard Style
-Classic episode posters with overlay text and episode information.
+Simple screenshot with optional season/episode information.
 
 | Example 1 | Example 2 | Example 3 |
 |-----------|-----------|-----------|
-| ![Standard Example 1](Examples/Standard/Example1.png) | ![Standard Example 2](Examples/Standard/Example2.png) | ![Standard Example 3](Examples/Standard/Example3.png) |
+| ![Standard Example 1](docs/examples/Standard/Example1.png) | ![Standard Example 2](docs/examples/Standard/Example2.png) | ![Standard Example 3](docs/examples/Standard/Example3.png) |
 
 ### Brush Style  
-Flat color with a transparent brush cutout revealing the screenshot beneath.
+Flat color with a transparent brush cutout revealing the screenshot beneath, with optional season/episode information to the side.
 
 | Example 1 | Example 2 | Example 3 |
 |-----------|-----------|-----------|
-| ![Brush Example 1](Examples/StandardBrush/Example1.png) | ![Brush Example 2](Examples/StandardBrush/Example2.png) | ![Brush Example 3](Examples/StandardBrush/Example3.png) |
+| ![Brush Example 1](docs/examples/StandardBrush/Example1.png) | ![Brush Example 2](docs/examples/StandardBrush/Example2.png) | ![Brush Example 3](docs/examples/StandardBrush/Example3.png) |
 
 ### Cutout Style  
-Large episode numbers displayed as transparent cutouts revealing the screenshot beneath.
+Large episode numbers displayed as transparent cutouts revealing the screenshot beneath, with optional episode title.
 
 | Example 1 | Example 2 | Example 3 |
 |-----------|-----------|-----------|
-| ![Cutout Example 1](Examples/Cutout/Example1.png) | ![Cutout Example 2](Examples/Cutout/Example2.png) | ![Cutout Example 3](Examples/Cutout/Example3.png) |
+| ![Cutout Example 1](docs/examples/Cutout/Example1.png) | ![Cutout Example 2](docs/examples/Cutout/Example2.png) | ![Cutout Example 3](docs/examples/Cutout/Example3.png) |
 
 **Cutout Types:**
 - **Code**: Displays episode in format "S01E03" 
@@ -54,28 +44,28 @@ Decorative frame borders with episode title and optional season/episode informat
 
 | Example 1 | Example 2 | Example 3 |
 |-----------|-----------|-----------|
-| ![Frame Example 1](Examples/Frame/Example1.png) | ![Frame Example 2](Examples/Frame/Example2.png) | ![Frame Example 3](Examples/Frame/Example3.png) |
+| ![Frame Example 1](docs/examples/Frame/Example1.png) | ![Frame Example 2](docs/examples/Frame/Example2.png) | ![Frame Example 3](docs/examples/Frame/Example3.png) |
 
 ### Logo Style
-Series logo-focused posters with episode information and clean typography.
+Series logo-focused posters with optional season/episode information.
 
 | Example 1 | Example 2 | Example 3 |
 |-----------|-----------|-----------|
-| ![Logo Example 1](Examples/Logo/Example1.png) | ![Logo Example 2](Examples/Logo/Example2.png) | ![Logo Example 3](Examples/Logo/Example3.png) |
+| ![Logo Example 1](docs/examples/Logo/Example1.png) | ![Logo Example 2](docs/examples/Logo/Example2.png) | ![Logo Example 3](docs/examples/Logo/Example3.png) |
 
 ### Numeral Style
-Roman numeral episode numbers with overlapping titles.
+Roman numeral episode numbers with optional overlapping title.
 
 | Example 1 | Example 2 | Example 3 |
 |-----------|-----------|-----------|
-| ![Numeral Example 1](Examples/NumeralFull/Example1.png) | ![Numeral Example 2](Examples/NumeralFull/Example2.png) | ![Numeral Example 3](Examples/NumeralFull/Example3.png) |
+| ![Numeral Example 1](docs/examples/NumeralFull/Example1.png) | ![Numeral Example 2](docs/examples/NumeralFull/Example2.png) | ![Numeral Example 3](docs/examples/NumeralFull/Example3.png) |
 
 ### Split Style
-Classic episode posters with overlay text and episode information, split alongside the series poster.
+Episode screenshot with overlay text and episode information, split alongside the series poster.
 
 | Example 1 | Example 2 | Example 3 |
 |-----------|-----------|-----------|
-| ![Standard Example 1](Examples/Split/Example1.png) | ![Standard Example 2](Examples/Split/Example2.png) | ![Standard Example 3](Examples/Split/Example3.png) |
+| ![Split Example 1](docs/examples/Split/Example1.png) | ![Split Example 2](docs/examples/Split/Example2.png) | ![Split Example 3](docs/examples/Split/Example3.png) |
 
 ## Poster Architecture
 
@@ -85,8 +75,9 @@ The Episode Poster Generator uses a 4-layer rendering pipeline to create consist
 The foundation layer that provides the visual background for the poster.
 
 **Options:**
-- **Video Frame Extraction**: Automatically extracts a representative frame from the episode video file using smart brightness detection and configurable extraction windows
-- **Transparent Background**: Creates a solid color or transparent canvas when video extraction is disabled
+
+- **Video Frame Extraction** -  Automatically extracts a frame from the episode video file using configurable extraction windows. Frames are selected at random until a suitable frame with adequate brightness and quality if found.
+- **Transparent Background** - Creates a solid color or transparent canvas.
 
 **Processing:**
 - HDR brightening for HDR content
@@ -98,8 +89,7 @@ A semi-transparent color layer applied over the canvas to enhance text readabili
 
 **Features:**
 - Configurable ARGB hex colors with alpha transparency
-- Applied uniformly across the entire poster surface
-- Essential for ensuring text remains readable against varying background images
+- Applied uniformly across the entire poster surface or use two colors blurred together
 
 ### Layer 3: Graphics (Static Images)
 Optional static graphic overlays positioned above the canvas but below text elements.
@@ -121,15 +111,22 @@ The top layer containing all text elements, episode information, and series logo
 - Drop shadows and contrasting borders for enhanced readability
 
 ### Rendering Pipeline
-Each poster style (Standard, Cutout, Numeral, Logo) follows this exact 4-layer sequence, ensuring consistent layouts. The modular approach allows for easy customization and additional poster styles.
+Each poster style follows this exact 4-layer sequence. The modular approach allows for easy customization and additional poster styles.
 
-## Template Examples & Downloads
+## Usage & Tools
 
-For additional template examples and downloadable configurations, visit [EXAMPLES.md](EXAMPLES.md).
+### Template examples & downloads
+For additional template examples and downloadable configurations, visit [EXAMPLES.md](docs/EXAMPLES.md).
+
+### Preview your poster
+When creating your poster, you can preview how this looks by selecting the `Preview` button at the top of the page.
+# ![Preview Modal](Jellyfin.Plugin.EpisodePosterGenerator/Assets/Preview\ Modal.png)
 
 ## Settings
 
-[Explanation of settings can be found here!](SETTINGS.md)
+[Explanation of settings can be found here!](docs/SETTINGS.md)
+
+---
 
 ## Versioning
 

@@ -14,17 +14,21 @@
                     <div class="jpk-selector">
                         <select is="emby-select" id="selectPosterConfig" class="jpk-selector-dropdown"></select>
                         <div class="jpk-selector-actions">
+                            <button is="emby-button" type="button" id="btnPreviewPoster" class="raised jpk-icon-btn" title="Preview">
+                                <span class="material-icons" aria-hidden="true">visibility</span>
+                                <span class="jpk-icon-btn-label">Preview</span>
+                            </button>
                             <button is="emby-button" type="button" id="btnRenameConfig" class="raised jpk-icon-btn" title="Rename">
                                 <span class="material-icons" aria-hidden="true">edit</span>
                                 <span class="jpk-icon-btn-label">Rename</span>
                             </button>
                             <button is="emby-button" type="button" id="btnExportConfig" class="raised jpk-icon-btn" title="Export">
                                 <span class="material-icons" aria-hidden="true">file_upload</span>
-                                <span class="jpk-icon-btn-label">Upload</span>
+                                <span class="jpk-icon-btn-label">Export</span>
                             </button>
                             <button is="emby-button" type="button" id="btnImportConfig" class="raised jpk-icon-btn" title="Import">
                                 <span class="material-icons" aria-hidden="true">file_download</span>
-                                <span class="jpk-icon-btn-label">Download</span>
+                                <span class="jpk-icon-btn-label">Import</span>
                             </button>
                             <button is="emby-button" type="button" id="btnNewConfig" class="raised jpk-icon-btn button-submit" title="New">
                                 <span class="material-icons" aria-hidden="true">add</span>
@@ -47,15 +51,19 @@
                         <div class="fieldDescription">Select which series should use this poster configuration.</div>
                     </div>
 
-                    <!-- Live Preview -->
-                    <div id="posterPreviewSection" class="poster-preview-section">
+                    <!-- Poster Preview Modal -->
+                    <div id="previewModal" class="jpk-dialog" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="previewModalTitle">
+                        <div class="jpk-dialog-content">
+                            <button type="button" id="btnClosePreviewModal" class="jpk-dialog-close" aria-label="Close">&times;</button>
+                            <h2 id="previewModalTitle" class="jpk-modal-title">Poster Preview</h2>
+                            <div class="jpk-modal-body">
                         <div class="poster-preview-layout">
                             <div class="poster-preview-main">
                                 <div class="poster-preview-frame">
                                     <img id="posterPreviewImage" class="poster-preview-image" alt="Live poster preview" />
                                     <div id="posterPreviewStatus" class="poster-preview-status">Loading preview…</div>
                                 </div>
-                                <div class="poster-preview-caption">Live preview rendered from sample artwork</div>
+                                <div class="poster-preview-caption">Rendered from sample artwork</div>
                             </div>
                             <div class="poster-preview-components">
                                 <div class="poster-component" data-component="canvas" title="Click to expand">
@@ -74,6 +82,8 @@
                         </div>
                         <div id="componentLightbox" class="component-lightbox">
                             <img id="componentLightboxImage" class="component-lightbox-image" src="" alt="Expanded component" />
+                        </div>
+                            </div>
                         </div>
                     </div>
 
@@ -161,7 +171,7 @@
                                     <option value="Extract">Extract Frame from Episode</option>
                                     <option value="SeriesBackdrop">Use Series Backdrop</option>
                                 </select>
-                                <div class="fieldDescription">Choose the poster background: a transparent canvas, a frame extracted from the episode, or the parent series' backdrop image.</div>
+                                <div class="fieldDescription">Determine where the poster background should come from.</div>
                             </div>
 
                             <div class="nested-settings" data-depends-on-canvas="Extract">

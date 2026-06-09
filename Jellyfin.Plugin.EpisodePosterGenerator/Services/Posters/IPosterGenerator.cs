@@ -3,7 +3,7 @@ using System.IO;
 using SkiaSharp;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
-using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
+using Jellyfin.Plugin.EpisodePosterGenerator.Utilities;
 using MediaBrowser.Controller.Entities.TV;
 using Microsoft.Extensions.Logging;
 
@@ -18,10 +18,26 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             EpisodeMetadata episodeMetadata,
             PosterSettings settings,
             string? outputPath = null);
+
+        // Style
+        // The poster style this generator produces.
+        PosterStyle Style { get; }
+
+        // Description
+        // A short, user facing description of this style shown in the configuration UI.
+        string Description { get; }
     }
 
     public abstract class BasePosterGenerator : IPosterGenerator
     {
+        // Style
+        // The poster style this generator produces.
+        public abstract PosterStyle Style { get; }
+
+        // Description
+        // A short, user facing description of this style shown in the configuration UI.
+        public abstract string Description { get; }
+
         // GetSafeAreaMargin
         // Returns the safe area margin as a percentage of the poster dimensions.
         protected static float GetSafeAreaMargin(PosterSettings settings) => settings.PosterSafeArea / 100f;

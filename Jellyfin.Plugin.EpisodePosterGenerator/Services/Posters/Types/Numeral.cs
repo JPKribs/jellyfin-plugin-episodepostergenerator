@@ -1,7 +1,7 @@
 using System;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
-using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
+using Jellyfin.Plugin.EpisodePosterGenerator.Utilities;
 using SkiaSharp;
 using Microsoft.Extensions.Logging;
 
@@ -9,6 +9,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
     public class NumeralPosterGenerator : BasePosterGenerator
     {
+        // Style
+        // The poster style this generator produces.
+        public override PosterStyle Style => PosterStyle.Numeral;
+
+        // Description
+        // A short, user facing description of this style shown in the configuration UI.
+        public override string Description => "Prominent episode numeral as the focal element. Minimal and distinctive, emphasizes episode numbering.";
+
         private readonly ILogger<NumeralPosterGenerator> _logger;
 
         // NumeralPosterGenerator

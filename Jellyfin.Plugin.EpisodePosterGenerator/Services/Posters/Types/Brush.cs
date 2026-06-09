@@ -3,13 +3,21 @@ using System.Collections.Generic;
 using SkiaSharp;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
-using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
+using Jellyfin.Plugin.EpisodePosterGenerator.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
     public class BrushPosterGenerator : BasePosterGenerator
     {
+        // Style
+        // The poster style this generator produces.
+        public override PosterStyle Style => PosterStyle.Brush;
+
+        // Description
+        // A short, user facing description of this style shown in the configuration UI.
+        public override string Description => "Artistic brush-stroke mask effect with episode info and title. Creates a painted, editorial look.";
+
         private readonly ILogger<BrushPosterGenerator> _logger;
 
         // BrushPosterGenerator

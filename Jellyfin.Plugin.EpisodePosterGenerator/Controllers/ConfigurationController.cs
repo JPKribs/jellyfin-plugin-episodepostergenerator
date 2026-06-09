@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
+using Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
 using MediaBrowser.Controller;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -45,6 +46,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
         }
 
         // MARK: POST
+        // GetPosterStyles
+        // Returns each poster style and its description, read from the generators themselves so the UI
+        // no longer hardcodes them.
+        [HttpGet("PosterStyles")]
+        public IActionResult GetPosterStyles()
+        {
+            var styles = PreviewService.GetStyleCatalog()
+                .Select(g => new { value = g.Style.ToString(), description = g.Description });
+            return Ok(styles);
+        }
+
         [HttpPost("Configuration")]
         public IActionResult UpdateConfiguration([FromBody] PluginConfiguration newConfig)
         {

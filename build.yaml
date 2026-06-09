@@ -2,17 +2,23 @@
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
 imageUrl: "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/refs/heads/master/Jellyfin.Plugin.EpisodePosterGenerator/Assets/Logo.png"
-version: "10.11.23.1"
+version: "10.11.23.2"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Generate Custom Episode Posters"
 description: >
-  Episode Poster Generator is a Jellyfin plugin that automatically creates custom episode posters using intelligent multi-quality frame analysis, blur detection, and professional-grade rendering. Features advanced brightness and sharpness scoring to avoid dark scenes and motion blur, combined with studio-quality text rendering and image processing.
+  Episode Poster Generator is a Jellyfin plugin that automatically creates custom episode posters using frame extraction and custom overlay rendering. Utilizes brightness and sharpness scoring to avoid dark scenes and motion blur.
 category: "MoviesAndShows"
 owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   developer:
-  - Migrate to shared web components
-  - Bump to base 2026.6.20
+  - Bump to base 2026.6.23
+  - File cleanup
+  - Update template files for import
+  - README cleanup
+  - Move demo creation to it's own project folder
+  - Add tests just to keep me from going crazy
+  - Move poster descriptions to their CS file instead of maintaining in JS
+  - Move preview to button instead od rendering everytime

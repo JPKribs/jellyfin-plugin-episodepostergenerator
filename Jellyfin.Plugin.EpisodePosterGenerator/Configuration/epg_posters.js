@@ -124,7 +124,6 @@ export default function (view) {
             var indicator = view.querySelector('#unsavedIndicator');
             if (indicator) indicator.classList.remove('visible');
         }
-        debouncedPreview();
     }
 
     // ── Input Modal ─────────────────────────────────────────
@@ -332,17 +331,17 @@ export default function (view) {
             }
         });
 
-        // Migrate legacy ExtractPoster (pre-10.11.23) for display when CanvasSource is unset.
+        // Default the Canvas Source when a config has none set. Legacy pre-10.11.23 ExtractPoster
+        // configs are migrated to CanvasSource by the backend on load, so the UI reads CanvasSource here.
         var canvasSelect = view.querySelector('#selectCanvasSource');
         if (canvasSelect && !canvasSelect.value) {
-            canvasSelect.value = (settings.ExtractPoster === false) ? 'None' : 'Extract';
+            canvasSelect.value = settings.CanvasSource || 'Extract';
         }
 
         updateSeriesAssignment();
         updateVisibility();
         updateStyleDescription();
         syncColorControls();
-        debouncedPreview();
     }
 
     function getCurrentConfig() {
@@ -893,15 +892,19 @@ export default function (view) {
 
     // ── Style Descriptions ──────────────────────────────────
 
-    var posterStyleDescriptions = {
-        Standard: 'Full-frame episode image with text overlaid at the bottom. Clean and versatile — works well for most libraries.',
-        Brush: 'Artistic brush-stroke mask effect with episode info and title. Creates a painted, editorial look.',
-        Cutout: 'Large episode number or code cut out of the image. Bold typographic style, great for minimal designs.',
-        Frame: 'Episode image framed within a border with metadata outside. Gives a polished, gallery-like appearance.',
-        Logo: 'Series logo overlaid on the episode image. Ideal when you want branding-forward posters.',
-        Numeral: 'Prominent episode numeral as the focal element. Minimal and distinctive, emphasizes episode numbering.',
-        Split: 'Image split into sections with text in between. Creates a dynamic, magazine-style layout.'
-    };
+    var posterStyleDescriptions = {};
+
+    // Pull each style's description from the generators (Plugins/EpisodePosterGenerator/PosterStyles)
+    function loadPosterStyles() {
+        return ApiClient.ajax({
+            type: 'GET',
+            url: ApiClient.getUrl('Plugins/EpisodePosterGenerator/PosterStyles'),
+            dataType: 'json'
+        }).then(function (styles) {
+            (styles || []).forEach(function (s) { posterStyleDescriptions[s.value] = s.description; });
+            updateStyleDescription();
+        });
+    }
 
     function updateStyleDescription() {
         var style = view.querySelector('#selectPosterStyle').value;
@@ -950,7 +953,23 @@ export default function (view) {
         });
     }
 
-    var debouncedPreview = debounce(renderPreview, 350);
+    function openPreviewModal() {
+        var modal = view.querySelector('#previewModal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+        var btnClose = view.querySelector('#btnClosePreviewModal');
+        function close() {
+            modal.style.display = 'none';
+            modal.removeEventListener('click', onBackdrop);
+            document.removeEventListener('keydown', onKeydown);
+        }
+        function onBackdrop(e) { if (e.target === modal) close(); }
+        function onKeydown(e) { if (e.key === 'Escape') close(); }
+        if (btnClose) btnClose.onclick = close;
+        modal.addEventListener('click', onBackdrop);
+        document.addEventListener('keydown', onKeydown);
+        renderPreview();
+    }
 
     function loadPreviewComponents() {
         view.querySelectorAll('.poster-component-img').forEach(function (img) {
@@ -1090,6 +1109,8 @@ export default function (view) {
         view.querySelector('#btnDeleteConfig').addEventListener('click', deleteCurrentConfig);
         view.querySelector('#btnRenameConfig').addEventListener('click', renameCurrentConfig);
         view.querySelector('#btnExportConfig').addEventListener('click', exportCurrentConfig);
+        var btnPreview = view.querySelector('#btnPreviewPoster');
+        if (btnPreview) btnPreview.addEventListener('click', openPreviewModal);
         view.querySelector('#btnImportConfig').addEventListener('click', importCurrentConfig);
 
         // Series modal
@@ -1150,6 +1171,7 @@ export default function (view) {
             bindEventListeners();
             bindColorControls();
             loadPreviewComponents();
+            loadPosterStyles();
         }
 
         window.addEventListener('beforeunload', onBeforeUnload);

@@ -23,9 +23,24 @@
 }
 
 .nested-settings {
-    margin-left: 1.5em;
-    padding-left: 1em;
     border-left: 2px solid var(--epg-border-muted);
+}
+
+/* Beat base form.css .pluginConfigurationPage .inputContainer (0,2,0 !important) on the indent */
+.pluginConfigurationPage .inputContainer.nested-settings,
+.pluginConfigurationPage .selectContainer.nested-settings,
+.pluginConfigurationPage .nested-settings {
+    margin-left: 1.5em !important;
+    padding-left: 1em !important;
+}
+
+/* A checkbox field description belongs under the checkbox, not floated beside it */
+.pluginConfigurationPage .checkboxContainer {
+    display: block !important;
+}
+.pluginConfigurationPage .checkboxContainer > .fieldDescription {
+    display: block !important;
+    margin-left: 0 !important;
 }
 
 /* ── Color Controls ──────────────────────────────────── */
@@ -353,8 +368,8 @@
     }
     .cutout-logo-group,
     .nested-settings {
-        margin-left: 0.75em;
-        padding-left: 0.5em;
+        margin-left: 0.75em !important;
+        padding-left: 0.5em !important;
     }
 }
 

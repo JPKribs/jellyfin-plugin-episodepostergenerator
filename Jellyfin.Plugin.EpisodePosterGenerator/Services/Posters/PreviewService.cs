@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
@@ -169,6 +172,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 PosterStyle.Split => new SplitPosterGenerator(loggerFactory.CreateLogger<SplitPosterGenerator>()),
                 _ => new StandardPosterGenerator(loggerFactory.CreateLogger<StandardPosterGenerator>())
             };
+        }
+
+        // GetStyleCatalog
+        // Returns one generator per poster style so the configuration UI can read each style's own
+        // description instead of keeping a duplicate copy. Built from the same CreateGenerator mapping.
+        public static IReadOnlyList<IPosterGenerator> GetStyleCatalog()
+        {
+            return Enum.GetValues<PosterStyle>()
+                .Select(style => CreateGenerator(style, NullLoggerFactory.Instance))
+                .ToList();
         }
 
         // GetComponentImage

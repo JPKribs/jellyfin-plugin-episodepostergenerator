@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
-using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
+using Jellyfin.Plugin.EpisodePosterGenerator.Utilities;
 using SkiaSharp;
 using Microsoft.Extensions.Logging;
 
@@ -10,6 +10,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
     public class LogoPosterGenerator : BasePosterGenerator
     {
+        // Style
+        // The poster style this generator produces.
+        public override PosterStyle Style => PosterStyle.Logo;
+
+        // Description
+        // A short, user facing description of this style shown in the configuration UI.
+        public override string Description => "Series logo overlaid on the episode image. Ideal when you want branding-forward posters.";
+
         private readonly ILogger<LogoPosterGenerator> _logger;
 
         // LogoPosterGenerator

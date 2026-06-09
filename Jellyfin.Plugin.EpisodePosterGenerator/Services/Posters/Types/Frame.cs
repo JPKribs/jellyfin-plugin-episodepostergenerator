@@ -1,7 +1,7 @@
 using System;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
-using Jellyfin.Plugin.EpisodePosterGenerator.Utils;
+using Jellyfin.Plugin.EpisodePosterGenerator.Utilities;
 using SkiaSharp;
 using Microsoft.Extensions.Logging;
 
@@ -9,6 +9,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 {
     public class FramePosterGenerator : BasePosterGenerator
     {
+        // Style
+        // The poster style this generator produces.
+        public override PosterStyle Style => PosterStyle.Frame;
+
+        // Description
+        // A short, user facing description of this style shown in the configuration UI.
+        public override string Description => "Episode image framed within a border with metadata outside. Gives a polished, gallery-like appearance.";
+
         private readonly ILogger<FramePosterGenerator> _logger;
 
         // FramePosterGenerator

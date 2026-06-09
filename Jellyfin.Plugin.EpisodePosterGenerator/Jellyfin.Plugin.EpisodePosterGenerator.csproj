@@ -13,7 +13,7 @@
   <ItemGroup>
     <PackageReference Include="Jellyfin.Controller" Version="10.11.0" />
     <PackageReference Include="Jellyfin.Model" Version="10.11.0" />
-    <PackageReference Include="JPKribs.Jellyfin.Base" Version="2026.6.20" />
+    <PackageReference Include="JPKribs.Jellyfin.Base" Version="2026.6.23" />
     <PackageReference Include="SkiaSharp" Version="2.88.8" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
     
