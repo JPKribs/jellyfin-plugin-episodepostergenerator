@@ -57,7 +57,7 @@
                                         <img id="posterPreviewImage" class="poster-preview-image" alt="Live poster preview" />
                                         <div id="posterPreviewStatus" class="poster-preview-status">Loading preview…</div>
                                     </div>
-                                    <div class="poster-preview-caption">Rendered from sample artwork — updates live as you change settings</div>
+                                    <div class="poster-preview-caption">Rendered from sample artwork. Updates live as you change settings.</div>
                                 </div>
                                 <div class="poster-preview-components">
                                     <div class="poster-component" data-component="canvas" title="Click to expand">
@@ -109,7 +109,7 @@
                                         <input is="emby-checkbox" type="checkbox" id="chkCutoutBorder" data-setting="CutoutBorder" />
                                         <span class="checkboxLabel">Enable Cutout Text Border</span>
                                     </label>
-                                    <div class="fieldDescription">Add a contrasting border around the cutout text for better visibility.</div>
+                                    <div class="fieldDescription">Draw a contrasting border around the cutout text.</div>
                                 </div>
                                 <div class="inputContainer">
                                     <label for="selectCutoutType">Type:</label>
@@ -117,7 +117,7 @@
                                         <option value="Code">Code</option>
                                         <option value="Text">Text</option>
                                     </select>
-                                    <div class="fieldDescription">Choose between episode code (S01E01) or text (ONE) for cutout display.</div>
+                                    <div class="fieldDescription">Show the episode as a code like S01E01 or as a word like ONE.</div>
                                 </div>
                             </div>
 
@@ -143,7 +143,7 @@
                                 <div class="inputContainer">
                                     <label for="txtLogoHeight">Logo Height:</label>
                                     <input is="emby-input" type="number" id="txtLogoHeight" min="1.0" max="100.0" data-setting="LogoHeight" data-type="number" />
-                                    <div class="fieldDescription">Logo height as a percentage of the poster height (1-100%).</div>
+                                    <div class="fieldDescription">Logo height as a percent of the poster height, 1 to 100.</div>
                                 </div>
                             </div>
 
@@ -172,24 +172,24 @@
                                 <div class="inputContainer">
                                     <label for="txtExtractWindowStart">Extraction Start (%):</label>
                                     <input is="emby-input" type="number" id="txtExtractWindowStart" min="0" max="100" step="1" data-setting="ExtractWindowStart" data-type="number" />
-                                    <div class="fieldDescription">Skip the first X% of the episode to avoid opening credits and intro sequences (0-100%).</div>
+                                    <div class="fieldDescription">Skip this percent of the episode before extracting, avoiding intros.</div>
                                 </div>
                                 <div class="inputContainer">
                                     <label for="txtExtractWindowEnd">Extraction End (%):</label>
                                     <input is="emby-input" type="number" id="txtExtractWindowEnd" min="0" max="100" step="1" data-setting="ExtractWindowEnd" data-type="number" />
-                                    <div class="fieldDescription">Stop extracting at X% of the episode to avoid end credits and outro sequences (0-100%).</div>
+                                    <div class="fieldDescription">Stop extracting at this percent of the episode, avoiding credits.</div>
                                 </div>
                                 <div class="inputContainer">
                                     <label for="txtBrightenHDR">Brighten HDR (%):</label>
                                     <input is="emby-input" type="number" id="txtBrightenHDR" min="0" max="100" data-setting="BrightenHDR" data-type="number" />
-                                    <div class="fieldDescription">Brightness adjustment for HDR content as percentage (0-100%).</div>
+                                    <div class="fieldDescription">Brighten frames from HDR sources by this percent.</div>
                                 </div>
                                 <div class="checkboxContainer">
                                     <label class="emby-checkbox-label">
                                         <input is="emby-checkbox" type="checkbox" id="chkGenerateBackdrop" data-setting="GenerateBackdrop" data-default-unchecked />
                                         <span class="checkboxLabel">Save Extracted Frame as Episode Backdrop</span>
                                     </label>
-                                    <div class="fieldDescription">Also upload the cropped extracted frame as the episode's backdrop image. The fully rendered poster is still used as the primary image.</div>
+                                    <div class="fieldDescription">Also upload the cropped frame as the episode backdrop.</div>
                                 </div>
                             </div>
 
@@ -198,19 +198,19 @@
                                     <input is="emby-checkbox" type="checkbox" id="chkEnableLetterboxDetection" data-setting="EnableLetterboxDetection" />
                                     <span class="checkboxLabel">Enable Letterbox Detection</span>
                                 </label>
-                                <div class="fieldDescription">Automatically detect and crop black letterbox borders from poster images.</div>
+                                <div class="fieldDescription">Detect and crop black bars from extracted frames.</div>
                             </div>
 
                             <div class="nested-settings" data-depends-on="chkEnableLetterboxDetection" data-depends-on-canvas="Extract">
                                 <div class="inputContainer">
                                     <label for="txtLetterboxBlackThreshold">Black Threshold:</label>
                                     <input is="emby-input" type="number" id="txtLetterboxBlackThreshold" min="0" max="255" data-setting="LetterboxBlackThreshold" data-type="number" />
-                                    <div class="fieldDescription">Pixel brightness threshold for black detection (0-255). Lower values detect darker pixels as letterbox.</div>
+                                    <div class="fieldDescription">Brightness below which a pixel counts as black, 0 to 255.</div>
                                 </div>
                                 <div class="inputContainer">
                                     <label for="txtLetterboxConfidence">Detection Confidence (%):</label>
                                     <input is="emby-input" type="number" id="txtLetterboxConfidence" min="50" max="100" step="1" data-setting="LetterboxConfidence" data-type="number" />
-                                    <div class="fieldDescription">Percentage of pixels that must be black to consider it letterboxing (50-100%).</div>
+                                    <div class="fieldDescription">Percent of pixels that must be black to count as letterboxing, 50 to 100.</div>
                                 </div>
                             </div>
 
@@ -227,13 +227,13 @@
                             <div class="inputContainer nested-settings" data-hide-for-posterfill="Original">
                                 <label for="txtPosterDimensionRatio">Aspect Ratio:</label>
                                 <input is="emby-input" type="text" id="txtPosterDimensionRatio" placeholder="16:9" data-setting="PosterDimensionRatio" />
-                                <div class="fieldDescription">Aspect ratio for the poster (e.g., 16:9, 3:2, 4:3).</div>
+                                <div class="fieldDescription">Aspect ratio for the poster, such as 16:9.</div>
                             </div>
 
                             <div class="inputContainer">
                                 <label for="txtPosterSafeArea">Safe Area:</label>
                                 <input is="emby-input" type="number" id="txtPosterSafeArea" min="1.0" max="100.0" data-setting="PosterSafeArea" data-type="number" />
-                                <div class="fieldDescription">Percentage of vertical and horizontal space preserved around edges as safe area (1-100%).</div>
+                                <div class="fieldDescription">Margin kept clear around all edges. The percent applies to the poster height and the same pixel amount is used on every side.</div>
                             </div>
 
                         </div>
@@ -252,7 +252,7 @@
                                     <input is="emby-checkbox" type="checkbox" id="chkPaletteDerivedColors" data-setting="PaletteDerivedColors" data-default-unchecked />
                                     <span class="checkboxLabel">Palette-Derived Colors</span>
                                 </label>
-                                <div class="fieldDescription">Sample the dominant color from each episode's image and use it as the overlay color (the secondary gradient color becomes a darker shade of it). The alpha values configured below still apply; only the color channels are replaced.</div>
+                                <div class="fieldDescription">Use the dominant color from each episode's image as the overlay color. The alpha values below still apply.</div>
                             </div>
 
                             <div class="inputContainer">
@@ -263,7 +263,7 @@
                                     <span class="alpha-label">102</span>
                                     <input is="emby-input" type="text" id="txtOverlayColor" placeholder="#66000000" data-setting="OverlayColor" class="hex-input" aria-describedby="descOverlayColor" />
                                 </div>
-                                <div id="descOverlayColor" class="fieldDescription">ARGB hex for background overlay color and transparency (e.g., #66000000 for semi-transparent black).</div>
+                                <div id="descOverlayColor" class="fieldDescription">ARGB hex color for the overlay.</div>
                             </div>
 
                             <div class="inputContainer">
@@ -275,7 +275,7 @@
                                     <option value="TopLeftCornerToBottomRightCorner">Top Left Corner to Bottom Right Corner</option>
                                     <option value="TopRightCornerToBottomLeftCorner">Top Right Corner to Bottom Left Corner</option>
                                 </select>
-                                <div class="fieldDescription">Direction of gradient overlay effect. When enabled, creates a gradient from the primary overlay color to the secondary color.</div>
+                                <div class="fieldDescription">Gradient direction from the overlay color to the secondary color.</div>
                             </div>
 
                             <div class="nested-settings" data-depends-on-gradient="selectOverlayGradient">
@@ -287,7 +287,7 @@
                                         <span class="alpha-label">102</span>
                                         <input is="emby-input" type="text" id="txtOverlaySecondaryColor" placeholder="#66000000" data-setting="OverlaySecondaryColor" class="hex-input" aria-describedby="descOverlaySecondaryColor" />
                                     </div>
-                                    <div id="descOverlaySecondaryColor" class="fieldDescription">ARGB hex for secondary gradient color. This is the end color for gradient overlays.</div>
+                                    <div id="descOverlaySecondaryColor" class="fieldDescription">ARGB hex color for the gradient end.</div>
                                 </div>
                             </div>
 
@@ -305,7 +305,7 @@
                             <div class="inputContainer">
                                 <label for="txtGraphicPath">Graphic File Path:</label>
                                 <input is="emby-input" type="text" id="txtGraphicPath" placeholder="/path/to/graphic.png" data-setting="GraphicPath" />
-                                <div class="fieldDescription">Optional file path to a static graphic overlay applied to all posters. The graphic is positioned above the background image but below all text elements. Supports PNG, JPG, and WEBP formats. Leave empty to disable. Use absolute file paths accessible by the Jellyfin server.</div>
+                                <div class="fieldDescription">Optional path to a graphic drawn above the image and below text. PNG, JPG, or WEBP. Leave empty to disable.</div>
                             </div>
 
                             <div class="cutout-logo-group" data-depends-on-value="txtGraphicPath">
@@ -330,12 +330,12 @@
                                 <div class="inputContainer">
                                     <label for="txtGraphicWidth">Graphic Width (%):</label>
                                     <input is="emby-input" type="number" id="txtGraphicWidth" min="1.0" max="100.0" data-setting="GraphicWidth" data-type="number" />
-                                    <div class="fieldDescription">Graphic width as a percentage of the poster width (1-100%).</div>
+                                    <div class="fieldDescription">Graphic width as a percent of the poster width, 1 to 100.</div>
                                 </div>
                                 <div class="inputContainer">
                                     <label for="txtGraphicHeight">Graphic Height (%):</label>
                                     <input is="emby-input" type="number" id="txtGraphicHeight" min="1.0" max="100.0" data-setting="GraphicHeight" data-type="number" />
-                                    <div class="fieldDescription">Graphic height as a percentage of the poster height (1-100%).</div>
+                                    <div class="fieldDescription">Graphic height as a percent of the poster height, 1 to 100.</div>
                                 </div>
                             </div>
 
@@ -363,13 +363,13 @@
                                     <input is="emby-checkbox" type="checkbox" id="chkEpisodeUseCustomFont" data-setting="EpisodeUseCustomFont" />
                                     <span class="checkboxLabel">Use Custom Font</span>
                                 </label>
-                                <div class="fieldDescription">Enable to use a custom font file instead of a built-in font.</div>
+                                <div class="fieldDescription">Use a font file instead of a built in font.</div>
                             </div>
 
                             <div class="inputContainer" data-depends-on="chkShowEpisode,chkEpisodeUseCustomFont">
                                 <label for="txtEpisodeFontPath">Font Path:</label>
                                 <input is="emby-input" type="text" id="txtEpisodeFontPath" placeholder="/path/to/font.ttf" data-setting="EpisodeFontPath" />
-                                <div class="fieldDescription">Path to a custom font file (TTF, OTF, TTC). Use absolute file paths accessible by the Jellyfin server.</div>
+                                <div class="fieldDescription">Path to a TTF, OTF, or TTC font file readable by the server.</div>
                             </div>
 
                             <div data-hide-when-checked="chkEpisodeUseCustomFont" data-depends-on="chkShowEpisode">
@@ -406,7 +406,7 @@
                                         <option value="Trebuchet MS">Trebuchet MS</option>
                                         <option value="Verdana">Verdana</option>
                                     </select>
-                                    <div class="fieldDescription">Font family for the episode number and season information text.</div>
+                                    <div class="fieldDescription">Font family for the episode text.</div>
                                 </div>
                                 <div class="inputContainer">
                                     <label for="selectEpisodeFontStyle">Font Style:</label>
@@ -416,14 +416,14 @@
                                         <option value="Italic">Italic</option>
                                         <option value="Bold Italic">Bold Italic</option>
                                     </select>
-                                    <div class="fieldDescription">Font style for the episode number and season information text.</div>
+                                    <div class="fieldDescription">Font style for the episode text.</div>
                                 </div>
                             </div>
 
                             <div class="inputContainer" data-hide-for-styles="Cutout,Numeral" data-depends-on="chkShowEpisode">
                                 <label for="txtEpisodeFontSize">Font Size:</label>
                                 <input is="emby-input" type="number" id="txtEpisodeFontSize" min="1.0" max="100.0" data-setting="EpisodeFontSize" data-type="number" />
-                                <div class="fieldDescription">Font size for episode information as a percentage of poster height (1-100%).</div>
+                                <div class="fieldDescription">Episode text size as a percent of the poster height, 1 to 100.</div>
                             </div>
 
                             <div class="inputContainer" data-hide-for-styles="Cutout" data-depends-on="chkShowEpisode">
@@ -434,7 +434,7 @@
                                     <span class="alpha-label">255</span>
                                     <input is="emby-input" type="text" id="txtEpisodeFontColor" placeholder="#FFFFFFFF" data-setting="EpisodeFontColor" class="hex-input" aria-describedby="descEpisodeFontColor" />
                                 </div>
-                                <div id="descEpisodeFontColor" class="fieldDescription">ARGB hex color code for episode number text (e.g., #FFFFFFFF for white).</div>
+                                <div id="descEpisodeFontColor" class="fieldDescription">ARGB hex color for the episode text.</div>
                             </div>
 
                         </div>
@@ -456,18 +456,28 @@
                                 <div class="fieldDescription">Display the episode title text on the poster.</div>
                             </div>
 
+                            <div class="inputContainer" data-depends-on="chkShowTitle">
+                                <label for="selectLongTitleHandling">Long Titles:</label>
+                                <select is="emby-select" id="selectLongTitleHandling" data-setting="LongTitleHandling">
+                                    <option value="Ellipsis">Ellipsis</option>
+                                    <option value="Abbreviate">Abbreviate</option>
+                                    <option value="DropName">Drop Name</option>
+                                </select>
+                                <div class="fieldDescription">What to do when a title does not fit. Ellipsis trims it. Abbreviate uses word initials. Drop Name hides it.</div>
+                            </div>
+
                             <div class="checkboxContainer" data-depends-on="chkShowTitle">
                                 <label class="emby-checkbox-label">
                                     <input is="emby-checkbox" type="checkbox" id="chkTitleUseCustomFont" data-setting="TitleUseCustomFont" />
                                     <span class="checkboxLabel">Use Custom Font</span>
                                 </label>
-                                <div class="fieldDescription">Enable to use a custom font file instead of a built-in font.</div>
+                                <div class="fieldDescription">Use a font file instead of a built in font.</div>
                             </div>
 
                             <div class="inputContainer" data-depends-on="chkShowTitle,chkTitleUseCustomFont">
                                 <label for="txtTitleFontPath">Font Path:</label>
                                 <input is="emby-input" type="text" id="txtTitleFontPath" placeholder="/path/to/font.ttf" data-setting="TitleFontPath" />
-                                <div class="fieldDescription">Path to a custom font file (TTF, OTF, TTC). Use absolute file paths accessible by the Jellyfin server.</div>
+                                <div class="fieldDescription">Path to a TTF, OTF, or TTC font file readable by the server.</div>
                             </div>
 
                             <div data-hide-when-checked="chkTitleUseCustomFont" data-depends-on="chkShowTitle">
@@ -504,7 +514,7 @@
                                         <option value="Trebuchet MS">Trebuchet MS</option>
                                         <option value="Verdana">Verdana</option>
                                     </select>
-                                    <div class="fieldDescription">Font family for the episode title text.</div>
+                                    <div class="fieldDescription">Font family for the title text.</div>
                                 </div>
                                 <div class="inputContainer">
                                     <label for="selectTitleFontStyle">Font Style:</label>
@@ -514,14 +524,14 @@
                                         <option value="Italic">Italic</option>
                                         <option value="Bold Italic">Bold Italic</option>
                                     </select>
-                                    <div class="fieldDescription">Font style for the episode title text.</div>
+                                    <div class="fieldDescription">Font style for the title text.</div>
                                 </div>
                             </div>
 
                             <div class="inputContainer" data-depends-on="chkShowTitle">
                                 <label for="txtTitleFontSize">Font Size:</label>
                                 <input is="emby-input" type="number" id="txtTitleFontSize" min="1.0" max="100.0" data-setting="TitleFontSize" data-type="number" />
-                                <div class="fieldDescription">Font size for episode title as a percentage of poster height (1-100%).</div>
+                                <div class="fieldDescription">Title size as a percent of the poster height, 1 to 100.</div>
                             </div>
 
                             <div class="inputContainer" data-depends-on="chkShowTitle">
@@ -532,7 +542,7 @@
                                     <span class="alpha-label">255</span>
                                     <input is="emby-input" type="text" id="txtTitleFontColor" placeholder="#FFFFFFFF" data-setting="TitleFontColor" class="hex-input" aria-describedby="descTitleFontColor" />
                                 </div>
-                                <div id="descTitleFontColor" class="fieldDescription">ARGB hex color code for episode title text (e.g., #FFFFFFFF for white).</div>
+                                <div id="descTitleFontColor" class="fieldDescription">ARGB hex color for the title text.</div>
                             </div>
 
                         </div>

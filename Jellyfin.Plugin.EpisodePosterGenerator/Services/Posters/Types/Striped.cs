@@ -22,7 +22,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // Description
         // A short, user facing description of this style shown in the configuration UI.
-        public override string Description => "Tilted color sash with pinstripes carrying the episode title across the image. Sporty and graphic.";
+        public override string Description => "Tilted pinstriped sash carrying the episode title. Sporty and graphic.";
 
         private readonly ILogger<StripedPosterGenerator> _logger;
 
@@ -81,23 +81,29 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 episodeMetadata.SeasonNumber ?? 0,
                 episodeMetadata.EpisodeNumberStart ?? 0);
 
-            bool titleOnBand = settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName);
-
-            if (titleOnBand)
+            bool titleOnBand = false;
+            if (settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
             {
-                DrawBandText(skCanvas, episodeMetadata.EpisodeName!, settings, width, height,
+                titleOnBand = DrawBandText(skCanvas, episodeMetadata.EpisodeName!, settings, width, height,
                     settings.EffectiveTitleFontPath, settings.TitleFontFamily, settings.TitleFontStyle,
                     settings.TitleFontSize, settings.TitleFontColor, safeArea);
             }
-            else if (settings.ShowEpisode)
+
+            // When there is no title on the band (disabled, or dropped by the long
+            // title handling), the episode code rides the band instead of the corner.
+            if (!titleOnBand)
             {
-                DrawBandText(skCanvas, episodeCode, settings, width, height,
-                    settings.EffectiveEpisodeFontPath, settings.EpisodeFontFamily, settings.EpisodeFontStyle,
-                    settings.EpisodeFontSize, settings.EpisodeFontColor, safeArea);
+                if (settings.ShowEpisode)
+                {
+                    DrawBandText(skCanvas, episodeCode, settings, width, height,
+                        settings.EffectiveEpisodeFontPath, settings.EpisodeFontFamily, settings.EpisodeFontStyle,
+                        settings.EpisodeFontSize, settings.EpisodeFontColor, safeArea);
+                }
+
                 return;
             }
 
-            if (settings.ShowEpisode && titleOnBand)
+            if (settings.ShowEpisode)
             {
                 DrawCornerEpisodeCode(skCanvas, episodeCode, settings, height, safeArea);
             }
@@ -105,8 +111,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // DrawBandText
         // Draws a single line of text centered along the tilted sash, sized to fit the
-        // band height and truncated with an ellipsis to the safe width.
-        private static void DrawBandText(SKCanvas canvas, string text, PosterSettings settings, int width, int height,
+        // band height and fitted to the safe width using the long title handling.
+        // Returns false when the handling drops the text instead of drawing it.
+        private static bool DrawBandText(SKCanvas canvas, string text, PosterSettings settings, int width, int height,
             string? fontPath, string fontFamily, string fontStyle, float fontSizePercent, string fontColor, SKRect safeArea)
         {
             var typeface = FontUtils.ResolveTypeface(fontPath, fontFamily, FontUtils.GetFontStyle(fontStyle));
@@ -123,7 +130,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             using var textPaint = PaintFactory.CreateTextPaint(ColorUtils.ParseHexColor(fontColor), fontSize, typeface);
             using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface);
 
-            var line = TextUtils.TruncateWithEllipsis(text, textPaint, maxTextWidth);
+            var line = TextUtils.FitTitleLine(text, textPaint, maxTextWidth, settings.LongTitleHandling);
+            if (line == null)
+                return false;
 
             var metrics = textPaint.FontMetrics;
             float baselineY = bandCenterY - ((metrics.Ascent + metrics.Descent) / 2f);
@@ -132,6 +141,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             canvas.RotateDegrees(BandAngleDegrees, width / 2f, bandCenterY);
             PaintFactory.DrawTextWithShadow(canvas, line, width / 2f, baselineY, textPaint, shadowPaint);
             canvas.Restore();
+            return true;
         }
 
         // DrawCornerEpisodeCode

@@ -15,7 +15,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // Description
         // A short, user facing description of this style shown in the configuration UI.
-        public override string Description => "Episode text on a frosted glass panel that blurs the image behind it. Modern and readable on any background.";
+        public override string Description => "Episode text on a frosted glass panel that blurs the image behind it.";
 
         private readonly ILogger<FrostedGlassPosterGenerator> _logger;
 
@@ -64,7 +64,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var titleLines = new List<string>();
             if (settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
             {
-                titleLines.AddRange(TextUtils.FitTextToWidth(episodeMetadata.EpisodeName, titlePaint, maxTextWidth));
+                titleLines.AddRange(TextUtils.FitTitleLines(episodeMetadata.EpisodeName, titlePaint, maxTextWidth, settings.LongTitleHandling));
             }
 
             string? episodeText = null;

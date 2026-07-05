@@ -2,7 +2,7 @@
   "name": "Standard Brush",
   "description": "A paint brush splatter on a white background with episode information in the bottom left.",
   "author": "Joseph Kribs",
-  "version": "10.11.24",
+  "version": "10.11.24.1",
   "createdDate": "2025-12-01T00:35:17.138Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -36,6 +36,7 @@
     "TitleFontStyle": "Bold",
     "TitleFontSize": 5,
     "TitleFontColor": "#FF000000",
+    "LongTitleHandling": "Ellipsis",
     "OverlayColor": "#FFFEFFFF",
     "OverlayGradient": "None",
     "OverlaySecondaryColor": "#40011892",

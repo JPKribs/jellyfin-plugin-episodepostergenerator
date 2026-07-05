@@ -88,6 +88,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 
         public string TitleFontColor { get; set; } = "#FFFFFFFF";
 
+        /// <summary>
+        /// How to handle episode titles that do not fit the poster's text area.
+        /// </summary>
+        public LongTitleHandling LongTitleHandling { get; set; } = LongTitleHandling.Ellipsis;
+
         public string OverlayColor { get; set; } = "#66000000";
 
         public OverlayGradient OverlayGradient { get; set; } = OverlayGradient.None;

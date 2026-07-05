@@ -17,7 +17,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // Description
         // A short, user facing description of this style shown in the configuration UI.
-        public override string Description => "Image split into sections with text in between. Creates a dynamic, magazine-style layout.";
+        public override string Description => "Series poster beside the episode image with text. Magazine layout.";
 
         private readonly ILogger<SplitPosterGenerator> _logger;
 
@@ -148,10 +148,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             if (settings.ShowTitle && settings.ShowEpisode)
             {
                 var titleHeight = DrawEpisodeTitle(skCanvas, episodeTitle, settings, width, height, currentBottomY, safeArea);
-                currentBottomY -= titleHeight + spacingHeight;
 
-                var lineHeight = DrawSeparatorLine(settings, skCanvas, currentBottomY, safeArea);
-                currentBottomY -= lineHeight + spacingHeight;
+                // The separator only appears when a title was actually drawn (a dropped
+                // long title renders like the episode info only layout).
+                if (titleHeight > 0)
+                {
+                    currentBottomY -= titleHeight + spacingHeight;
+                    var lineHeight = DrawSeparatorLine(settings, skCanvas, currentBottomY, safeArea);
+                    currentBottomY -= lineHeight + spacingHeight;
+                }
 
                 DrawEpisodeInfo(skCanvas, seasonNumber, episodeNumber, settings, height, currentBottomY, safeArea);
             }
@@ -189,14 +194,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var posterWidth = CalculatePosterWidth(height);
             var rightSideWidth = width - posterWidth;
 
-            var safeMargin = GetSafeAreaMargin(settings);
-            var marginX = rightSideWidth * safeMargin;
-            var marginY = height * safeMargin;
+            // Same pixel margin on all sides, derived from the poster height.
+            var margin = height * GetSafeAreaMargin(settings);
 
-            var safeLeft = posterWidth + marginX;
-            var safeTop = marginY;
-            var safeWidth = rightSideWidth - (2 * marginX);
-            var safeHeight = height - (2 * marginY);
+            var safeLeft = posterWidth + margin;
+            var safeTop = margin;
+            var safeWidth = rightSideWidth - (2 * margin);
+            var safeHeight = height - (2 * margin);
 
             return new SKRect(safeLeft, safeTop, safeLeft + safeWidth, safeTop + safeHeight);
         }
@@ -213,7 +217,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface);
 
             var safeWidth = safeArea.Width * RenderConstants.TextWidthMultiplier;
-            var lines = TextUtils.FitTextToWidth(title, titlePaint, safeWidth);
+            var lines = TextUtils.FitTitleLines(title, titlePaint, safeWidth, config.LongTitleHandling);
+            if (lines.Count == 0)
+                return 0;
 
             var lineHeight = fontSize * RenderConstants.LineHeightMultiplier;
             var totalHeight = (lines.Count - 1) * lineHeight + fontSize;

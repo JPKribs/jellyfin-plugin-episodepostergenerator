@@ -15,7 +15,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // Description
         // A short, user facing description of this style shown in the configuration UI.
-        public override string Description => "Large episode number or code cut out of the image. Bold typographic style, great for minimal designs.";
+        public override string Description => "Large episode code cut out of the image. Bold and minimal.";
 
         private readonly ILogger<CutoutPosterGenerator> _logger;
         private static readonly char[] WordSeparators = { ' ', '-' };
@@ -90,10 +90,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
             var centerX = safeArea.MidX;
 
-            // Wrap long titles to at most two lines with ellipsis, anchored so the bottom
-            // line stays at titleY and extra lines stack upward into the reserved title space.
+            // Wrap long titles to at most two lines, anchored so the bottom line stays
+            // at titleY and extra lines stack upward into the reserved title space.
             var availableWidth = safeArea.Width * RenderConstants.TextWidthMultiplier;
-            var lines = TextUtils.FitTextToWidth(episodeMetadata.EpisodeName, titlePaint, availableWidth);
+            var lines = TextUtils.FitTitleLines(episodeMetadata.EpisodeName, titlePaint, availableWidth, settings.LongTitleHandling);
             var lineHeight = titlePaint.TextSize * RenderConstants.LineHeightMultiplier;
 
             for (int i = 0; i < lines.Count; i++)

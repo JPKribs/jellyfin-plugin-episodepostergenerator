@@ -16,7 +16,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // Description
         // A short, user facing description of this style shown in the configuration UI.
-        public override string Description => "Series logo overlaid on the episode image. Ideal when you want branding-forward posters.";
+        public override string Description => "Series logo over the episode image. Puts branding first.";
 
         private readonly ILogger<LogoPosterGenerator> _logger;
 
@@ -47,7 +47,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             if (settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
             {
                 var titleHeight = DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, settings, width, height, currentY, safeArea);
-                currentY -= titleHeight + spacing;
+                if (titleHeight > 0)
+                    currentY -= titleHeight + spacing;
             }
 
             if (settings.ShowEpisode)
@@ -172,7 +173,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface);
 
             var availableWidth = safeArea.Width * RenderConstants.TextWidthMultiplier;
-            var lines = TextUtils.FitTextToWidth(title, titlePaint, availableWidth);
+            var lines = TextUtils.FitTitleLines(title, titlePaint, availableWidth, config.LongTitleHandling);
+            if (lines.Count == 0)
+                return 0;
 
             var lineHeight = fontSize * RenderConstants.LineHeightMultiplier;
             var totalHeight = (lines.Count - 1) * lineHeight + fontSize;

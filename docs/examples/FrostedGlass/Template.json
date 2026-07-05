@@ -2,7 +2,7 @@
   "name": "FrostedGlass",
   "description": "Frosted glass panel behind the episode text, blurring the frame beneath it.",
   "author": "Joseph Kribs",
-  "version": "10.11.24",
+  "version": "10.11.24.1",
   "createdDate": "2026-07-04T12:00:00.000Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -36,6 +36,7 @@
     "TitleFontStyle": "Bold",
     "TitleFontSize": 7,
     "TitleFontColor": "#FFFFFFFF",
+    "LongTitleHandling": "Ellipsis",
     "OverlayColor": "#30000000",
     "OverlayGradient": "None",
     "OverlaySecondaryColor": "#30000000",

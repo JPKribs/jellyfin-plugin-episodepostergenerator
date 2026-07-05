@@ -15,7 +15,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // Description
         // A short, user facing description of this style shown in the configuration UI.
-        public override string Description => "Progress bar showing the episode's position within the season, with episode info and optional title. Data-driven and clean.";
+        public override string Description => "Season progress bar with episode info and optional title. Clean and data driven.";
 
         private readonly ILogger<TimelinePosterGenerator> _logger;
 
@@ -150,7 +150,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface, SKTextAlign.Left);
 
             var maxWidth = safeArea.Width * RenderConstants.TextWidthMultiplier;
-            var lines = TextUtils.FitTextToWidth(title, titlePaint, maxWidth);
+            var lines = TextUtils.FitTitleLines(title, titlePaint, maxWidth, config.LongTitleHandling);
+            if (lines.Count == 0)
+                return;
 
             var lineHeight = fontSize * RenderConstants.LineHeightMultiplier;
             var totalHeight = (lines.Count - 1) * lineHeight + fontSize;

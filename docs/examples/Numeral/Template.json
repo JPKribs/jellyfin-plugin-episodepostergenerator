@@ -2,7 +2,7 @@
   "name": "Numeral",
   "description": "Numeral poster with a thin, black overlay and episode number visible.",
   "author": "Joseph Kribs",
-  "version": "10.11.24",
+  "version": "10.11.24.1",
   "createdDate": "2025-10-21T13:29:28.076Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -36,6 +36,7 @@
     "TitleFontStyle": "Bold",
     "TitleFontSize": 10,
     "TitleFontColor": "#FFFFFFFF",
+    "LongTitleHandling": "Ellipsis",
     "OverlayColor": "#40000000",
     "OverlayGradient": "None",
     "OverlaySecondaryColor": "#40011892",

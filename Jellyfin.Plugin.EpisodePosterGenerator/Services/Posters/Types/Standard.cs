@@ -16,7 +16,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // Description
         // A short, user facing description of this style shown in the configuration UI.
-        public override string Description => "Full-frame episode image with text overlaid at the bottom. Clean and versatile, this works well for most libraries.";
+        public override string Description => "Full frame image with text at the bottom. Clean and versatile.";
 
         private readonly ILogger<StandardPosterGenerator> _logger;
 
@@ -43,10 +43,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             if (settings.ShowTitle && settings.ShowEpisode)
             {
                 var titleHeight = DrawEpisodeTitle(skCanvas, episodeTitle, settings, width, height, currentBottomY, safeArea);
-                currentBottomY -= titleHeight + spacingHeight;
 
-                var lineHeight = DrawSeparatorLine(settings, skCanvas, width, currentBottomY, safeArea);
-                currentBottomY -= lineHeight + spacingHeight;
+                // The separator only appears when a title was actually drawn (a dropped
+                // long title renders like the episode info only layout).
+                if (titleHeight > 0)
+                {
+                    currentBottomY -= titleHeight + spacingHeight;
+                    var lineHeight = DrawSeparatorLine(settings, skCanvas, width, currentBottomY, safeArea);
+                    currentBottomY -= lineHeight + spacingHeight;
+                }
 
                 DrawEpisodeInfo(skCanvas, seasonNumber, episodeNumber, settings, width, height, currentBottomY, safeArea);
             }
@@ -81,7 +86,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface);
 
             var safeWidth = safeArea.Width * RenderConstants.TextWidthMultiplier;
-            var lines = TextUtils.FitTextToWidth(title, titlePaint, safeWidth);
+            var lines = TextUtils.FitTitleLines(title, titlePaint, safeWidth, config.LongTitleHandling);
+            if (lines.Count == 0)
+                return 0;
 
             var lineHeight = fontSize * RenderConstants.LineHeightMultiplier;
             var totalHeight = (lines.Count - 1) * lineHeight + fontSize;

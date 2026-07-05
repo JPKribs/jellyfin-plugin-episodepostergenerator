@@ -78,13 +78,19 @@ public class ConfigurationHashService
 
         var json = JsonSerializer.Serialize(hashConfig, JsonOptions);
 
-        // PaletteDerivedColors (added 10.11.24) participates in the hash only when enabled,
-        // so configs upgraded with it off keep their pre-10.11.24 hash and the whole library
-        // is not needlessly reprocessed. Enabling it changes the output, so it must change
+        // Settings added after 10.11.23 participate in the hash only when they differ from
+        // their defaults, so upgraded configs keep their stored hash and the library is not
+        // needlessly reprocessed. Changing one of them changes the output, so it must change
         // the hash. Same upgrade-compat approach as the ExtractPoster mapping above.
+        // Markers append in a fixed order; never reorder or reformat existing ones.
         if (settings.PaletteDerivedColors)
         {
             json += "|paletteDerivedColors:true";
+        }
+
+        if (settings.LongTitleHandling != LongTitleHandling.Ellipsis)
+        {
+            json += "|longTitleHandling:" + settings.LongTitleHandling;
         }
 
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(json));

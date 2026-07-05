@@ -2,7 +2,7 @@
   "name": "Standard",
   "description": "Standard poster with a thin, black overlay and all episode details visible.",
   "author": "Joseph Kribs",
-  "version": "10.11.24",
+  "version": "10.11.24.1",
   "createdDate": "2025-10-21T12:33:30.118Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -36,6 +36,7 @@
     "TitleFontStyle": "Bold",
     "TitleFontSize": 7,
     "TitleFontColor": "#FFC0C0C0",
+    "LongTitleHandling": "Ellipsis",
     "OverlayColor": "#60000000",
     "OverlayGradient": "None",
     "OverlaySecondaryColor": "#500096FF",

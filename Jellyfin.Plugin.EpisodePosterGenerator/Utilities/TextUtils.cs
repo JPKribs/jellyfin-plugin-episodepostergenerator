@@ -45,6 +45,93 @@ public static class TextUtils
         DrawTextLines(canvas, lines, alignmentX, baseY, fontSize, titlePaint, shadowPaint);
     }
 
+    // FitTitleLines
+    // Applies the configured long title handling and returns the lines to draw.
+    // Returns an empty list when the handling drops a title that does not fit.
+    public static IReadOnlyList<string> FitTitleLines(string title, SKPaint paint, float maxWidth, LongTitleHandling handling)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return Array.Empty<string>();
+
+        if (handling == LongTitleHandling.Ellipsis)
+            return FitTextToWidth(title, paint, maxWidth);
+
+        // Abbreviate and DropName only engage when the title would otherwise be cut:
+        // a title that fits on one line, or wraps to two whole lines, renders as normal.
+        if (paint.MeasureText(title) <= maxWidth)
+            return new[] { title };
+
+        var words = title.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length > 1)
+        {
+            int split = FindOptimalSplitPoint(words, paint, maxWidth);
+            var line1 = string.Join(" ", words[..split]);
+            var line2 = string.Join(" ", words[split..]);
+            if (paint.MeasureText(line1) <= maxWidth && paint.MeasureText(line2) <= maxWidth)
+                return new[] { line1, line2 };
+        }
+
+        return handling == LongTitleHandling.DropName
+            ? Array.Empty<string>()
+            : new[] { FitAbbreviation(AbbreviateTitle(title), paint, maxWidth) };
+    }
+
+    // FitTitleLine
+    // Single line variant of FitTitleLines for styles that cannot wrap.
+    // Returns null when the handling drops a title that does not fit.
+    public static string? FitTitleLine(string title, SKPaint paint, float maxWidth, LongTitleHandling handling)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return null;
+
+        if (paint.MeasureText(title) <= maxWidth)
+            return title;
+
+        return handling switch
+        {
+            LongTitleHandling.Abbreviate => FitAbbreviation(AbbreviateTitle(title), paint, maxWidth),
+            LongTitleHandling.DropName => null,
+            _ => TruncateWithEllipsis(title, paint, maxWidth)
+        };
+    }
+
+    // AbbreviateTitle
+    // Reduces a title to the first letter of each capitalized word, so
+    // "Lord of the Ring" becomes "LR". Falls back to the first letter of
+    // every word when the title has no capitalized words.
+    public static string AbbreviateTitle(string title)
+    {
+        var words = title.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var initials = words
+            .Where(w => char.IsUpper(w[0]))
+            .Select(w => w[0])
+            .ToList();
+
+        if (initials.Count == 0)
+        {
+            initials = words.Select(w => char.ToUpperInvariant(w[0])).ToList();
+        }
+
+        return new string(initials.ToArray());
+    }
+
+    // FitAbbreviation
+    // Shrinks an abbreviation that is still too wide by removing letters from
+    // the middle until it fits, always keeping the first and last letters.
+    public static string FitAbbreviation(string abbreviation, SKPaint paint, float maxWidth)
+    {
+        if (abbreviation.Length <= 2 || paint.MeasureText(abbreviation) <= maxWidth)
+            return abbreviation;
+
+        var letters = new List<char>(abbreviation);
+        while (letters.Count > 2 && paint.MeasureText(new string(letters.ToArray())) > maxWidth)
+        {
+            letters.RemoveAt(letters.Count / 2);
+        }
+
+        return new string(letters.ToArray());
+    }
+
     // FitTextToWidth
     // Fits text within width constraints using wrapping and ellipsis truncation.
     public static IReadOnlyList<string> FitTextToWidth(string text, SKPaint paint, float maxWidth)
@@ -171,15 +258,14 @@ public static class TextUtils
     // Calculates the safe drawing area within canvas boundaries accounting for margins.
     private static SKRect CalculateSafeArea(float canvasWidth, float canvasHeight, PosterSettings settings)
     {
-        var safeAreaMargin = settings.PosterSafeArea / 100f;
-        var marginX = canvasWidth * safeAreaMargin;
-        var marginY = canvasHeight * safeAreaMargin;
+        // Same pixel margin on all sides, derived from the poster height.
+        var margin = canvasHeight * (settings.PosterSafeArea / 100f);
 
         return new SKRect(
-            marginX,
-            marginY,
-            canvasWidth - marginX,
-            canvasHeight - marginY
+            margin,
+            margin,
+            canvasWidth - margin,
+            canvasHeight - margin
         );
     }
 

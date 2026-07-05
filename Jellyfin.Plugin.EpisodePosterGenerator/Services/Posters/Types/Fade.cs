@@ -19,7 +19,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // Description
         // A short, user facing description of this style shown in the configuration UI.
-        public override string Description => "Hard one-sided fade with a large episode number and a vertical title running up the edge. Editorial and bold.";
+        public override string Description => "One sided fade with a big episode number and a vertical title. Editorial and bold.";
 
         private readonly ILogger<FadePosterGenerator> _logger;
 
@@ -120,7 +120,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             if (availableRun <= fontSize)
                 return;
 
-            var text = TextUtils.TruncateWithEllipsis(title.ToUpperInvariant(), titlePaint, availableRun);
+            var text = TextUtils.FitTitleLine(title.ToUpperInvariant(), titlePaint, availableRun, config.LongTitleHandling);
+            if (text == null)
+                return;
 
             // Rotate around the anchor so the text runs bottom-to-top along the left edge.
             // The baseline sits on the anchor's vertical line; shift right by the ascent so

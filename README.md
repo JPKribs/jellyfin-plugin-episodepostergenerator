@@ -43,7 +43,7 @@ Decorative frame borders with episode title and optional season/episode informat
 | ![Frame Example 1](docs/examples/Frame/Example1.png) | ![Frame Example 2](docs/examples/Frame/Example2.png) | ![Frame Example 3](docs/examples/Frame/Example3.png) |
 
 ### Logo Style
-Series logo-focused posters with optional season/episode information.
+Series logo focused posters with optional season/episode information.
 
 | Example 1 | Example 2 | Example 3 |
 |-----------|-----------|-----------|
@@ -71,7 +71,7 @@ Episode information on a frosted glass panel that blurs the screenshot behind it
 | ![Frosted Glass Example 1](docs/examples/FrostedGlass/Example1.png) | ![Frosted Glass Example 2](docs/examples/FrostedGlass/Example2.png) | ![Frosted Glass Example 3](docs/examples/FrostedGlass/Example3.png) |
 
 ### Fade Style
-One-sided color fade with a large episode number and a vertical episode title.
+One sided color fade with a large episode number and a vertical episode title.
 
 | Example 1 | Example 2 | Example 3 |
 |-----------|-----------|-----------|
@@ -91,8 +91,8 @@ Season progress bar filled to the episode's position, with optional episode titl
 |-----------|-----------|-----------|
 | ![Timeline Example 1](docs/examples/Timeline/Example1.png) | ![Timeline Example 2](docs/examples/Timeline/Example2.png) | ![Timeline Example 3](docs/examples/Timeline/Example3.png) |
 
-### Palette-Derived Colors
-Overlay colors sampled from the dominant color of each episode's frame instead of a fixed color. Works with every style; the configured alpha values are preserved.
+### Palette Derived Colors
+Overlay colors sampled from the dominant color of each episode's frame instead of a fixed color. Works with every style. The configured alpha values are preserved.
 
 | Brush | Cutout | Fade |
 |-------|--------|------|
@@ -100,15 +100,15 @@ Overlay colors sampled from the dominant color of each episode's frame instead o
 
 ## Poster Architecture
 
-The Episode Poster Generator uses a 4-layer rendering pipeline to create consistent posters across all styles:
+The Episode Poster Generator uses a four layer rendering pipeline to create consistent posters across all styles:
 
 ### Layer 1: Canvas (Base Layer)
 The foundation layer that provides the visual background for the poster.
 
 **Options:**
 
-- **Video Frame Extraction** -  Automatically extracts a frame from the episode video file using configurable extraction windows. Candidate frames are sampled at evenly distributed points across the window until a frame with adequate brightness and sharpness is found; the best-scoring candidate is used as a fallback.
-- **Transparent Background** - Creates a solid color or transparent canvas.
+- **Video Frame Extraction**: Automatically extracts a frame from the episode video file using configurable extraction windows. Candidate frames are sampled at evenly distributed points across the window until a frame with adequate brightness and sharpness is found. The best scoring candidate is used as a fallback.
+- **Transparent Background**: Creates a solid color or transparent canvas.
 
 **Processing:**
 - HDR brightening for HDR content
@@ -116,18 +116,18 @@ The foundation layer that provides the visual background for the poster.
 - Aspect ratio adjustments and fill strategies
 
 ### Layer 2: Overlay (Color Tinting)
-A semi-transparent color layer applied over the canvas to enhance text readability and create visual cohesion.
+A translucent color layer applied over the canvas to enhance text readability and create visual cohesion.
 
 **Features:**
 - Configurable ARGB hex colors with alpha transparency
 - Applied uniformly across the entire poster surface or use two colors blurred together
-- Optional palette-derived colors: the overlay color is sampled per episode from the dominant color of the frame, while the configured alpha is preserved
+- Optional palette derived colors: the overlay color is sampled per episode from the dominant color of the frame, while the configured alpha is preserved
 
 ### Layer 3: Graphics (Static Images)
 Optional static graphic overlays positioned above the canvas but below text elements.
 
 **Capabilities:**
-- User-configurable file path for custom graphics
+- User configurable file path for custom graphics
 - Automatic sizing and positioning within safe area boundaries
 - Supports PNG, JPG, and WEBP formats
 - Maintains aspect ratio while fitting within poster constraints
@@ -139,11 +139,11 @@ The top layer containing all text elements, episode information, and series logo
 - Episode numbers and season information
 - Episode titles with automatic text wrapping
 - Series logos with configurable positioning
-- Style-specific typography (Roman numerals, cutout text, etc.)
+- Style specific typography (Roman numerals, cutout text, etc.)
 - Drop shadows and contrasting borders for enhanced readability
 
 ### Rendering Pipeline
-Each poster style follows this exact 4-layer sequence. The modular approach allows for easy customization and additional poster styles.
+Each poster style follows this exact four layer sequence. The modular approach allows for easy customization and additional poster styles.
 
 ## Usage & Documentation
 
@@ -161,7 +161,7 @@ A live preview at the top of the Posters page renders your current settings agai
 
 ## Versioning
 
-Releases use a four-part version, `JJ.JJ.F.B`, that matches the supported Jellyfin version with the plugin's own feature/bug count:
+Releases use a four part version, `JJ.JJ.F.B`, that matches the supported Jellyfin version with the plugin's own feature/bug count:
 
 ```
 10.11.1.2

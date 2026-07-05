@@ -15,7 +15,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // Description
         // A short, user facing description of this style shown in the configuration UI.
-        public override string Description => "Prominent episode numeral as the focal element. Minimal and distinctive, emphasizes episode numbering.";
+        public override string Description => "Large Roman numeral as the focal element. Minimal and distinctive.";
 
         private readonly ILogger<NumeralPosterGenerator> _logger;
 
@@ -118,7 +118,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             };
 
             var availableWidth = safeArea.Width * 0.9f;
-            var lines = TextUtils.FitTextToWidth(title, titlePaint, availableWidth);
+            var lines = TextUtils.FitTitleLines(title, titlePaint, availableWidth, config.LongTitleHandling);
+            if (lines.Count == 0)
+                return;
 
             var lineHeight = fontSize * 1.2f;
             var totalHeight = (lines.Count - 1) * lineHeight + fontSize;

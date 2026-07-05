@@ -2,7 +2,7 @@
   "name": "Gradient Standard",
   "description": "Standard poster with a gradient overlay in Jellyfin colors. Simplified to only the episode name in a yellow font to stand out.",
   "author": "Joseph Kribs",
-  "version": "10.11.24",
+  "version": "10.11.24.1",
   "createdDate": "2025-10-21T12:43:25.367Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -36,6 +36,7 @@
     "TitleFontStyle": "Bold",
     "TitleFontSize": 7,
     "TitleFontColor": "#FFFEFC78",
+    "LongTitleHandling": "Ellipsis",
     "OverlayColor": "#509437FF",
     "OverlayGradient": "TopRightCornerToBottomLeftCorner",
     "OverlaySecondaryColor": "#500096FF",

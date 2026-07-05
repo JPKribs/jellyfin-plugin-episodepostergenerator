@@ -1,8 +1,8 @@
 {
   "name": "Fade",
-  "description": "Hard one-sided fade with a large episode number and a vertical title, colored from the episode's own palette.",
+  "description": "One sided fade with a large episode number and a vertical title, colored from the episode's own palette.",
   "author": "Joseph Kribs",
-  "version": "10.11.24",
+  "version": "10.11.24.1",
   "createdDate": "2026-07-04T12:00:00.000Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -36,6 +36,7 @@
     "TitleFontStyle": "Normal",
     "TitleFontSize": 4,
     "TitleFontColor": "#FFE6E6E6",
+    "LongTitleHandling": "Ellipsis",
     "OverlayColor": "#E6000000",
     "OverlayGradient": "None",
     "OverlaySecondaryColor": "#E6000000",

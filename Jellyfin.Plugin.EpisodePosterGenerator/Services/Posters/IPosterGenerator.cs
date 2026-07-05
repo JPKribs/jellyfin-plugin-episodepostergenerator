@@ -44,15 +44,18 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // ApplySafeAreaConstraints
         // Calculates the safe area dimensions and offsets for a given poster size.
+        // The margin is the safe area percent of the poster HEIGHT, applied as the same
+        // pixel amount on all four sides, so the border is visually even (10% of a
+        // 1600x1000 poster is a 100 pixel margin both vertically and horizontally).
         protected static void ApplySafeAreaConstraints(
             int width, int height, PosterSettings settings,
             out float safeWidth, out float safeHeight, out float safeLeft, out float safeTop)
         {
-            var safeAreaMargin = GetSafeAreaMargin(settings);
-            safeLeft = width * safeAreaMargin;
-            safeTop = height * safeAreaMargin;
-            safeWidth = width * (1 - 2 * safeAreaMargin);
-            safeHeight = height * (1 - 2 * safeAreaMargin);
+            var marginPixels = height * GetSafeAreaMargin(settings);
+            safeLeft = marginPixels;
+            safeTop = marginPixels;
+            safeWidth = width - (2 * marginPixels);
+            safeHeight = height - (2 * marginPixels);
         }
 
         // Generate
@@ -284,8 +287,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         // Calculates the destination rectangle for a graphic while preserving aspect ratio.
         protected virtual SKRect CalculateGraphicRect(SKBitmap graphicBitmap, float safeLeft, float safeTop, float safeWidth, float safeHeight, PosterSettings settings)
         {
-            var posterWidth = safeWidth / (1 - 2 * GetSafeAreaMargin(settings));
+            // The pixel margin comes from the poster height on both axes, so the height
+            // reverses proportionally and the width just adds the margins back.
             var posterHeight = safeHeight / (1 - 2 * GetSafeAreaMargin(settings));
+            var posterWidth = safeWidth + (2 * GetSafeAreaMargin(settings) * posterHeight);
 
             var maxWidth = posterWidth * (settings.GraphicWidth / 100f);
             var maxHeight = posterHeight * (settings.GraphicHeight / 100f);

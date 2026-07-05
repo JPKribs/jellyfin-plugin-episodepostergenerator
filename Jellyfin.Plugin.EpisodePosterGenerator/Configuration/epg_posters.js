@@ -338,6 +338,12 @@ export default function (view) {
             canvasSelect.value = settings.CanvasSource || 'Extract';
         }
 
+        // Configs saved before 10.11.24.1 have no LongTitleHandling; default to Ellipsis.
+        var longTitleSelect = view.querySelector('#selectLongTitleHandling');
+        if (longTitleSelect && !longTitleSelect.value) {
+            longTitleSelect.value = settings.LongTitleHandling || 'Ellipsis';
+        }
+
         updateSeriesAssignment();
         updateVisibility();
         updateStyleDescription();
@@ -370,7 +376,7 @@ export default function (view) {
         if (!config.SeriesIds || config.SeriesIds.length === 0) {
             var msg = document.createElement('div');
             msg.className = 'series-empty-state';
-            msg.innerHTML = '<span class="series-empty-state-icon">&#9888;</span> No series assigned — assign at least one series before saving.';
+            msg.innerHTML = '<span class="series-empty-state-icon">&#9888;</span> No series assigned. Assign at least one series before saving.';
             container.appendChild(msg);
             return;
         }
@@ -642,6 +648,7 @@ export default function (view) {
                     TitleFontStyle: 'Bold',
                     TitleFontSize: 10.0,
                     TitleFontColor: '#FFFFFFFF',
+                    LongTitleHandling: 'Ellipsis',
                     OverlayColor: '#66000000',
                     OverlayGradient: 'None',
                     OverlaySecondaryColor: '#66000000',
@@ -880,7 +887,7 @@ export default function (view) {
 
         if (invalidConfigs.length > 0) {
             var names = invalidConfigs.map(function (c) { return c.Name || 'Unnamed'; }).join(', ');
-            Dashboard.alert('Cannot save: The following non-default configurations have no series assigned: ' + names + '. Please assign series or delete these configurations.');
+            Dashboard.alert('Cannot save. These configurations have no series assigned: ' + names + '. Please assign series or delete these configurations.');
             return;
         }
 

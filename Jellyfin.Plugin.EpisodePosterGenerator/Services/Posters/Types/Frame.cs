@@ -15,7 +15,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // Description
         // A short, user facing description of this style shown in the configuration UI.
-        public override string Description => "Episode image framed within a border with metadata outside. Gives a polished, gallery-like appearance.";
+        public override string Description => "Episode image inside a decorative border. Polished gallery look.";
 
         private readonly ILogger<FramePosterGenerator> _logger;
 
@@ -36,6 +36,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var safeArea = GetSafeAreaBounds(width, height, settings);
             float spacing = height * 0.02f;
 
+            // Null when the long title handling drops a title that does not fit;
+            // the border then draws with a closed top edge.
             var titleInfo = DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, settings, width, height, safeArea);
 
             TextInfo? episodeInfo = null;
@@ -55,8 +57,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // DrawEpisodeTitle
-        // Draws the episode title at the top of the safe area and returns positioning info.
-        private TextInfo DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int width, int height, SKRect safeArea)
+        // Draws the episode title at the top of the safe area and returns positioning info,
+        // or null when the long title handling drops a title that does not fit.
+        private TextInfo? DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int width, int height, SKRect safeArea)
         {
             title = title.ToUpperInvariant();
 
@@ -86,7 +89,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             };
 
             var availableWidth = safeArea.Width * 0.9f;
-            var lines = TextUtils.FitTextToWidth(title, titlePaint, availableWidth);
+            var lines = TextUtils.FitTitleLines(title, titlePaint, availableWidth, config.LongTitleHandling);
+            if (lines.Count == 0)
+                return null;
 
             var lineHeight = fontSize * 1.2f;
             var centerX = safeArea.MidX;
@@ -175,7 +180,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // DrawFrameBorder
         // Draws a decorative rounded rectangle border with gaps for text elements.
-        private void DrawFrameBorder(SKCanvas canvas, SKRect safeArea, TextInfo titleInfo, TextInfo? episodeInfo, float spacing)
+        // A null titleInfo draws a continuous top edge with no title gap.
+        private void DrawFrameBorder(SKCanvas canvas, SKRect safeArea, TextInfo? titleInfo, TextInfo? episodeInfo, float spacing)
         {
             using var borderPaint = new SKPaint
             {
@@ -199,9 +205,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
             var cornerRadius = 20f;
 
-            var titleLeftEdge = titleInfo.CenterX - (titleInfo.Width / 2f) - spacing;
-            var titleRightEdge = titleInfo.CenterX + (titleInfo.Width / 2f) + spacing;
-            var titleBottom = titleInfo.Y + titleInfo.Height;
+            float titleLeftEdge = 0;
+            float titleRightEdge = 0;
+            float titleBottom = safeArea.Top + cornerRadius;
+
+            if (titleInfo.HasValue)
+            {
+                titleLeftEdge = titleInfo.Value.CenterX - (titleInfo.Value.Width / 2f) - spacing;
+                titleRightEdge = titleInfo.Value.CenterX + (titleInfo.Value.Width / 2f) + spacing;
+                titleBottom = titleInfo.Value.Y + titleInfo.Value.Height;
+            }
 
             float episodeLeftEdge = 0;
             float episodeRightEdge = 0;
@@ -221,13 +234,20 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 new SKRect(safeArea.Left, safeArea.Top, safeArea.Left + cornerRadius * 2, safeArea.Top + cornerRadius * 2),
                 180, 90);
 
-            // Top horizontal line (left side)
-            path.MoveTo(safeArea.Left + cornerRadius, safeArea.Top);
-            path.LineTo(titleLeftEdge, safeArea.Top);
+            // Top horizontal line, split around the title when one is drawn
+            if (titleInfo.HasValue)
+            {
+                path.MoveTo(safeArea.Left + cornerRadius, safeArea.Top);
+                path.LineTo(titleLeftEdge, safeArea.Top);
 
-            // Top horizontal line (right side)
-            path.MoveTo(titleRightEdge, safeArea.Top);
-            path.LineTo(safeArea.Right - cornerRadius, safeArea.Top);
+                path.MoveTo(titleRightEdge, safeArea.Top);
+                path.LineTo(safeArea.Right - cornerRadius, safeArea.Top);
+            }
+            else
+            {
+                path.MoveTo(safeArea.Left + cornerRadius, safeArea.Top);
+                path.LineTo(safeArea.Right - cornerRadius, safeArea.Top);
+            }
 
             // Top-right corner arc
             path.AddArc(

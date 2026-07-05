@@ -16,7 +16,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // Description
         // A short, user facing description of this style shown in the configuration UI.
-        public override string Description => "Artistic brush-stroke mask effect with episode info and title. Creates a painted, editorial look.";
+        public override string Description => "Brush strokes reveal the image through a flat overlay. Painted, editorial look.";
 
         private readonly ILogger<BrushPosterGenerator> _logger;
 
@@ -234,7 +234,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             };
 
             var maxTextWidth = safeArea.Width * 0.6f;
-            var lines = TextUtils.FitTextToWidth(title, titlePaint, maxTextWidth);
+            var lines = TextUtils.FitTitleLines(title, titlePaint, maxTextWidth, config.LongTitleHandling);
             float lineHeight = fontSize * 1.2f;
             return lines.Count * lineHeight;
         }
@@ -274,8 +274,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             };
             
             var maxTextWidth = safeArea.Width * 0.6f;
-            var lines = TextUtils.FitTextToWidth(title, titlePaint, maxTextWidth);
-            
+            var lines = TextUtils.FitTitleLines(title, titlePaint, maxTextWidth, config.LongTitleHandling);
+            if (lines.Count == 0)
+                return;
+
             var metrics = titlePaint.FontMetrics;
             float lineHeight = fontSize * 1.2f;
             float x = safeArea.Left;

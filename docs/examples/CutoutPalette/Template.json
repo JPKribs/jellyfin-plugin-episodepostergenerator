@@ -1,8 +1,8 @@
 {
   "name": "CutoutPalette",
-  "description": "Cutout episode code over a near-solid overlay colored from the episode's own frame.",
+  "description": "Cutout episode code over a nearly solid overlay colored from the episode's own frame.",
   "author": "Joseph Kribs",
-  "version": "10.11.24",
+  "version": "10.11.24.1",
   "createdDate": "2026-07-04T12:00:00.000Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -36,6 +36,7 @@
     "TitleFontStyle": "Bold",
     "TitleFontSize": 5,
     "TitleFontColor": "#FFFFFFFF",
+    "LongTitleHandling": "Ellipsis",
     "OverlayColor": "#E6000000",
     "OverlayGradient": "None",
     "OverlaySecondaryColor": "#E6000000",

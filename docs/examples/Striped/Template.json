@@ -2,7 +2,7 @@
   "name": "Striped",
   "description": "Tilted crimson sash with white pinstripes carrying the episode title.",
   "author": "Joseph Kribs",
-  "version": "10.11.24",
+  "version": "10.11.24.1",
   "createdDate": "2026-07-04T12:00:00.000Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -36,6 +36,7 @@
     "TitleFontStyle": "Bold",
     "TitleFontSize": 8,
     "TitleFontColor": "#FFFFFFFF",
+    "LongTitleHandling": "Ellipsis",
     "OverlayColor": "#F0B11D34",
     "OverlayGradient": "None",
     "OverlaySecondaryColor": "#F0FFFFFF",
