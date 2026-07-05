@@ -182,11 +182,11 @@ public static class TextUtils
     }
 
     // AbbreviateTitle
-    // Reduces a title to the first letter of each capitalized word with a
-    // period after each, so "Lord of the Ring" becomes "L.R.". Dividers are
-    // kept between segments, so "The Power That Burns Fire - Akainu's Final
-    // Move" becomes "T.P.T.B.F. - A.F.M.". Falls back to the first letter of
-    // every word when a segment has no capitalized words.
+    // Reduces a title to the first letter of every word with a period after
+    // each, so "Lord of the Ring" becomes "L.O.T.R.". Dividers are kept
+    // between segments, so "The Power that Burns Fire - Akainu's Final Move"
+    // becomes "T.P.T.B.F. - A.F.M.". Every word contributes regardless of
+    // case, so all lowercase titles abbreviate too.
     public static string AbbreviateTitle(string title)
     {
         var parts = SegmentSeparator.Split(title);
@@ -226,28 +226,19 @@ public static class TextUtils
     }
 
     // AbbreviateWords
-    // First letter of each capitalized word followed by a period. Falls back
-    // to every word's first letter when none are capitalized.
+    // The first letter of every word, uppercased, each followed by a period.
     private static string AbbreviateWords(string text)
     {
         var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var initials = words
-            .Where(w => char.IsUpper(w[0]))
-            .Select(w => w[0])
-            .ToList();
+        var sb = new StringBuilder(words.Length * 2);
 
-        if (initials.Count == 0)
+        foreach (var word in words)
         {
-            initials = words
-                .Where(w => char.IsLetterOrDigit(w[0]))
-                .Select(w => char.ToUpperInvariant(w[0]))
-                .ToList();
-        }
+            var letter = word.FirstOrDefault(char.IsLetterOrDigit);
+            if (letter == default(char))
+                continue;
 
-        var sb = new StringBuilder(initials.Count * 2);
-        foreach (var c in initials)
-        {
-            sb.Append(c);
+            sb.Append(char.ToUpperInvariant(letter));
             sb.Append('.');
         }
 

@@ -10,7 +10,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 
         /// <summary>
         /// Shorten the title in stages: the text before a divider, then the first
-        /// sentence, then word initials with periods such as "L.R.".
+        /// sentence, then word initials with periods such as "L.O.T.R.".
         /// </summary>
         Abbreviate,
 

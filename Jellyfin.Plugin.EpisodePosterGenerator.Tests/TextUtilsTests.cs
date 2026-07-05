@@ -30,12 +30,13 @@ public class TextUtilsTests
     }
 
     [Theory]
-    [InlineData("Lord of the Ring", "L.R.")]
-    [InlineData("The Power That Burns Fire - Akainu's Final Move", "T.P.T.B.F. - A.F.M.")]
+    [InlineData("Lord of the Ring", "L.O.T.R.")]
+    [InlineData("The Power that Burns Fire - Akainu's Final Move", "T.P.T.B.F. - A.F.M.")]
     [InlineData("Ancient History: The Harley", "A.H.: T.H.")]
     [InlineData("all lowercase words", "A.L.W.")]
+    [InlineData("some show - all lowercase everywhere", "S.S. - A.L.E.")]
     [InlineData("Hone Your Moving Fastball", "H.Y.M.F.")]
-    public void AbbreviateTitle_UsesInitialsWithPeriodsAndKeepsDividers(string title, string expected)
+    public void AbbreviateTitle_UsesEveryWordWithPeriodsAndKeepsDividers(string title, string expected)
     {
         Assert.Equal(expected, TextUtils.AbbreviateTitle(title));
     }

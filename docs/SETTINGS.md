@@ -62,7 +62,7 @@ Settings apply to the active configuration. Any series without its own configura
 ## Title Text
 
 * **Show Title**: draw the episode title. Default on.
-* **Long Titles**: what to do when a title does not fit. Ellipsis trims it. Abbreviate shortens it in stages: first the text before a divider, then the first sentence, then word initials with periods such as L.R., keeping dividers and skipping middle initials if still too wide. Drop Name hides it. Default Ellipsis.
+* **Long Titles**: what to do when a title does not fit. Ellipsis trims it. Abbreviate shortens it in stages: first the text before a divider, then the first sentence, then the first letter of every word with periods such as L.O.T.R., keeping dividers and skipping middle initials if still too wide. Drop Name hides it. Default Ellipsis.
 * **Font**: font family for the title. Default Arial.
 * **Use Custom Font**: use a font file instead of a family. Default off.
 * **Font Path**: path to the custom font file.
