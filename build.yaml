@@ -14,9 +14,9 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   features:
-  - New Long Titles dropdown with Ellipsis, Abbreviate, and Drop Name modes for titles that do not fit
+  - Long Titles dropdown with Ellipsis, Abbreviate, and Drop Name modes
   fixes:
-  - Cutout no longer overflows the poster edges on long episode titles. Every style now bounds long titles
-  - Safe area now applies the same pixel margin on all four sides based on poster height
+  - Long titles no longer overflow any poster style
+  - Safe area uses the same pixel margin on all four sides
   polish:
   - Documentation and interface text cleanup
