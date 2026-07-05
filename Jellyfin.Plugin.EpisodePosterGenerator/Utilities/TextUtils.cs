@@ -75,7 +75,8 @@ public static class TextUtils
                 return candidateLines;
         }
 
-        return new[] { FitAbbreviation(AbbreviateTitle(title), paint, maxWidth) };
+        var abbreviation = FitAbbreviation(AbbreviateTitle(title), paint, maxWidth);
+        return abbreviation != null ? new[] { abbreviation } : Array.Empty<string>();
     }
 
     // FitTitleLine
@@ -248,8 +249,9 @@ public static class TextUtils
     // FitAbbreviation
     // Shrinks an abbreviation that is still too wide: dividers collapse away
     // and middle initials drop one at a time until it fits, always keeping
-    // the first and the last.
-    public static string FitAbbreviation(string abbreviation, SKPaint paint, float maxWidth)
+    // the first and the last. Returns null when even the shortest form does
+    // not fit, so the caller drops the title entirely.
+    public static string? FitAbbreviation(string abbreviation, SKPaint paint, float maxWidth)
     {
         if (paint.MeasureText(abbreviation) <= maxWidth)
             return abbreviation;
@@ -266,7 +268,8 @@ public static class TextUtils
             units.RemoveAt(units.Count / 2);
         }
 
-        return string.Concat(units);
+        var reduced = string.Concat(units);
+        return reduced.Length > 0 && paint.MeasureText(reduced) <= maxWidth ? reduced : null;
     }
 
     // FitTextToWidth

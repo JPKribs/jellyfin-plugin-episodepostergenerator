@@ -29,6 +29,20 @@ public class TextUtilsTests
         Assert.Equal(expected, TextUtils.FirstSentence(title));
     }
 
+    [Fact]
+    public void FitAbbreviation_DropsMiddleInitialsThenGivesUp()
+    {
+        using var paint = new SkiaSharp.SKPaint { TextSize = 20 };
+
+        var full = "T.P.T.B.F. - A.F.M.";
+        Assert.Equal(full, TextUtils.FitAbbreviation(full, paint, paint.MeasureText(full)));
+
+        var reduced = TextUtils.FitAbbreviation(full, paint, paint.MeasureText("T.M."));
+        Assert.Equal("T.M.", reduced);
+
+        Assert.Null(TextUtils.FitAbbreviation(full, paint, 1f));
+    }
+
     [Theory]
     [InlineData("Lord of the Ring", "L.O.T.R.")]
     [InlineData("The Power that Burns Fire - Akainu's Final Move", "T.P.T.B.F. - A.F.M.")]
