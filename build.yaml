@@ -13,21 +13,5 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
-  features:
-  - New poster style - Striped - tilted pinstriped sash carrying the episode title
-  - New poster style - Frosted Glass - blurred glass panel behind the episode text
-  - New poster style - Fade - one-sided gradient with a large episode number and vertical title
-  - New poster style - Timeline - progress bar showing the episode's position within the season
-  - Palette-derived colors - overlay colors can be sampled from the episode frame
-  - Concurrent poster generation with a configurable worker count
-  performance:
-  - Frame extraction now seeks with a stratified sequence instead of random retries
-  - Tracking database uses WAL mode, pooled connections, and a batched filter pass
-  - Poster settings hashes are cached instead of recomputed per episode
-  - JPEG encoding quality tuned from 100 to 92 for much smaller files
-  polish:
-  - Brush strokes are feathered instead of hard-clipped for a painted look
-  - Cutout title shadow now uses the same soft blur as other styles
-  - Standard and Split separator lines follow the episode font color
-  - Fixed poster files not being truncated when re-rendered smaller
-  - All templates updated to the 10.11.24 settings format
+  fixes:
+  - Cutout no longer overflows the poster edges on long episode titles; all styles now wrap or truncate long titles

@@ -89,8 +89,19 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             };
 
             var centerX = safeArea.MidX;
-            skCanvas.DrawText(episodeMetadata.EpisodeName, centerX + 2, titleY + 2, shadowPaint);
-            skCanvas.DrawText(episodeMetadata.EpisodeName, centerX, titleY, titlePaint);
+
+            // Wrap long titles to at most two lines with ellipsis, anchored so the bottom
+            // line stays at titleY and extra lines stack upward into the reserved title space.
+            var availableWidth = safeArea.Width * RenderConstants.TextWidthMultiplier;
+            var lines = TextUtils.FitTextToWidth(episodeMetadata.EpisodeName, titlePaint, availableWidth);
+            var lineHeight = titlePaint.TextSize * RenderConstants.LineHeightMultiplier;
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                var lineY = titleY - ((lines.Count - 1 - i) * lineHeight);
+                skCanvas.DrawText(lines[i], centerX + 2, lineY + 2, shadowPaint);
+                skCanvas.DrawText(lines[i], centerX, lineY, titlePaint);
+            }
         }
 
         // LogError
@@ -174,7 +185,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 return safeArea;
 
             float titleFontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight);
-            float titleSpace = titleFontSize * 2f;
+            // Reserve room for a wrapped two-line title (line height 1.2x + the base line).
+            float titleSpace = titleFontSize * 2.4f;
             float cutoutBuffer = canvasHeight * 0.05f;
 
             float availableHeight = Math.Max(safeArea.Height - titleSpace - cutoutBuffer, safeArea.Height * 0.6f);
