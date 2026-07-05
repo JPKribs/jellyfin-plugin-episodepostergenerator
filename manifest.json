@@ -9,6 +9,14 @@
     "category": "MoviesAndShows",
     "versions": [
       {
+        "version": "10.11.24.3",
+        "changelog": "## Features\r\n- Abbreviate tries the text before a divider, then the first sentence, then initials with periods",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.24.3/jellyfin-plugin-episodepostergenerator-10.11.24.3.zip",
+        "checksum": "26346097b16b139707ce313bf20eae58",
+        "timestamp": "2026-07-05T17:35:56Z"
+      },
+      {
         "version": "10.11.24.2",
         "changelog": "## Fixes\r\n- Episode numbers and codes are pinned so title length cannot move them in any style\r\n- Fade titles wrap to two vertical rows before long title handling engages",
         "targetAbi": "10.11.0.0",
