@@ -2,7 +2,7 @@
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
 imageUrl: "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/refs/heads/master/Jellyfin.Plugin.EpisodePosterGenerator/Assets/Logo.png"
-version: "10.11.24.2"
+version: "10.11.24.3"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Generate Custom Episode Posters"
@@ -13,6 +13,5 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
-  fixes:
-  - Episode numbers and codes are pinned so title length cannot move them in any style
-  - Fade titles wrap to two vertical rows before long title handling engages
+  features:
+  - Abbreviate tries the text before a divider, then the first sentence, then initials with periods

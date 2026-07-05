@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using SkiaSharp;
@@ -45,6 +47,9 @@ public static class TextUtils
         DrawTextLines(canvas, lines, alignmentX, baseY, fontSize, titlePaint, shadowPaint);
     }
 
+    // Divider between title segments: a spaced dash of any kind, or a colon.
+    private static readonly Regex SegmentSeparator = new Regex(@"(\s+[-–—]\s+|:\s*)", RegexOptions.Compiled);
+
     // FitTitleLines
     // Applies the configured long title handling and returns the lines to draw.
     // Returns an empty list when the handling drops a title that does not fit.
@@ -58,22 +63,19 @@ public static class TextUtils
 
         // Abbreviate and DropName only engage when the title would otherwise be cut:
         // a title that fits on one line, or wraps to two whole lines, renders as normal.
-        if (paint.MeasureText(title) <= maxWidth)
-            return new[] { title };
+        if (TryFitWhole(title, paint, maxWidth, out var lines))
+            return lines;
 
-        var words = title.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length > 1)
+        if (handling == LongTitleHandling.DropName)
+            return Array.Empty<string>();
+
+        foreach (var candidate in ShorterCandidates(title))
         {
-            int split = FindOptimalSplitPoint(words, paint, maxWidth);
-            var line1 = string.Join(" ", words[..split]);
-            var line2 = string.Join(" ", words[split..]);
-            if (paint.MeasureText(line1) <= maxWidth && paint.MeasureText(line2) <= maxWidth)
-                return new[] { line1, line2 };
+            if (TryFitWhole(candidate, paint, maxWidth, out var candidateLines))
+                return candidateLines;
         }
 
-        return handling == LongTitleHandling.DropName
-            ? Array.Empty<string>()
-            : new[] { FitAbbreviation(AbbreviateTitle(title), paint, maxWidth) };
+        return new[] { FitAbbreviation(AbbreviateTitle(title), paint, maxWidth) };
     }
 
     // FitTitleLine
@@ -87,21 +89,148 @@ public static class TextUtils
         if (paint.MeasureText(title) <= maxWidth)
             return title;
 
-        return handling switch
+        if (handling == LongTitleHandling.DropName)
+            return null;
+
+        if (handling == LongTitleHandling.Abbreviate)
         {
-            LongTitleHandling.Abbreviate => FitAbbreviation(AbbreviateTitle(title), paint, maxWidth),
-            LongTitleHandling.DropName => null,
-            _ => TruncateWithEllipsis(title, paint, maxWidth)
-        };
+            foreach (var candidate in ShorterCandidates(title))
+            {
+                if (paint.MeasureText(candidate) <= maxWidth)
+                    return candidate;
+            }
+
+            return FitAbbreviation(AbbreviateTitle(title), paint, maxWidth);
+        }
+
+        return TruncateWithEllipsis(title, paint, maxWidth);
+    }
+
+    // TryFitWhole
+    // Returns true when the text fits untouched, either on one line or split
+    // across two whole lines, and outputs those lines.
+    private static bool TryFitWhole(string text, SKPaint paint, float maxWidth, out IReadOnlyList<string> lines)
+    {
+        if (paint.MeasureText(text) <= maxWidth)
+        {
+            lines = new[] { text };
+            return true;
+        }
+
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length > 1)
+        {
+            int split = FindOptimalSplitPoint(words, paint, maxWidth);
+            var line1 = string.Join(" ", words[..split]);
+            var line2 = string.Join(" ", words[split..]);
+            if (paint.MeasureText(line1) <= maxWidth && paint.MeasureText(line2) <= maxWidth)
+            {
+                lines = new[] { line1, line2 };
+                return true;
+            }
+        }
+
+        lines = Array.Empty<string>();
+        return false;
+    }
+
+    // ShorterCandidates
+    // Natural shorter forms tried before abbreviating: the text before a
+    // divider, then the first sentence.
+    private static IEnumerable<string> ShorterCandidates(string title)
+    {
+        var left = LeftOfSeparator(title);
+        if (left != null)
+            yield return left;
+
+        var sentence = FirstSentence(title);
+        if (sentence != null)
+            yield return sentence;
+    }
+
+    // LeftOfSeparator
+    // Returns the text before the first divider (a spaced dash or a colon),
+    // or null when the title has no divider. Hyphenated words do not count.
+    public static string? LeftOfSeparator(string title)
+    {
+        var match = SegmentSeparator.Match(title);
+        if (!match.Success || match.Index == 0)
+            return null;
+
+        var left = title[..match.Index].Trim();
+        return left.Length > 0 ? left : null;
+    }
+
+    // FirstSentence
+    // Returns the first sentence including its punctuation, or null when the
+    // title is a single sentence. Very short fragments such as "Mr." are not
+    // treated as sentences.
+    public static string? FirstSentence(string title)
+    {
+        for (int i = 0; i < title.Length - 1; i++)
+        {
+            var c = title[i];
+            if ((c == '!' || c == '?' || c == '.') && char.IsWhiteSpace(title[i + 1]))
+            {
+                var sentence = title[..(i + 1)].Trim();
+                if (sentence.Length > 3 && sentence.Length < title.Trim().Length)
+                    return sentence;
+            }
+        }
+
+        return null;
     }
 
     // AbbreviateTitle
-    // Reduces a title to the first letter of each capitalized word, so
-    // "Lord of the Ring" becomes "LR". Falls back to the first letter of
-    // every word when the title has no capitalized words.
+    // Reduces a title to the first letter of each capitalized word with a
+    // period after each, so "Lord of the Ring" becomes "L.R.". Dividers are
+    // kept between segments, so "The Power That Burns Fire - Akainu's Final
+    // Move" becomes "T.P.T.B.F. - A.F.M.". Falls back to the first letter of
+    // every word when a segment has no capitalized words.
     public static string AbbreviateTitle(string title)
     {
-        var words = title.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var parts = SegmentSeparator.Split(title);
+        var pieces = new List<string>();
+        string? pendingSeparator = null;
+
+        foreach (var part in parts)
+        {
+            if (string.IsNullOrWhiteSpace(part))
+                continue;
+
+            var trimmed = part.Trim();
+            if (trimmed == "-" || trimmed == "–" || trimmed == "—")
+            {
+                pendingSeparator = " - ";
+                continue;
+            }
+
+            if (trimmed == ":")
+            {
+                pendingSeparator = ": ";
+                continue;
+            }
+
+            var abbreviated = AbbreviateWords(part);
+            if (abbreviated.Length == 0)
+                continue;
+
+            if (pieces.Count > 0 && pendingSeparator != null)
+                pieces.Add(pendingSeparator);
+
+            pendingSeparator = null;
+            pieces.Add(abbreviated);
+        }
+
+        return string.Concat(pieces);
+    }
+
+    // AbbreviateWords
+    // First letter of each capitalized word followed by a period. Falls back
+    // to every word's first letter when none are capitalized.
+    private static string AbbreviateWords(string text)
+    {
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var initials = words
             .Where(w => char.IsUpper(w[0]))
             .Select(w => w[0])
@@ -109,27 +238,44 @@ public static class TextUtils
 
         if (initials.Count == 0)
         {
-            initials = words.Select(w => char.ToUpperInvariant(w[0])).ToList();
+            initials = words
+                .Where(w => char.IsLetterOrDigit(w[0]))
+                .Select(w => char.ToUpperInvariant(w[0]))
+                .ToList();
         }
 
-        return new string(initials.ToArray());
+        var sb = new StringBuilder(initials.Count * 2);
+        foreach (var c in initials)
+        {
+            sb.Append(c);
+            sb.Append('.');
+        }
+
+        return sb.ToString();
     }
 
     // FitAbbreviation
-    // Shrinks an abbreviation that is still too wide by removing letters from
-    // the middle until it fits, always keeping the first and last letters.
+    // Shrinks an abbreviation that is still too wide: dividers collapse away
+    // and middle initials drop one at a time until it fits, always keeping
+    // the first and the last.
     public static string FitAbbreviation(string abbreviation, SKPaint paint, float maxWidth)
     {
-        if (abbreviation.Length <= 2 || paint.MeasureText(abbreviation) <= maxWidth)
+        if (paint.MeasureText(abbreviation) <= maxWidth)
             return abbreviation;
 
-        var letters = new List<char>(abbreviation);
-        while (letters.Count > 2 && paint.MeasureText(new string(letters.ToArray())) > maxWidth)
+        var units = new List<string>();
+        foreach (var c in abbreviation)
         {
-            letters.RemoveAt(letters.Count / 2);
+            if (char.IsLetterOrDigit(c))
+                units.Add(string.Concat(c, "."));
         }
 
-        return new string(letters.ToArray());
+        while (units.Count > 2 && paint.MeasureText(string.Concat(units)) > maxWidth)
+        {
+            units.RemoveAt(units.Count / 2);
+        }
+
+        return string.Concat(units);
     }
 
     // FitTextToWidth

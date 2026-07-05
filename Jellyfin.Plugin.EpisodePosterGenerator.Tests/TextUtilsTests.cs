@@ -1,0 +1,42 @@
+using Jellyfin.Plugin.EpisodePosterGenerator.Utilities;
+using Xunit;
+
+namespace Jellyfin.Plugin.EpisodePosterGenerator.Tests;
+
+/// <summary>
+/// Tests for the long title helpers in <see cref="TextUtils"/>.
+/// </summary>
+public class TextUtilsTests
+{
+    [Theory]
+    [InlineData("Ancient History - The Harley Passed Down by Elbaph", "Ancient History")]
+    [InlineData("Spider-Man: No Way Home", "Spider-Man")]
+    [InlineData("The Power That Burns Fire - Akainu's Final Move", "The Power That Burns Fire")]
+    [InlineData("A Title With No Divider", null)]
+    [InlineData("Well-Meaning Hyphenated Words", null)]
+    public void LeftOfSeparator_ReturnsTextBeforeTheDivider(string title, string? expected)
+    {
+        Assert.Equal(expected, TextUtils.LeftOfSeparator(title));
+    }
+
+    [Theory]
+    [InlineData("I'm Luffy! The Man Who's Gonna Be King of the Pirates!", "I'm Luffy!")]
+    [InlineData("Who Are You? I Am Me.", "Who Are You?")]
+    [InlineData("A Single Sentence Title", null)]
+    [InlineData("Mr. Smith Goes to Washington", null)]
+    public void FirstSentence_ReturnsTheFirstSentence(string title, string? expected)
+    {
+        Assert.Equal(expected, TextUtils.FirstSentence(title));
+    }
+
+    [Theory]
+    [InlineData("Lord of the Ring", "L.R.")]
+    [InlineData("The Power That Burns Fire - Akainu's Final Move", "T.P.T.B.F. - A.F.M.")]
+    [InlineData("Ancient History: The Harley", "A.H.: T.H.")]
+    [InlineData("all lowercase words", "A.L.W.")]
+    [InlineData("Hone Your Moving Fastball", "H.Y.M.F.")]
+    public void AbbreviateTitle_UsesInitialsWithPeriodsAndKeepsDividers(string title, string expected)
+    {
+        Assert.Equal(expected, TextUtils.AbbreviateTitle(title));
+    }
+}

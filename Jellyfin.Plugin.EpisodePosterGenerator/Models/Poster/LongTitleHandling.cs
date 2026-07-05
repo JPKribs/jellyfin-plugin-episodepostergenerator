@@ -8,7 +8,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         /// <summary>Trim the title with an ellipsis.</summary>
         Ellipsis,
 
-        /// <summary>Replace the title with word initials, e.g. "Lord of the Ring" becomes "LR".</summary>
+        /// <summary>
+        /// Shorten the title in stages: the text before a divider, then the first
+        /// sentence, then word initials with periods such as "L.R.".
+        /// </summary>
         Abbreviate,
 
         /// <summary>Do not draw the title at all.</summary>
