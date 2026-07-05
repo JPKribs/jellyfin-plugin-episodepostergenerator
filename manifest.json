@@ -9,6 +9,14 @@
     "category": "MoviesAndShows",
     "versions": [
       {
+        "version": "10.11.24.2",
+        "changelog": "## Fixes\r\n- Episode numbers and codes are pinned so title length cannot move them in any style\r\n- Fade titles wrap to two vertical rows before long title handling engages",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.24.2/jellyfin-plugin-episodepostergenerator-10.11.24.2.zip",
+        "checksum": "7047e3683ca5745642afa762c5cb1f5b",
+        "timestamp": "2026-07-05T16:30:14Z"
+      },
+      {
         "version": "10.11.24.1",
         "changelog": "## Features\r\n- New Long Titles dropdown with Ellipsis, Abbreviate, and Drop Name modes for titles that do not fit\r\n\r\n## Fixes\r\n- Cutout no longer overflows the poster edges on long episode titles. Every style now bounds long titles\r\n- Safe area now applies the same pixel margin on all four sides based on poster height\r\n\r\n## Polish\r\n- Documentation and interface text cleanup",
         "targetAbi": "10.11.0.0",
