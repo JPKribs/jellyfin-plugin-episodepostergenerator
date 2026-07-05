@@ -15,3 +15,4 @@ artifacts:
 changelog:
   fixes:
   - Episode numbers and codes are pinned so title length cannot move them in any style
+  - Fade titles wrap to two vertical rows before long title handling engages

@@ -115,7 +115,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // DrawVerticalTitle
         // Draws the uppercase title rotated 90 degrees, running upward along the left edge
-        // from just above the episode number, truncated to the available vertical space.
+        // from just above the episode number. The title wraps to up to two vertical rows
+        // before the long title handling engages, matching the other styles.
         private static void DrawVerticalTitle(SKCanvas canvas, string title, PosterSettings config, int height, SKRect safeArea, float numberTop)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
@@ -130,18 +131,25 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             if (availableRun <= fontSize)
                 return;
 
-            var text = TextUtils.FitTitleLine(title.ToUpperInvariant(), titlePaint, availableRun, config.LongTitleHandling);
-            if (text == null)
+            var lines = TextUtils.FitTitleLines(title.ToUpperInvariant(), titlePaint, availableRun, config.LongTitleHandling);
+            if (lines.Count == 0)
                 return;
 
-            // Rotate around the anchor so the text runs bottom-to-top along the left edge.
-            // The baseline sits on the anchor's vertical line; shift right by the ascent so
-            // glyphs stay inside the safe area.
-            float anchorX = safeArea.Left + Math.Abs(titlePaint.FontMetrics.Ascent);
-            canvas.Save();
-            canvas.RotateDegrees(-90, anchorX, startY);
-            PaintFactory.DrawTextWithShadow(canvas, text, anchorX, startY, titlePaint, shadowPaint);
-            canvas.Restore();
+            // Rotate around each anchor so the text runs bottom to top along the left
+            // edge. The baseline sits on the anchor's vertical line, shifted right by the
+            // ascent so glyphs stay inside the safe area. The second row sits one line
+            // height further right, reading outward from the edge.
+            float columnSpacing = fontSize * RenderConstants.LineHeightMultiplier;
+            float firstAnchorX = safeArea.Left + Math.Abs(titlePaint.FontMetrics.Ascent);
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                float anchorX = firstAnchorX + (i * columnSpacing);
+                canvas.Save();
+                canvas.RotateDegrees(-90, anchorX, startY);
+                PaintFactory.DrawTextWithShadow(canvas, lines[i], anchorX, startY, titlePaint, shadowPaint);
+                canvas.Restore();
+            }
         }
 
         // LogError
