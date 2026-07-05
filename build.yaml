@@ -14,4 +14,4 @@ artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
   fixes:
-  - Fade episode number is pinned to a fixed size and position that titles cannot move
+  - Episode numbers and codes are pinned so title length cannot move them in any style

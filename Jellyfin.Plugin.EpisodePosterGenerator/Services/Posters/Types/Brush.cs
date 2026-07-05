@@ -214,29 +214,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // MeasureTitleHeight
-        // Returns the title's actual rendered height using the same font, wrapping, and line
-        // height as DrawTitle, so the episode code can sit directly above it. Returns 0 when
-        // there is no title.
+        // Returns a fixed two line title reservation so the episode code and the stroke
+        // keep clear area sit at the same spot no matter how many lines the title used
+        // or whether a long title was dropped. Returns 0 when there is no title.
         private float MeasureTitleHeight(EpisodeMetadata episodeMetadata, PosterSettings config, SKRect safeArea, int height)
         {
-            var title = episodeMetadata.EpisodeName;
-            if (string.IsNullOrWhiteSpace(title))
+            if (!config.ShowTitle || string.IsNullOrWhiteSpace(episodeMetadata.EpisodeName))
                 return 0f;
 
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height, config.PosterSafeArea);
-            var typeface = FontUtils.ResolveTypeface(config.EffectiveTitleFontPath, config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
-
-            using var titlePaint = new SKPaint
-            {
-                TextSize = fontSize,
-                Typeface = typeface,
-                TextAlign = SKTextAlign.Left
-            };
-
-            var maxTextWidth = safeArea.Width * 0.6f;
-            var lines = TextUtils.FitTitleLines(title, titlePaint, maxTextWidth, config.LongTitleHandling);
-            float lineHeight = fontSize * 1.2f;
-            return lines.Count * lineHeight;
+            return 2f * fontSize * 1.2f;
         }
 
         // DrawTitle

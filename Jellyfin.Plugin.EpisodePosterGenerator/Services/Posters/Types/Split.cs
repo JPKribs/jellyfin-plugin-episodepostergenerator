@@ -147,16 +147,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             // Both title and episode info enabled
             if (settings.ShowTitle && settings.ShowEpisode)
             {
-                var titleHeight = DrawEpisodeTitle(skCanvas, episodeTitle, settings, width, height, currentBottomY, safeArea);
+                DrawEpisodeTitle(skCanvas, episodeTitle, settings, width, height, currentBottomY, safeArea);
 
-                // The separator only appears when a title was actually drawn (a dropped
-                // long title renders like the episode info only layout).
-                if (titleHeight > 0)
-                {
-                    currentBottomY -= titleHeight + spacingHeight;
-                    var lineHeight = DrawSeparatorLine(settings, skCanvas, currentBottomY, safeArea);
-                    currentBottomY -= lineHeight + spacingHeight;
-                }
+                // The separator and episode info sit above a fixed two line title zone,
+                // so a wrapped or dropped title can never move them between episodes.
+                var titleFontSize = FontUtils.CalculateFontSizeFromPercentage(settings.TitleFontSize, height);
+                var titleZone = titleFontSize * (1 + RenderConstants.LineHeightMultiplier);
+                currentBottomY -= titleZone + spacingHeight;
+
+                var lineHeight = DrawSeparatorLine(settings, skCanvas, currentBottomY, safeArea);
+                currentBottomY -= lineHeight + spacingHeight;
 
                 DrawEpisodeInfo(skCanvas, seasonNumber, episodeNumber, settings, height, currentBottomY, safeArea);
             }

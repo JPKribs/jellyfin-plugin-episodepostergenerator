@@ -46,9 +46,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
             if (settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
             {
-                var titleHeight = DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, settings, width, height, currentY, safeArea);
-                if (titleHeight > 0)
-                    currentY -= titleHeight + spacing;
+                DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, settings, width, height, currentY, safeArea);
+
+                // The episode code sits above a fixed two line title zone, so a wrapped
+                // or dropped title can never move it between episodes.
+                var titleFontSize = FontUtils.CalculateFontSizeFromPercentage(settings.TitleFontSize, height);
+                currentY -= (titleFontSize * (1 + RenderConstants.LineHeightMultiplier)) + spacing;
             }
 
             if (settings.ShowEpisode)
