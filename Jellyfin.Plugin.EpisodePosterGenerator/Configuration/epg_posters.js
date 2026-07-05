@@ -234,9 +234,9 @@ export default function (view) {
             var slider = container.querySelector('.alpha-slider');
             var label = container.querySelector('.alpha-label');
 
-            picker.addEventListener('input', function () { updateHexFromControls(container); checkDirty(); });
-            slider.addEventListener('input', function () { label.textContent = slider.value; updateHexFromControls(container); checkDirty(); });
-            container.querySelector('.hex-input').addEventListener('input', function () { updateControlsFromHex(container); checkDirty(); });
+            picker.addEventListener('input', function () { updateHexFromControls(container); checkDirty(); schedulePreview(); });
+            slider.addEventListener('input', function () { label.textContent = slider.value; updateHexFromControls(container); checkDirty(); schedulePreview(); });
+            container.querySelector('.hex-input').addEventListener('input', function () { updateControlsFromHex(container); checkDirty(); schedulePreview(); });
         });
     }
 
@@ -342,6 +342,7 @@ export default function (view) {
         updateVisibility();
         updateStyleDescription();
         syncColorControls();
+        schedulePreview();
     }
 
     function getCurrentConfig() {
@@ -644,6 +645,7 @@ export default function (view) {
                     OverlayColor: '#66000000',
                     OverlayGradient: 'None',
                     OverlaySecondaryColor: '#66000000',
+                    PaletteDerivedColors: false,
                     GraphicPath: '',
                     GraphicWidth: 25.0,
                     GraphicHeight: 25.0,
@@ -914,6 +916,8 @@ export default function (view) {
 
     // ── Live Preview ────────────────────────────────────────
 
+    var _previewSeq = 0;
+
     function renderPreview() {
         if (!fullConfig) return;
         saveCurrentConfigSettings();
@@ -926,6 +930,10 @@ export default function (view) {
 
         status.textContent = 'Rendering…';
         status.style.display = 'block';
+
+        // Renders can overlap while the user is editing; only the latest request may
+        // update the image so a slow older response can't overwrite a newer one.
+        var seq = ++_previewSeq;
 
         // Use ApiClient.ajax so Jellyfin's auth headers are attached the same way the
         // working Configuration calls authenticate. Without a dataType it resolves to
@@ -941,37 +949,65 @@ export default function (view) {
             if (!response.ok) throw new Error('Preview failed: ' + response.status);
             return response.blob();
         }).then(function (blob) {
+            if (seq !== _previewSeq) return;
             if (_previewObjectUrl) URL.revokeObjectURL(_previewObjectUrl);
             _previewObjectUrl = URL.createObjectURL(blob);
             img.src = _previewObjectUrl;
             img.style.display = 'block';
             status.style.display = 'none';
+
+            // Keep the enlarged modal in sync when it's open during live edits.
+            var modal = view.querySelector('#previewModal');
+            var modalImg = view.querySelector('#posterPreviewModalImage');
+            if (modal && modalImg && modal.style.display !== 'none') {
+                modalImg.src = _previewObjectUrl;
+            }
         }).catch(function (error) {
+            if (seq !== _previewSeq) return;
             console.error('Poster preview error:', error);
             status.textContent = 'Preview unavailable';
             status.style.display = 'block';
         });
     }
 
-    function openPreviewModal() {
-        var modal = view.querySelector('#previewModal');
-        if (!modal) return;
+    var schedulePreview = debounce(renderPreview, 500);
+
+    // openImageModal
+    // Opens one of the base jpk-dialog image modals with the given image and title.
+    function openImageModal(modalId, closeButtonId, imageId, src, title) {
+        var modal = view.querySelector('#' + modalId);
+        var modalImg = view.querySelector('#' + imageId);
+        if (!modal || !modalImg || !src) return;
+
+        if (title) {
+            var titleEl = modal.querySelector('.jpk-modal-title');
+            if (titleEl) titleEl.textContent = title;
+        }
+
+        modalImg.src = src;
         modal.style.display = 'flex';
-        var btnClose = view.querySelector('#btnClosePreviewModal');
+
         function close() {
             modal.style.display = 'none';
             modal.removeEventListener('click', onBackdrop);
             document.removeEventListener('keydown', onKeydown);
         }
         function onBackdrop(e) { if (e.target === modal) close(); }
-        function onKeydown(e) { if (e.key === 'Escape') close(); }
+        function onKeydown(e) { if (e.key === 'Escape') { e.preventDefault(); close(); } }
+
+        var btnClose = view.querySelector('#' + closeButtonId);
         if (btnClose) btnClose.onclick = close;
         modal.addEventListener('click', onBackdrop);
         document.addEventListener('keydown', onKeydown);
-        renderPreview();
     }
 
     function loadPreviewComponents() {
+        var componentTitles = {
+            canvas: 'Canvas Image',
+            poster: 'Series Poster',
+            logo: 'Series Logo'
+        };
+
         view.querySelectorAll('.poster-component-img').forEach(function (img) {
             var component = img.getAttribute('data-component');
             img.src = ApiClient.getUrl('Plugins/EpisodePosterGenerator/Preview/Component/' + component);
@@ -981,26 +1017,14 @@ export default function (view) {
             };
         });
 
-        var lightbox = view.querySelector('#componentLightbox');
-        var lightboxImg = view.querySelector('#componentLightboxImage');
-
         view.querySelectorAll('.poster-component').forEach(function (comp) {
             comp.addEventListener('click', function () {
                 var img = comp.querySelector('.poster-component-img');
                 if (!img || !img.src) return;
-                lightboxImg.src = img.src;
-                lightbox.classList.add('visible');
+                var component = comp.getAttribute('data-component');
+                openImageModal('componentModal', 'btnCloseComponentModal', 'componentModalImage',
+                    img.src, componentTitles[component] || 'Component');
             });
-        });
-
-        function closeLightbox() {
-            lightbox.classList.remove('visible');
-            lightboxImg.src = '';
-        }
-
-        lightbox.addEventListener('click', closeLightbox);
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && lightbox.classList.contains('visible')) closeLightbox();
         });
     }
 
@@ -1011,7 +1035,7 @@ export default function (view) {
     // so the checkbox state and visibility can never disagree. This must run BEFORE the
     // dependency rules below, which read checkbox state to decide what to show.
     var forcedToggles = [
-        { checkbox: 'chkShowEpisode', row: 'showEpisodeRow', styles: ['Cutout', 'Numeral', 'Brush'] },
+        { checkbox: 'chkShowEpisode', row: 'showEpisodeRow', styles: ['Cutout', 'Numeral', 'Brush', 'Timeline'] },
         { checkbox: 'chkShowTitle', row: 'showTitleRow', styles: ['Frame', 'Brush'] }
     ];
 
@@ -1109,9 +1133,17 @@ export default function (view) {
         view.querySelector('#btnDeleteConfig').addEventListener('click', deleteCurrentConfig);
         view.querySelector('#btnRenameConfig').addEventListener('click', renameCurrentConfig);
         view.querySelector('#btnExportConfig').addEventListener('click', exportCurrentConfig);
-        var btnPreview = view.querySelector('#btnPreviewPoster');
-        if (btnPreview) btnPreview.addEventListener('click', openPreviewModal);
         view.querySelector('#btnImportConfig').addEventListener('click', importCurrentConfig);
+
+        // Clicking the inline live preview opens it enlarged in the shared modal.
+        var previewFrame = view.querySelector('#posterPreviewFrame');
+        if (previewFrame) {
+            previewFrame.addEventListener('click', function () {
+                if (!_previewObjectUrl) return;
+                openImageModal('previewModal', 'btnClosePreviewModal', 'posterPreviewModalImage',
+                    _previewObjectUrl, 'Poster Preview');
+            });
+        }
 
         // Series modal
         view.querySelector('#btnAddSeries').addEventListener('click', showSeriesSelectionModal);
@@ -1146,10 +1178,13 @@ export default function (view) {
         // Style description updates
         view.querySelector('#selectPosterStyle').addEventListener('change', updateStyleDescription);
 
-        // Track changes on all settings inputs
+        // Track changes on all settings inputs and refresh the live preview
         view.querySelectorAll('[data-setting]').forEach(function (el) {
             var evt = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
-            el.addEventListener(evt, checkDirty);
+            el.addEventListener(evt, function () {
+                checkDirty();
+                schedulePreview();
+            });
         });
     }
 

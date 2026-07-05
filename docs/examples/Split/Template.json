@@ -2,7 +2,7 @@
   "name": "Default",
   "description": "Standard poster with a thin, black overlay and the episode number visible, split with the series poster.",
   "author": "Joseph Kribs",
-  "version": "10.11.23",
+  "version": "10.11.24",
   "createdDate": "2026-01-25T11:13:32.635Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -39,6 +39,7 @@
     "OverlayColor": "#44000000",
     "OverlayGradient": "None",
     "OverlaySecondaryColor": "#40011892",
+    "PaletteDerivedColors": false,
     "GraphicPath": "",
     "GraphicWidth": 25,
     "GraphicHeight": 25,

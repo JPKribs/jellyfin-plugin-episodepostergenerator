@@ -198,7 +198,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             var startTime = videoDurationSeconds * startPercent;
             var endTime = videoDurationSeconds * endPercent;
-            return (int)(Random.Shared.NextDouble() * (endTime - startTime) + startTime);
+
+            // Low-discrepancy (golden ratio) sequence: successive attempts land far apart and
+            // never resample the same region, unlike random seeks which can cluster or repeat.
+            // Deterministic per attempt, so a retried episode probes the same candidate frames.
+            var fraction = (0.5 + attempt * 0.6180339887498949) % 1.0;
+            return (int)(startTime + fraction * (endTime - startTime));
         }
 
         private static SKBitmap? CreateAnalysisBitmap(SKBitmap source)

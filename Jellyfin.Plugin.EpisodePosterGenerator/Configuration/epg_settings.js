@@ -22,7 +22,8 @@ export default function (view) {
     function takeSnapshot() {
         _savedSnapshot = JSON.stringify({
             EnableProvider: view.querySelector('#chkEnableProvider').checked,
-            EnableTask: view.querySelector('#chkEnableTask').checked
+            EnableTask: view.querySelector('#chkEnableTask').checked,
+            TaskConcurrency: view.querySelector('#txtTaskConcurrency').value
         });
     }
 
@@ -65,7 +66,8 @@ export default function (view) {
         if (!_savedSnapshot) return;
         var current = JSON.stringify({
             EnableProvider: view.querySelector('#chkEnableProvider').checked,
-            EnableTask: view.querySelector('#chkEnableTask').checked
+            EnableTask: view.querySelector('#chkEnableTask').checked,
+            TaskConcurrency: view.querySelector('#txtTaskConcurrency').value
         });
         if (current !== _savedSnapshot) {
             markDirty();
@@ -83,6 +85,7 @@ export default function (view) {
         shared.getConfig().then(function (config) {
             view.querySelector('#chkEnableProvider').checked = config.EnableProvider !== false;
             view.querySelector('#chkEnableTask').checked = config.EnableTask !== false;
+            view.querySelector('#txtTaskConcurrency').value = config.TaskConcurrency || 2;
             takeSnapshot();
             markClean();
             Dashboard.hideLoadingMsg();
@@ -100,6 +103,9 @@ export default function (view) {
         shared.getConfig().then(function (config) {
             config.EnableProvider = view.querySelector('#chkEnableProvider').checked;
             config.EnableTask = view.querySelector('#chkEnableTask').checked;
+            var concurrency = parseInt(view.querySelector('#txtTaskConcurrency').value, 10);
+            if (isNaN(concurrency)) concurrency = 2;
+            config.TaskConcurrency = Math.min(8, Math.max(1, concurrency));
             return shared.saveConfig(config);
         }).then(function (result) {
             markClean();
@@ -164,6 +170,7 @@ export default function (view) {
             view.querySelector('#btnResetHistory').addEventListener('click', resetHistory);
             view.querySelector('#chkEnableProvider').addEventListener('change', checkDirty);
             view.querySelector('#chkEnableTask').addEventListener('change', checkDirty);
+            view.querySelector('#txtTaskConcurrency').addEventListener('input', checkDirty);
         }
 
         window.addEventListener('beforeunload', onBeforeUnload);

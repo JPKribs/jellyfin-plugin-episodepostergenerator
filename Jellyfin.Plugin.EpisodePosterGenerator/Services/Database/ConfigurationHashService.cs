@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -13,6 +14,11 @@ public class ConfigurationHashService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = false
     };
+
+    // Settings instances are immutable between configuration reloads (PosterConfigurationService
+    // swaps in fresh objects on save), so the hash can be cached per instance instead of
+    // re-serializing and re-hashing the same settings for every episode in a run.
+    private readonly ConditionalWeakTable<PosterSettings, string> _hashCache = new();
 
     // ComputeHash
     // Computes a SHA256 hash of the poster settings for change detection.
@@ -71,6 +77,16 @@ public class ConfigurationHashService
         };
 
         var json = JsonSerializer.Serialize(hashConfig, JsonOptions);
+
+        // PaletteDerivedColors (added 10.11.24) participates in the hash only when enabled,
+        // so configs upgraded with it off keep their pre-10.11.24 hash and the whole library
+        // is not needlessly reprocessed. Enabling it changes the output, so it must change
+        // the hash. Same upgrade-compat approach as the ExtractPoster mapping above.
+        if (settings.PaletteDerivedColors)
+        {
+            json += "|paletteDerivedColors:true";
+        }
+
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(json));
         return Convert.ToHexString(hashBytes);
     }
@@ -87,9 +103,10 @@ public class ConfigurationHashService
     }
 
     // GetCurrentHash
-    // Returns the current hash for the provided poster settings.
+    // Returns the current hash for the provided poster settings, cached per settings instance.
     public string GetCurrentHash(PosterSettings settings)
     {
-        return ComputeHash(settings);
+        ArgumentNullException.ThrowIfNull(settings);
+        return _hashCache.GetValue(settings, ComputeHash);
     }
 }

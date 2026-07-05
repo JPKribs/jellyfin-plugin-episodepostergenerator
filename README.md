@@ -63,6 +63,41 @@ Episode screenshot with overlay text and episode information, split alongside th
 |-----------|-----------|-----------|
 | ![Split Example 1](docs/examples/Split/Example1.png) | ![Split Example 2](docs/examples/Split/Example2.png) | ![Split Example 3](docs/examples/Split/Example3.png) |
 
+### Frosted Glass Style
+Episode information on a frosted glass panel that blurs the screenshot behind it.
+
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Frosted Glass Example 1](docs/examples/FrostedGlass/Example1.png) | ![Frosted Glass Example 2](docs/examples/FrostedGlass/Example2.png) | ![Frosted Glass Example 3](docs/examples/FrostedGlass/Example3.png) |
+
+### Fade Style
+One-sided color fade with a large episode number and a vertical episode title.
+
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Fade Example 1](docs/examples/Fade/Example1.png) | ![Fade Example 2](docs/examples/Fade/Example2.png) | ![Fade Example 3](docs/examples/Fade/Example3.png) |
+
+### Striped Style
+Tilted color sash with pinstripes carrying the episode title, with season/episode information in the corner.
+
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Striped Example 1](docs/examples/Striped/Example1.png) | ![Striped Example 2](docs/examples/Striped/Example2.png) | ![Striped Example 3](docs/examples/Striped/Example3.png) |
+
+### Timeline Style
+Season progress bar filled to the episode's position, with optional episode title and season/episode information.
+
+| Example 1 | Example 2 | Example 3 |
+|-----------|-----------|-----------|
+| ![Timeline Example 1](docs/examples/Timeline/Example1.png) | ![Timeline Example 2](docs/examples/Timeline/Example2.png) | ![Timeline Example 3](docs/examples/Timeline/Example3.png) |
+
+### Palette-Derived Colors
+Overlay colors sampled from the dominant color of each episode's frame instead of a fixed color. Works with every style; the configured alpha values are preserved.
+
+| Brush | Cutout | Fade |
+|-------|--------|------|
+| ![Palette Brush](docs/examples/BrushPalette/Example7.png) | ![Palette Cutout](docs/examples/CutoutPalette/Example7.png) | ![Palette Fade](docs/examples/Fade/Example7.png) |
+
 ## Poster Architecture
 
 The Episode Poster Generator uses a 4-layer rendering pipeline to create consistent posters across all styles:
@@ -72,7 +107,7 @@ The foundation layer that provides the visual background for the poster.
 
 **Options:**
 
-- **Video Frame Extraction** -  Automatically extracts a frame from the episode video file using configurable extraction windows. Frames are selected at random until a suitable frame with adequate brightness and quality if found.
+- **Video Frame Extraction** -  Automatically extracts a frame from the episode video file using configurable extraction windows. Candidate frames are sampled at evenly distributed points across the window until a frame with adequate brightness and sharpness is found; the best-scoring candidate is used as a fallback.
 - **Transparent Background** - Creates a solid color or transparent canvas.
 
 **Processing:**
@@ -86,6 +121,7 @@ A semi-transparent color layer applied over the canvas to enhance text readabili
 **Features:**
 - Configurable ARGB hex colors with alpha transparency
 - Applied uniformly across the entire poster surface or use two colors blurred together
+- Optional palette-derived colors: the overlay color is sampled per episode from the dominant color of the frame, while the configured alpha is preserved
 
 ### Layer 3: Graphics (Static Images)
 Optional static graphic overlays positioned above the canvas but below text elements.
@@ -118,7 +154,7 @@ For an explanation of the settings, visit [SETTINGS.md](docs/SETTINGS.md).
 For additional template examples and downloadable configurations, visit [EXAMPLES.md](docs/EXAMPLES.md).
 
 ### Preview your poster
-When creating your poster, you can preview how this looks by selecting the `Preview` button at the top of the page.
+A live preview at the top of the Posters page renders your current settings against sample artwork and updates as you change them. Click the preview to enlarge it, or click a component thumbnail to see the artwork feeding it.
 ![Preview Modal](Jellyfin.Plugin.EpisodePosterGenerator/Assets/Preview-Modal.png)
 
 ---

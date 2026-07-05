@@ -431,32 +431,17 @@
     line-height: 1.2;
 }
 
-/* ── Component Lightbox ──────────────────────────────── */
-.component-lightbox {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    background: rgba(0, 0, 0, 0.85);
-    align-items: center;
-    justify-content: center;
-    cursor: zoom-out;
-    padding: 5vh 5vw;
-}
-
-.component-lightbox.visible {
-    display: flex;
-}
-
-.component-lightbox-image {
-    max-width: 90vw;
-    max-height: 90vh;
+/* Enlarged image shown inside the base jpk-dialog modals (preview + components). */
+.poster-preview-modal-image {
+    display: block;
+    max-width: min(80vw, 960px);
+    max-height: 75vh;
     object-fit: contain;
     border-radius: 6px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
 .poster-preview-frame {
+    cursor: zoom-in;
     position: relative;
     width: 100%;
     max-width: 480px;

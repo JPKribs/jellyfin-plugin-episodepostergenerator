@@ -108,7 +108,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             try
             {
                 using var image = SKImage.FromBitmap(bitmap);
-                using var data = image.Encode(SKEncodedImageFormat.Jpeg, 100);
+                using var data = image.Encode(SKEncodedImageFormat.Jpeg, Utilities.RenderConstants.JpegQuality);
                 using var stream = File.Create(outputPath);
                 data.SaveTo(stream);
                 return true;

@@ -11,6 +11,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Configuration
 
         public bool EnableTask { get; set; } = true;
 
+        /// <summary>
+        /// Number of episodes the scheduled task processes concurrently (1-8).
+        /// Frame extraction spawns an ffmpeg process per episode, so this is kept
+        /// conservative by default to avoid saturating low-power servers.
+        /// </summary>
+        public int TaskConcurrency { get; set; } = 2;
+
         [SuppressMessage("Design", "CA1002:Do not expose generic lists", Justification = "List<T> required for XML serialization")]
         [SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "Setter required for XML serialization")]
         public List<PosterConfiguration> PosterConfigurations { get; set; }

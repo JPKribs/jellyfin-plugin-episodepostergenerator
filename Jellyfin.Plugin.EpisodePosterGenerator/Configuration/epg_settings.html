@@ -33,6 +33,12 @@
                                 <div class="fieldDescription">Enable the plugin as a scheduled task for batch poster generation.</div>
                             </div>
 
+                            <div class="inputContainer">
+                                <label for="txtTaskConcurrency">Concurrent Episodes:</label>
+                                <input is="emby-input" type="number" id="txtTaskConcurrency" min="1" max="8" step="1" />
+                                <div class="fieldDescription">Number of episodes processed at the same time by the scheduled task (1-8). Each episode runs its own ffmpeg frame extraction, so higher values need more CPU. Default is 2.</div>
+                            </div>
+
                         </div>
                     </div>
 

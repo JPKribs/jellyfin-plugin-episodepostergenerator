@@ -84,7 +84,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 SubpixelText = true,
                 LcdRenderText = true,
                 Typeface = titlePaint.Typeface,
-                TextAlign = SKTextAlign.Center
+                TextAlign = SKTextAlign.Center,
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, RenderConstants.ShadowBlurSigma)
             };
 
             var centerX = safeArea.MidX;
@@ -112,7 +113,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
             var cutoutArea = CalculateCutoutArea(safeArea, config.ShowTitle, config, canvasHeight);
             var fontStyle = FontUtils.GetFontStyle(config.EpisodeFontStyle);
-            using var typeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, fontStyle);
+            // Not disposed: ResolveTypeface returns a cached instance owned by FontUtils.
+            var typeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, fontStyle);
             float fontSize = CalculateOptimalCutoutFontSize(words, typeface, cutoutArea);
 
             // Draw border if enabled

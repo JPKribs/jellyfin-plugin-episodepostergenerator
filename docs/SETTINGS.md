@@ -6,6 +6,7 @@ Settings apply to the active configuration. Any series without its own configura
 
 * **Enable Provider** - generates a poster when Jellyfin requests an episode image. Default on.
 * **Enable Scheduled Task** - exposes a batch generation task under Scheduled Tasks. Default on.
+* **Concurrent Episodes** - how many episodes the scheduled task processes at the same time, 1 to 8. Each episode runs its own ffmpeg frame extraction, so higher values need more CPU. Default 2.
 
 ## Configurations
 
@@ -30,7 +31,9 @@ Settings apply to the active configuration. Any series without its own configura
 
 ## Poster
 
-* **Style** - the layout: Standard, Cutout, Numeral, Logo, Frame, Brush, or Split. Default Standard.
+* **Style** - the layout: Standard, Brush, Cutout, Fade, Frame, Frosted Glass, Logo, Numeral, Split, Striped, or Timeline. Default Standard.
+  * Striped draws its sash from the overlay colors: the main band uses Overlay Color and the pinstripes use Secondary Overlay Color.
+  * Timeline draws a season progress bar; it needs the season's episode count, so the bar renders full when the count is unknown, and it does not refresh on its own as more episodes are added to an airing season.
 * **Fill Strategy** - how the canvas fits the poster: Original, Fill, or Fit. Default Original.
 * **Aspect Ratio** - output aspect ratio. Default 16:9.
 * **Safe Area** - margin kept clear of text and graphics, as a percent. Default 5.
@@ -68,6 +71,7 @@ Settings apply to the active configuration. Any series without its own configura
 
 ## Overlay
 
+* **Palette-Derived Colors** - replace the overlay color channels with the dominant color sampled from each episode's image; the secondary color becomes a darker shade of it. The alpha values below still apply. Default off.
 * **Overlay Color** - color drawn over the canvas as ARGB hex. Default #66000000.
 * **Overlay Gradient** - gradient direction: None, Left To Right, Bottom To Top, or a diagonal corner. Default None.
 * **Secondary Overlay Color** - the gradient's second color as ARGB hex. Default #66000000.

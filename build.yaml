@@ -2,7 +2,7 @@
 name: "Episode Poster Generator"
 guid: "b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e"
 imageUrl: "https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-episodepostergenerator/refs/heads/master/Jellyfin.Plugin.EpisodePosterGenerator/Assets/Logo.png"
-version: "10.11.23.2"
+version: "10.11.24.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Generate Custom Episode Posters"
@@ -13,12 +13,21 @@ owner: "JPKribs"
 artifacts:
 - "Jellyfin.Plugin.EpisodePosterGenerator.dll"
 changelog:
-  developer:
-  - Bump to base 2026.6.23
-  - File cleanup
-  - Update template files for import
-  - README cleanup
-  - Move demo creation to it's own project folder
-  - Add tests just to keep me from going crazy
-  - Move poster descriptions to their CS file instead of maintaining in JS
-  - Move preview to button instead od rendering everytime
+  features:
+  - New poster style - Striped - tilted pinstriped sash carrying the episode title
+  - New poster style - Frosted Glass - blurred glass panel behind the episode text
+  - New poster style - Fade - one-sided gradient with a large episode number and vertical title
+  - New poster style - Timeline - progress bar showing the episode's position within the season
+  - Palette-derived colors - overlay colors can be sampled from the episode frame
+  - Concurrent poster generation with a configurable worker count
+  performance:
+  - Frame extraction now seeks with a stratified sequence instead of random retries
+  - Tracking database uses WAL mode, pooled connections, and a batched filter pass
+  - Poster settings hashes are cached instead of recomputed per episode
+  - JPEG encoding quality tuned from 100 to 92 for much smaller files
+  polish:
+  - Brush strokes are feathered instead of hard-clipped for a painted look
+  - Cutout title shadow now uses the same soft blur as other styles
+  - Standard and Split separator lines follow the episode font color
+  - Fixed poster files not being truncated when re-rendered smaller
+  - All templates updated to the 10.11.24 settings format

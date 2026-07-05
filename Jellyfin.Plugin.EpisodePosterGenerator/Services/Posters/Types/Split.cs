@@ -238,7 +238,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var endX = safeArea.Right;
 
             using var shadowPaint = PaintFactory.CreateShadowLinePaint();
-            using var linePaint = PaintFactory.CreateLinePaint(SKColors.White);
+            using var linePaint = PaintFactory.CreateLinePaint(ColorUtils.ParseHexColor(config.EpisodeFontColor));
 
             PaintFactory.DrawLineWithShadow(canvas, startX, y, endX, y, linePaint, shadowPaint);
 

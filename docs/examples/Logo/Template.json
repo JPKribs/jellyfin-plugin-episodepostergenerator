@@ -2,7 +2,7 @@
   "name": "Logo",
   "description": "Logo poster with a thin, black overlay and episode title visible.",
   "author": "Joseph Kribs",
-  "version": "10.11.23",
+  "version": "10.11.24",
   "createdDate": "2025-10-21T13:01:12.801Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -39,6 +39,7 @@
     "OverlayColor": "#40000000",
     "OverlayGradient": "None",
     "OverlaySecondaryColor": "#500096FF",
+    "PaletteDerivedColors": false,
     "GraphicPath": "",
     "GraphicWidth": 25,
     "GraphicHeight": 25,

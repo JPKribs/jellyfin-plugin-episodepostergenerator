@@ -20,6 +20,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utilities
         public const float SeparatorStrokeWidth = 2f;
         public const float SeparatorLineHeight = 4f;
 
+        // JPEG encode quality for posters and backdrops. 92 is visually indistinguishable
+        // from 100 at poster resolution but produces files a fraction of the size.
+        public const int JpegQuality = 92;
+
         // Shadow color (black with standard alpha)
         public static SKColor ShadowColor => SKColors.Black.WithAlpha(ShadowAlpha);
     }

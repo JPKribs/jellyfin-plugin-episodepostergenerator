@@ -2,7 +2,7 @@
   "name": "Compact Logo",
   "description": "Logo poster with a thin gradient overlay and no episode details visible. The gradient goes from blue to yellow to make the lighter logo, compacted into the top right corner, stand out more.",
   "author": "Joseph Kribs",
-  "version": "10.11.23",
+  "version": "10.11.24",
   "createdDate": "2025-10-21T13:23:38.596Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -39,6 +39,7 @@
     "OverlayColor": "#40FEFB00",
     "OverlayGradient": "BottomToTop",
     "OverlaySecondaryColor": "#40011892",
+    "PaletteDerivedColors": false,
     "GraphicPath": "",
     "GraphicWidth": 25,
     "GraphicHeight": 25,

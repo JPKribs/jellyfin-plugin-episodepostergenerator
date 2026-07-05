@@ -8,6 +8,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         Logo,
         Frame,
         Brush,
-        Split
+        Split,
+        FrostedGlass,
+        Fade,
+        Timeline,
+        Striped
     }
 }

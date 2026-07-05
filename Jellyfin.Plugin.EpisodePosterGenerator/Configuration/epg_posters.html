@@ -14,10 +14,6 @@
                     <div class="jpk-selector">
                         <select is="emby-select" id="selectPosterConfig" class="jpk-selector-dropdown"></select>
                         <div class="jpk-selector-actions">
-                            <button is="emby-button" type="button" id="btnPreviewPoster" class="raised jpk-icon-btn" title="Preview">
-                                <span class="material-icons" aria-hidden="true">visibility</span>
-                                <span class="jpk-icon-btn-label">Preview</span>
-                            </button>
                             <button is="emby-button" type="button" id="btnRenameConfig" class="raised jpk-icon-btn" title="Rename">
                                 <span class="material-icons" aria-hidden="true">edit</span>
                                 <span class="jpk-icon-btn-label">Rename</span>
@@ -51,38 +47,32 @@
                         <div class="fieldDescription">Select which series should use this poster configuration.</div>
                     </div>
 
-                    <!-- Poster Preview Modal -->
-                    <div id="previewModal" class="jpk-dialog" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="previewModalTitle">
-                        <div class="jpk-dialog-content">
-                            <button type="button" id="btnClosePreviewModal" class="jpk-dialog-close" aria-label="Close">&times;</button>
-                            <h2 id="previewModalTitle" class="jpk-modal-title">Poster Preview</h2>
-                            <div class="jpk-modal-body">
-                        <div class="poster-preview-layout">
-                            <div class="poster-preview-main">
-                                <div class="poster-preview-frame">
-                                    <img id="posterPreviewImage" class="poster-preview-image" alt="Live poster preview" />
-                                    <div id="posterPreviewStatus" class="poster-preview-status">Loading preview…</div>
+                    <!-- Live Preview -->
+                    <div class="jpk-section poster-preview-section">
+                        <div class="jpk-section-title">Live Preview</div>
+                        <div class="jpk-section-content">
+                            <div class="poster-preview-layout">
+                                <div class="poster-preview-main">
+                                    <div id="posterPreviewFrame" class="poster-preview-frame" title="Click to enlarge">
+                                        <img id="posterPreviewImage" class="poster-preview-image" alt="Live poster preview" />
+                                        <div id="posterPreviewStatus" class="poster-preview-status">Loading preview…</div>
+                                    </div>
+                                    <div class="poster-preview-caption">Rendered from sample artwork — updates live as you change settings</div>
                                 </div>
-                                <div class="poster-preview-caption">Rendered from sample artwork</div>
-                            </div>
-                            <div class="poster-preview-components">
-                                <div class="poster-component" data-component="canvas" title="Click to expand">
-                                    <img class="poster-component-img" src="" alt="Canvas image" data-component="canvas" />
-                                    <span class="poster-component-label">Canvas Image</span>
+                                <div class="poster-preview-components">
+                                    <div class="poster-component" data-component="canvas" title="Click to expand">
+                                        <img class="poster-component-img" src="" alt="Canvas image" data-component="canvas" />
+                                        <span class="poster-component-label">Canvas Image</span>
+                                    </div>
+                                    <div class="poster-component" data-component="poster" title="Click to expand">
+                                        <img class="poster-component-img" src="" alt="Series poster" data-component="poster" />
+                                        <span class="poster-component-label">Series Poster</span>
+                                    </div>
+                                    <div class="poster-component" data-component="logo" title="Click to expand">
+                                        <img class="poster-component-img" src="" alt="Series logo" data-component="logo" />
+                                        <span class="poster-component-label">Series Logo</span>
+                                    </div>
                                 </div>
-                                <div class="poster-component" data-component="poster" title="Click to expand">
-                                    <img class="poster-component-img" src="" alt="Series poster" data-component="poster" />
-                                    <span class="poster-component-label">Series Poster</span>
-                                </div>
-                                <div class="poster-component" data-component="logo" title="Click to expand">
-                                    <img class="poster-component-img" src="" alt="Series logo" data-component="logo" />
-                                    <span class="poster-component-label">Series Logo</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="componentLightbox" class="component-lightbox">
-                            <img id="componentLightboxImage" class="component-lightbox-image" src="" alt="Expanded component" />
-                        </div>
                             </div>
                         </div>
                     </div>
@@ -101,10 +91,14 @@
                                     <option value="Standard">Standard</option>
                                     <option value="Brush">Brush</option>
                                     <option value="Cutout">Cutout</option>
+                                    <option value="Fade">Fade</option>
                                     <option value="Frame">Frame</option>
+                                    <option value="FrostedGlass">Frosted Glass</option>
                                     <option value="Logo">Logo</option>
                                     <option value="Numeral">Numeral</option>
                                     <option value="Split">Split</option>
+                                    <option value="Striped">Striped</option>
+                                    <option value="Timeline">Timeline</option>
                                 </select>
                                 <div id="posterStyleDescription" class="fieldDescription"></div>
                             </div>
@@ -252,6 +246,14 @@
                             <span class="jpk-collapsible-icon">&#9660;</span>
                         </button>
                         <div id="overlayContent" class="jpk-collapsible-content collapsed">
+
+                            <div class="checkboxContainer">
+                                <label class="emby-checkbox-label">
+                                    <input is="emby-checkbox" type="checkbox" id="chkPaletteDerivedColors" data-setting="PaletteDerivedColors" data-default-unchecked />
+                                    <span class="checkboxLabel">Palette-Derived Colors</span>
+                                </label>
+                                <div class="fieldDescription">Sample the dominant color from each episode's image and use it as the overlay color (the secondary gradient color becomes a darker shade of it). The alpha values configured below still apply; only the color channels are replaced.</div>
+                            </div>
 
                             <div class="inputContainer">
                                 <label for="txtOverlayColor">Overlay Color:</label>
@@ -550,6 +552,28 @@
                 </div>
                 <input type="file" id="templateFileInput" accept=".json" style="display: none;" />
             </form>
+        </div>
+    </div>
+
+    <!-- Enlarged Preview Modal -->
+    <div id="previewModal" class="jpk-dialog" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="previewModalTitle">
+        <div class="jpk-dialog-content">
+            <button type="button" id="btnClosePreviewModal" class="jpk-dialog-close" aria-label="Close">&times;</button>
+            <h2 id="previewModalTitle" class="jpk-modal-title">Poster Preview</h2>
+            <div class="jpk-modal-body">
+                <img id="posterPreviewModalImage" class="poster-preview-modal-image" src="" alt="Poster preview enlarged" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Component Modal -->
+    <div id="componentModal" class="jpk-dialog" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="componentModalTitle">
+        <div class="jpk-dialog-content">
+            <button type="button" id="btnCloseComponentModal" class="jpk-dialog-close" aria-label="Close">&times;</button>
+            <h2 id="componentModalTitle" class="jpk-modal-title">Component</h2>
+            <div class="jpk-modal-body">
+                <img id="componentModalImage" class="poster-preview-modal-image" src="" alt="Preview component" />
+            </div>
         </div>
     </div>
 

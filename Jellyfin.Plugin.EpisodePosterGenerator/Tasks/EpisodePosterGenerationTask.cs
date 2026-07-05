@@ -101,95 +101,46 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
 
                 var successCount = 0;
                 var failureCount = 0;
+                var completedCount = 0;
 
-                for (int i = 0; i < episodesToProcess.Length; i++)
+                // Frame extraction is ffmpeg-bound, so a few episodes in flight cut wall-clock
+                // time substantially. The bound stays small to avoid saturating the server.
+                var concurrency = Math.Clamp(config.TaskConcurrency, 1, 8);
+                using var throttle = new SemaphoreSlim(concurrency);
+
+                var workers = episodesToProcess.Select(async episode =>
                 {
-                    if (cancellationToken.IsCancellationRequested)
-                        break;
-
-                    var episode = episodesToProcess[i];
-
+                    await throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
                     try
                     {
-                        _logger.LogDebug("Processing episode {Current}/{Total}: {SeriesName} - {EpisodeName}",
-                            i + 1, episodesToProcess.Length,
-                            episode.Series?.Name ?? "Unknown Series",
-                            episode.Name ?? "Unknown Episode");
-
-                        var result = await posterService.GeneratePosterAsync(episode).ConfigureAwait(false);
-
-                        if (result != null && !string.IsNullOrEmpty(result.PosterPath) && File.Exists(result.PosterPath))
+                        if (await ProcessEpisodeAsync(episode, config, posterService, trackingService, cancellationToken).ConfigureAwait(false))
                         {
-                            try
-                            {
-                                var posterSettings = Plugin.Instance.PosterConfigService.GetSettingsForEpisode(episode);
-
-                                if (posterSettings == null)
-                                {
-                                    _logger.LogError("Failed to get poster settings for episode");
-                                    continue;
-                                }
-
-                                using (var imageStream = File.OpenRead(result.PosterPath))
-                                {
-                                    await _providerManager.SaveImage(
-                                        episode,
-                                        imageStream,
-                                        "image/jpeg",
-                                        ImageType.Primary,
-                                        null,
-                                        cancellationToken).ConfigureAwait(false);
-                                }
-
-                                if (!string.IsNullOrEmpty(result.BackdropPath) && File.Exists(result.BackdropPath))
-                                {
-                                    using var backdropStream = File.OpenRead(result.BackdropPath);
-
-                                    await _providerManager.SaveImage(
-                                        episode,
-                                        backdropStream,
-                                        "image/jpeg",
-                                        ImageType.Backdrop,
-                                        null,
-                                        cancellationToken).ConfigureAwait(false);
-                                }
-
-                                await episode.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, cancellationToken).ConfigureAwait(false);
-
-                                successCount++;
-
-                                await trackingService.MarkEpisodeProcessedAsync(episode, config).ConfigureAwait(false);
-
-                                _logger.LogInformation("Successfully processed and saved poster for: {SeriesName} - {EpisodeName}",
-                                    episode.Series?.Name ?? "Unknown Series",
-                                    episode.Name ?? "Unknown Episode");
-                            }
-                            catch (Exception saveEx)
-                            {
-                                failureCount++;
-                                _logger.LogError(saveEx, "Failed to save poster to Jellyfin for: {SeriesName} - {EpisodeName}",
-                                    episode.Series?.Name ?? "Unknown Series",
-                                    episode.Name ?? "Unknown Episode");
-                            }
+                            Interlocked.Increment(ref successCount);
                         }
                         else
                         {
-                            failureCount++;
-                            _logger.LogWarning("Poster path invalid or file does not exist for: {SeriesName} - {EpisodeName}",
-                                episode.Series?.Name ?? "Unknown Series",
-                                episode.Name ?? "Unknown Episode");
+                            Interlocked.Increment(ref failureCount);
                         }
                     }
-                    catch (Exception ex)
+                    catch (OperationCanceledException)
                     {
-                        failureCount++;
-                        _logger.LogError(ex, "Error processing episode: {SeriesName} - {EpisodeName}",
-                            episode.Series?.Name ?? "Unknown Series",
-                            episode.Name ?? "Unknown Episode");
+                        // Cancellation is handled by the outer await; don't count it as a failure.
                     }
+                    finally
+                    {
+                        var done = Interlocked.Increment(ref completedCount);
+                        progress?.Report((double)done / episodesToProcess.Length * 100);
+                        throttle.Release();
+                    }
+                }).ToArray();
 
-                    var progressPercent = (double)(i + 1) / episodesToProcess.Length * 100;
-                    progress?.Report(progressPercent);
+                try
+                {
+                    await Task.WhenAll(workers).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogInformation("Poster generation task cancelled");
                 }
 
                 _logger.LogInformation("Poster generation completed. {SuccessCount} succeeded, {FailureCount} failed",
@@ -199,6 +150,78 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
             {
                 _logger.LogError(ex, "Error during Episode Poster Generation task");
                 throw;
+            }
+        }
+
+        // ProcessEpisodeAsync
+        // Generates and saves the poster (and optional backdrop) for a single episode.
+        // Returns true on success; exceptions are logged and reported as failure.
+        private async Task<bool> ProcessEpisodeAsync(
+            Episode episode,
+            Configuration.PluginConfiguration config,
+            PosterService posterService,
+            EpisodeTrackingService trackingService,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                _logger.LogDebug("Processing episode: {SeriesName} - {EpisodeName}",
+                    episode.Series?.Name ?? "Unknown Series",
+                    episode.Name ?? "Unknown Episode");
+
+                var result = await posterService.GeneratePosterAsync(episode).ConfigureAwait(false);
+
+                if (result == null || string.IsNullOrEmpty(result.PosterPath) || !File.Exists(result.PosterPath))
+                {
+                    _logger.LogWarning("Poster path invalid or file does not exist for: {SeriesName} - {EpisodeName}",
+                        episode.Series?.Name ?? "Unknown Series",
+                        episode.Name ?? "Unknown Episode");
+                    return false;
+                }
+
+                using (var imageStream = File.OpenRead(result.PosterPath))
+                {
+                    await _providerManager.SaveImage(
+                        episode,
+                        imageStream,
+                        "image/jpeg",
+                        ImageType.Primary,
+                        null,
+                        cancellationToken).ConfigureAwait(false);
+                }
+
+                if (!string.IsNullOrEmpty(result.BackdropPath) && File.Exists(result.BackdropPath))
+                {
+                    using var backdropStream = File.OpenRead(result.BackdropPath);
+
+                    await _providerManager.SaveImage(
+                        episode,
+                        backdropStream,
+                        "image/jpeg",
+                        ImageType.Backdrop,
+                        null,
+                        cancellationToken).ConfigureAwait(false);
+                }
+
+                await episode.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, cancellationToken).ConfigureAwait(false);
+
+                await trackingService.MarkEpisodeProcessedAsync(episode, config).ConfigureAwait(false);
+
+                _logger.LogInformation("Successfully processed and saved poster for: {SeriesName} - {EpisodeName}",
+                    episode.Series?.Name ?? "Unknown Series",
+                    episode.Name ?? "Unknown Episode");
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing episode: {SeriesName} - {EpisodeName}",
+                    episode.Series?.Name ?? "Unknown Series",
+                    episode.Name ?? "Unknown Episode");
+                return false;
             }
         }
 
@@ -221,12 +244,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
 
         // FilterEpisodesThatNeedProcessing
         // Filters episodes based on tracking database to find those needing processing.
+        // Loads all tracking records once instead of issuing a query per episode.
         private async Task<Episode[]> FilterEpisodesThatNeedProcessing(
             Episode[] allEpisodes,
             Configuration.PluginConfiguration config,
             EpisodeTrackingService trackingService,
             CancellationToken cancellationToken)
         {
+            var records = await trackingService.GetProcessedRecordsAsync().ConfigureAwait(false);
             var episodesToProcess = new List<Episode>();
 
             foreach (var episode in allEpisodes)
@@ -234,7 +259,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                if (await trackingService.ShouldProcessEpisodeAsync(episode, config).ConfigureAwait(false))
+                records.TryGetValue(episode.Id, out var record);
+                if (trackingService.ShouldProcessEpisode(episode, record))
                 {
                     episodesToProcess.Add(episode);
                 }

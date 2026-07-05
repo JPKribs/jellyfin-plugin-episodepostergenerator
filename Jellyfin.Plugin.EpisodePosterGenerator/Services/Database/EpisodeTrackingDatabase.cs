@@ -14,7 +14,7 @@ public sealed class EpisodeTrackingDatabase : IDisposable
 {
     private readonly ILogger<EpisodeTrackingDatabase> _logger;
     private readonly string _databasePath;
-    private SqliteConnection? _connection;
+    private readonly string _connectionString;
     private bool _disposed;
     private bool _initialized;
 
@@ -29,37 +29,29 @@ public sealed class EpisodeTrackingDatabase : IDisposable
         var dataPath = Path.Combine(appPaths.DataPath, "episodeposter");
         Directory.CreateDirectory(dataPath);
         _databasePath = Path.Combine(dataPath, "episode_tracking.db");
+
+        // Pooled connections (the Microsoft.Data.Sqlite default) let concurrent poster
+        // workers each open a cheap connection instead of sharing a single SqliteConnection,
+        // which is not safe for concurrent use.
+        _connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = _databasePath
+        }.ToString();
     }
 
     // InitializeAsync
-    // Opens the database connection and creates required tables.
+    // Creates required tables and enables WAL journaling for cheap concurrent access.
     public async Task InitializeAsync()
     {
-        _connection = new SqliteConnection($"Data Source={_databasePath}");
-        await _connection.OpenAsync().ConfigureAwait(false);
+        using var connection = await OpenConnectionAsync().ConfigureAwait(false);
 
-        await CreateTablesAsync().ConfigureAwait(false);
-
-        _initialized = true;
-        _logger.LogInformation("Episode tracking database initialized at: {DatabasePath}", _databasePath);
-    }
-
-    // EnsureInitialized
-    // Throws if the database connection has not been initialized.
-    private SqliteConnection EnsureInitialized()
-    {
-        if (!_initialized || _connection == null)
+        // WAL is persistent (stored in the database file), so setting it once here covers
+        // every pooled connection and avoids a full fsync on each per-episode commit.
+        using (var walCommand = new SqliteCommand("PRAGMA journal_mode=WAL;", connection))
         {
-            throw new InvalidOperationException("Episode tracking database has not been initialized. Call InitializeAsync() first.");
+            await walCommand.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
 
-        return _connection;
-    }
-
-    // CreateTablesAsync
-    // Creates the ProcessedEpisodes table if it does not exist.
-    private async Task CreateTablesAsync()
-    {
         const string createTableSql = """
             CREATE TABLE IF NOT EXISTS ProcessedEpisodes (
                 EpisodeId TEXT PRIMARY KEY,
@@ -71,35 +63,54 @@ public sealed class EpisodeTrackingDatabase : IDisposable
             )
             """;
 
-        using var command = new SqliteCommand(createTableSql, _connection);
-        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+        using (var command = new SqliteCommand(createTableSql, connection))
+        {
+            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+        }
+
+        _initialized = true;
+        _logger.LogInformation("Episode tracking database initialized at: {DatabasePath}", _databasePath);
+    }
+
+    // OpenConnectionAsync
+    // Opens a pooled connection to the tracking database.
+    private async Task<SqliteConnection> OpenConnectionAsync()
+    {
+        var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync().ConfigureAwait(false);
+        return connection;
+    }
+
+    // EnsureInitialized
+    // Throws if the database has not been initialized.
+    private void EnsureInitialized()
+    {
+        if (!_initialized)
+        {
+            throw new InvalidOperationException("Episode tracking database has not been initialized. Call InitializeAsync() first.");
+        }
     }
 
     // GetProcessedEpisodeAsync
     // Retrieves a processed episode record by its ID from the database.
     public async Task<ProcessedEpisodeRecord?> GetProcessedEpisodeAsync(Guid episodeId)
     {
+        EnsureInitialized();
+
         const string sql = """
             SELECT EpisodeId, LastProcessed, VideoFilePath, VideoFileSize, VideoFileLastModified, ConfigurationHash
             FROM ProcessedEpisodes
             WHERE EpisodeId = @episodeId
             """;
 
-        using var command = new SqliteCommand(sql, EnsureInitialized());
+        using var connection = await OpenConnectionAsync().ConfigureAwait(false);
+        using var command = new SqliteCommand(sql, connection);
         command.Parameters.AddWithValue("@episodeId", episodeId.ToString());
 
         using var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
         if (await reader.ReadAsync().ConfigureAwait(false))
         {
-            return new ProcessedEpisodeRecord
-            {
-                EpisodeId = Guid.Parse(reader.GetString(0)),
-                LastProcessed = DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture),
-                VideoFilePath = reader.GetString(2),
-                VideoFileSize = reader.GetInt64(3),
-                VideoFileLastModified = DateTime.Parse(reader.GetString(4), CultureInfo.InvariantCulture),
-                ConfigurationHash = reader.GetString(5)
-            };
+            return ReadRecord(reader);
         }
 
         return null;
@@ -109,13 +120,16 @@ public sealed class EpisodeTrackingDatabase : IDisposable
     // Saves or updates a processed episode record in the database.
     public async Task SaveProcessedEpisodeAsync(ProcessedEpisodeRecord record)
     {
+        EnsureInitialized();
+
         const string sql = """
             INSERT OR REPLACE INTO ProcessedEpisodes
             (EpisodeId, LastProcessed, VideoFilePath, VideoFileSize, VideoFileLastModified, ConfigurationHash)
             VALUES (@episodeId, @lastProcessed, @videoFilePath, @videoFileSize, @videoFileLastModified, @configurationHash)
             """;
 
-        using var command = new SqliteCommand(sql, EnsureInitialized());
+        using var connection = await OpenConnectionAsync().ConfigureAwait(false);
+        using var command = new SqliteCommand(sql, connection);
         command.Parameters.AddWithValue("@episodeId", record.EpisodeId.ToString());
         command.Parameters.AddWithValue("@lastProcessed", record.LastProcessed.ToString("O"));
         command.Parameters.AddWithValue("@videoFilePath", record.VideoFilePath);
@@ -130,9 +144,12 @@ public sealed class EpisodeTrackingDatabase : IDisposable
     // Removes a processed episode record from the database by ID.
     public async Task RemoveProcessedEpisodeAsync(Guid episodeId)
     {
+        EnsureInitialized();
+
         const string sql = "DELETE FROM ProcessedEpisodes WHERE EpisodeId = @episodeId";
 
-        using var command = new SqliteCommand(sql, EnsureInitialized());
+        using var connection = await OpenConnectionAsync().ConfigureAwait(false);
+        using var command = new SqliteCommand(sql, connection);
         command.Parameters.AddWithValue("@episodeId", episodeId.ToString());
 
         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
@@ -142,9 +159,12 @@ public sealed class EpisodeTrackingDatabase : IDisposable
     // Returns the total count of processed episodes in the database.
     public async Task<int> GetProcessedCountAsync()
     {
+        EnsureInitialized();
+
         const string sql = "SELECT COUNT(*) FROM ProcessedEpisodes";
 
-        using var command = new SqliteCommand(sql, EnsureInitialized());
+        using var connection = await OpenConnectionAsync().ConfigureAwait(false);
+        using var command = new SqliteCommand(sql, connection);
         var result = await command.ExecuteScalarAsync().ConfigureAwait(false);
 
         return Convert.ToInt32(result, CultureInfo.InvariantCulture);
@@ -154,9 +174,12 @@ public sealed class EpisodeTrackingDatabase : IDisposable
     // Deletes all processed episode records from the database.
     public async Task ClearAllProcessedEpisodesAsync()
     {
+        EnsureInitialized();
+
         const string sql = "DELETE FROM ProcessedEpisodes";
 
-        using var command = new SqliteCommand(sql, EnsureInitialized());
+        using var connection = await OpenConnectionAsync().ConfigureAwait(false);
+        using var command = new SqliteCommand(sql, connection);
         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
@@ -164,6 +187,8 @@ public sealed class EpisodeTrackingDatabase : IDisposable
     // Retrieves all processed episode records from the database.
     public async Task<List<ProcessedEpisodeRecord>> GetAllProcessedEpisodesAsync()
     {
+        EnsureInitialized();
+
         const string sql = """
             SELECT EpisodeId, LastProcessed, VideoFilePath, VideoFileSize, VideoFileLastModified, ConfigurationHash
             FROM ProcessedEpisodes
@@ -171,32 +196,46 @@ public sealed class EpisodeTrackingDatabase : IDisposable
 
         var records = new List<ProcessedEpisodeRecord>();
 
-        using var command = new SqliteCommand(sql, EnsureInitialized());
+        using var connection = await OpenConnectionAsync().ConfigureAwait(false);
+        using var command = new SqliteCommand(sql, connection);
         using var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
 
         while (await reader.ReadAsync().ConfigureAwait(false))
         {
-            records.Add(new ProcessedEpisodeRecord
-            {
-                EpisodeId = Guid.Parse(reader.GetString(0)),
-                LastProcessed = DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture),
-                VideoFilePath = reader.GetString(2),
-                VideoFileSize = reader.GetInt64(3),
-                VideoFileLastModified = DateTime.Parse(reader.GetString(4), CultureInfo.InvariantCulture),
-                ConfigurationHash = reader.GetString(5)
-            });
+            records.Add(ReadRecord(reader));
         }
 
         return records;
     }
 
+    // ReadRecord
+    // Materializes a ProcessedEpisodeRecord from the current reader row.
+    private static ProcessedEpisodeRecord ReadRecord(SqliteDataReader reader)
+    {
+        return new ProcessedEpisodeRecord
+        {
+            EpisodeId = Guid.Parse(reader.GetString(0)),
+            LastProcessed = DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture),
+            VideoFilePath = reader.GetString(2),
+            VideoFileSize = reader.GetInt64(3),
+            VideoFileLastModified = DateTime.Parse(reader.GetString(4), CultureInfo.InvariantCulture),
+            ConfigurationHash = reader.GetString(5)
+        };
+    }
+
     // Dispose
-    // Releases database resources and closes the connection.
+    // Releases pooled connections held against this plugin's database file only —
+    // ClearAllPools would clear every SQLite pool in the Jellyfin process.
     public void Dispose()
     {
         if (!_disposed)
         {
-            _connection?.Dispose();
+            _initialized = false;
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+                SqliteConnection.ClearPool(connection);
+            }
+
             _disposed = true;
             GC.SuppressFinalize(this);
         }

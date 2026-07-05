@@ -48,9 +48,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var seed = GenerateBrushSeed(episodeMetadata);
             var strokeBuilder = new BrushStrokeBuilder(seed);
             using var brushMask = strokeBuilder.BuildStrokePath(safeArea, textArea, height);
-            
-            skCanvas.Save();
-            skCanvas.ClipPath(brushMask, SKClipOperation.Difference, antialias: true);
+
+            // Draw the overlay into its own layer, then erase the stroke mask out of it with
+            // a slightly blurred punch. The feathered edge reads as paint on canvas; a hard
+            // ClipPath edge reads as a digital cut.
+            skCanvas.SaveLayer(null);
 
             if (settings.OverlayGradient == OverlayGradient.None)
             {
@@ -78,7 +80,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                     skCanvas.DrawRect(rect, overlayPaint);
                 }
             }
-            
+
+            using var punchPaint = new SKPaint
+            {
+                Color = SKColors.Black,
+                Style = SKPaintStyle.Fill,
+                BlendMode = SKBlendMode.DstOut,
+                IsAntialias = true,
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, Math.Max(2f, height * 0.002f))
+            };
+            skCanvas.DrawPath(brushMask, punchPaint);
+
             skCanvas.Restore();
         }
 

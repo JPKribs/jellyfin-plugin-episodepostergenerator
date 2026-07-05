@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using MediaBrowser.Controller.Entities.TV;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
@@ -18,6 +19,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         public int? EpisodeNumberStart { get; set; }
 
         public int? EpisodeNumberEnd { get; set; }
+
+        /// <summary>
+        /// Total number of episodes in the season, when known. Used by styles that
+        /// visualize the episode's position within the season (e.g. Timeline).
+        /// </summary>
+        public int? SeasonEpisodeCount { get; set; }
 
         public VideoMetadata VideoMetadata { get; set; }
 
@@ -44,10 +51,30 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
                 SeasonNumber = GetSeasonNumber(episode),
                 EpisodeName = episode.Name,
                 EpisodeNumberStart = episode.IndexNumber,
-                EpisodeNumberEnd = episode.IndexNumberEnd ?? episode.IndexNumber
+                EpisodeNumberEnd = episode.IndexNumberEnd ?? episode.IndexNumber,
+                SeasonEpisodeCount = GetSeasonEpisodeCount(episode)
             };
 
             return episodeMetadata;
+        }
+
+        // GetSeasonEpisodeCount
+        // Counts the non-virtual episodes in the episode's season, or null when unknown.
+        private static int? GetSeasonEpisodeCount(Episode episode)
+        {
+            try
+            {
+                var season = episode.Season;
+                if (season == null)
+                    return null;
+
+                var count = season.Children?.OfType<Episode>().Count(e => !e.IsVirtualItem) ?? 0;
+                return count > 0 ? count : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         // GetSeriesName

@@ -64,6 +64,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 int width = canvas.Width;
                 int height = canvas.Height;
 
+                if (settings.PaletteDerivedColors)
+                {
+                    settings = ApplyDerivedPalette(settings, canvas);
+                }
+
                 var imageInfo = new SKImageInfo(
                     width,
                     height,
@@ -97,6 +102,42 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 LogError(ex, episodeMetadata.EpisodeName);
                 return null;
             }
+        }
+
+        // ApplyDerivedPalette
+        // Returns a render-time copy of the settings whose overlay colors are replaced by the
+        // dominant color sampled from the canvas (secondary gets a darkened variant for depth).
+        // The configured alpha channels are preserved; a transparent canvas leaves settings unchanged.
+        private static PosterSettings ApplyDerivedPalette(PosterSettings settings, SKBitmap canvas)
+        {
+            // An empty or zero-alpha overlay means "no overlay" — leave it alone. ParseHexColor
+            // falls back to opaque white for empty/invalid strings, so deriving from it would
+            // turn a deliberately disabled overlay into a fully opaque one.
+            if (string.IsNullOrEmpty(settings.OverlayColor))
+                return settings;
+
+            var primaryAlpha = ColorUtils.ParseHexColor(settings.OverlayColor).Alpha;
+            if (primaryAlpha == 0)
+                return settings;
+
+            var dominant = ColorUtils.GetDominantColor(canvas);
+            if (dominant == SKColor.Empty)
+                return settings;
+
+            var derived = settings.Clone();
+            derived.OverlayColor = ColorUtils.ToArgbHex(dominant.WithAlpha(primaryAlpha));
+
+            // The secondary color only participates when it is itself enabled; a zero-alpha
+            // secondary keeps its meaning ("fall back to primary") in RenderOverlay.
+            var secondaryAlpha = string.IsNullOrEmpty(settings.OverlaySecondaryColor)
+                ? (byte)0
+                : ColorUtils.ParseHexColor(settings.OverlaySecondaryColor).Alpha;
+            if (secondaryAlpha > 0)
+            {
+                derived.OverlaySecondaryColor = ColorUtils.ToArgbHex(ColorUtils.Darken(dominant, 0.45f).WithAlpha(secondaryAlpha));
+            }
+
+            return derived;
         }
 
         // RenderCanvas
@@ -309,13 +350,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             }
 
             using var image = SKImage.FromBitmap(bitmap);
-            using var data = image.Encode(SKEncodedImageFormat.Jpeg, 100);
+            using var data = image.Encode(SKEncodedImageFormat.Jpeg, RenderConstants.JpegQuality);
 
             var directory = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                 Directory.CreateDirectory(directory);
 
-            using var outputStream = File.OpenWrite(outputPath);
+            // File.Create truncates any existing file; OpenWrite would leave trailing bytes
+            // when the new encode is smaller than the previous one.
+            using var outputStream = File.Create(outputPath);
             data.SaveTo(outputStream);
 
             return outputPath;

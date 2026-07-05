@@ -94,6 +94,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 
         public string OverlaySecondaryColor { get; set; } = "#66000000";
 
+        /// <summary>
+        /// When enabled, the overlay color channels are replaced per episode by the dominant
+        /// color sampled from the canvas image. The configured alpha values are preserved.
+        /// </summary>
+        public bool PaletteDerivedColors { get; set; }
+
         public string GraphicPath { get; set; } = string.Empty;
 
         public float GraphicWidth { get; set; } = 25.0f;
@@ -103,5 +109,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
         public Position GraphicPosition { get; set; } = Position.Center;
 
         public Alignment GraphicAlignment { get; set; } = Alignment.Center;
+
+        /// <summary>
+        /// Creates a shallow copy for per-episode render-time adjustments (e.g. palette-derived
+        /// colors) without mutating the shared configuration instance.
+        /// </summary>
+        public PosterSettings Clone()
+        {
+            return (PosterSettings)MemberwiseClone();
+        }
     }
 }

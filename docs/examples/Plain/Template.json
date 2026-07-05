@@ -2,7 +2,7 @@
   "name": "Plain",
   "description": "Plain poster with no text. Just an extracted image, letterboxing removed, and cut to the appropriate dimensions.",
   "author": "Joseph Kribs",
-  "version": "10.11.23",
+  "version": "10.11.24",
   "createdDate": "2025-10-21T12:37:52.450Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -39,6 +39,7 @@
     "OverlayColor": "#00000000",
     "OverlayGradient": "None",
     "OverlaySecondaryColor": "#500096FF",
+    "PaletteDerivedColors": false,
     "GraphicPath": "",
     "GraphicWidth": 25,
     "GraphicHeight": 25,

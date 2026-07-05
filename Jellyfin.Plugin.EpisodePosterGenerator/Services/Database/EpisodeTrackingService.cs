@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
@@ -39,6 +40,33 @@ public class EpisodeTrackingService
         }
 
         var record = await _database.GetProcessedEpisodeAsync(episode.Id).ConfigureAwait(false);
+        return ShouldProcessEpisode(episode, record);
+    }
+
+    // GetProcessedRecordsAsync
+    // Loads all tracking records in a single query, keyed by episode id, so bulk filtering
+    // does not issue one SELECT per episode.
+    public async Task<Dictionary<Guid, ProcessedEpisodeRecord>> GetProcessedRecordsAsync()
+    {
+        var records = await _database.GetAllProcessedEpisodesAsync().ConfigureAwait(false);
+        var map = new Dictionary<Guid, ProcessedEpisodeRecord>(records.Count);
+        foreach (var record in records)
+        {
+            map[record.EpisodeId] = record;
+        }
+
+        return map;
+    }
+
+    // ShouldProcessEpisode
+    // Determines if an episode needs processing given its (possibly missing) tracking record.
+    public bool ShouldProcessEpisode(Episode episode, ProcessedEpisodeRecord? record)
+    {
+        if (episode?.Id == null || string.IsNullOrEmpty(episode.Path))
+        {
+            return false;
+        }
+
         if (record == null)
         {
             return true;

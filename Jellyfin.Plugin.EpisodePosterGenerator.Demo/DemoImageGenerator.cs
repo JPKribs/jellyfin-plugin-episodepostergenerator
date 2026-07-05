@@ -148,6 +148,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.DemoGenerator
                 SeriesName = ShowName,
                 SeasonNumber = SeasonNumber,
                 EpisodeNumberStart = episodeNumber,
+                SeasonEpisodeCount = 10,
                 VideoMetadata = videoMetadata
             };
 

@@ -2,7 +2,7 @@
   "name": "Gradient Cutout",
   "description": "Cutout poster with a gradient overlay in Jellyfin colors.",
   "author": "Joseph Kribs",
-  "version": "10.11.23",
+  "version": "10.11.24",
   "createdDate": "2025-10-21T12:21:54.022Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -39,6 +39,7 @@
     "OverlayColor": "#509437FF",
     "OverlayGradient": "TopLeftCornerToBottomRightCorner",
     "OverlaySecondaryColor": "#500096FF",
+    "PaletteDerivedColors": true,
     "GraphicPath": "",
     "GraphicWidth": 25,
     "GraphicHeight": 25,

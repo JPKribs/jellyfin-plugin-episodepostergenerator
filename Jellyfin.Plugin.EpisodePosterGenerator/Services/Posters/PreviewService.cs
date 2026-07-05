@@ -23,6 +23,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         private const string EpisodeName = "Episode Name";
         private const int SeasonNumber = 12;
         private const int EpisodeNumber = 7;
+        private const int SeasonEpisodeCount = 10;
 
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<PreviewService> _logger;
@@ -81,6 +82,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 SeriesName = ShowName,
                 SeasonNumber = SeasonNumber,
                 EpisodeNumberStart = EpisodeNumber,
+                SeasonEpisodeCount = SeasonEpisodeCount,
                 VideoMetadata = videoMetadata
             };
 
@@ -170,6 +172,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 PosterStyle.Frame => new FramePosterGenerator(loggerFactory.CreateLogger<FramePosterGenerator>()),
                 PosterStyle.Brush => new BrushPosterGenerator(loggerFactory.CreateLogger<BrushPosterGenerator>()),
                 PosterStyle.Split => new SplitPosterGenerator(loggerFactory.CreateLogger<SplitPosterGenerator>()),
+                PosterStyle.FrostedGlass => new FrostedGlassPosterGenerator(loggerFactory.CreateLogger<FrostedGlassPosterGenerator>()),
+                PosterStyle.Fade => new FadePosterGenerator(loggerFactory.CreateLogger<FadePosterGenerator>()),
+                PosterStyle.Timeline => new TimelinePosterGenerator(loggerFactory.CreateLogger<TimelinePosterGenerator>()),
+                PosterStyle.Striped => new StripedPosterGenerator(loggerFactory.CreateLogger<StripedPosterGenerator>()),
                 _ => new StandardPosterGenerator(loggerFactory.CreateLogger<StandardPosterGenerator>())
             };
         }
