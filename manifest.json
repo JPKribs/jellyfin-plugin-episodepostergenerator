@@ -9,6 +9,14 @@
     "category": "MoviesAndShows",
     "versions": [
       {
+        "version": "10.11.24.0",
+        "changelog": "## Features\r\n- New poster style - Striped - tilted pinstriped sash carrying the episode title\r\n- New poster style - Frosted Glass - blurred glass panel behind the episode text\r\n- New poster style - Fade - one-sided gradient with a large episode number and vertical title\r\n- New poster style - Timeline - progress bar showing the episode's position within the season\r\n- Palette-derived colors - overlay colors can be sampled from the episode frame\r\n- Concurrent poster generation with a configurable worker count\r\n\r\n## Performance\r\n- Frame extraction now seeks with a stratified sequence instead of random retries\r\n- Tracking database uses WAL mode, pooled connections, and a batched filter pass\r\n- Poster settings hashes are cached instead of recomputed per episode\r\n- JPEG encoding quality tuned from 100 to 92 for much smaller files\r\n\r\n## Polish\r\n- Brush strokes are feathered instead of hard-clipped for a painted look\r\n- Cutout title shadow now uses the same soft blur as other styles\r\n- Standard and Split separator lines follow the episode font color\r\n- Fixed poster files not being truncated when re-rendered smaller\r\n- All templates updated to the 10.11.24 settings format",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-episodepostergenerator/releases/download/v10.11.24.0/jellyfin-plugin-episodepostergenerator-10.11.24.0.zip",
+        "checksum": "7c4e45d5a98e1e2c0cf73f4ff0587f58",
+        "timestamp": "2026-07-05T00:19:58Z"
+      },
+      {
         "version": "10.11.23.2",
         "changelog": "## Developer\r\n- Bump to base 2026.6.23\r\n- File cleanup\r\n- Update template files for import\r\n- README cleanup\r\n- Move demo creation to it's own project folder\r\n- Add tests just to keep me from going crazy\r\n- Move poster descriptions to their CS file instead of maintaining in JS\r\n- Move preview to button instead od rendering everytime",
         "targetAbi": "10.11.0.0",
