@@ -61,8 +61,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // RenderTypography
-        // Renders a large episode number at the bottom-left with the title rotated
-        // vertically along the left edge above it.
+        // The number occupies a fixed zone at the bottom of the safe area. Its size and
+        // position derive only from the poster geometry, never from the digits or the
+        // title, so the number sits at exactly the same spot on every episode.
+        private const float NumberZoneHeightRatio = 0.3f;
+        private const float NumberZoneWidthRatio = 0.45f;
+
+        // RenderTypography
+        // Renders a large episode number pinned to the bottom left with the title rotated
+        // vertically along the left edge above it. The title zone is fixed as well, so a
+        // long or short title can never move the number.
         protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             var safeArea = GetSafeAreaBounds(width, height, settings);
@@ -70,7 +78,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
             if (settings.ShowEpisode)
             {
-                numberTop = DrawEpisodeNumber(skCanvas, episodeMetadata, settings, safeArea);
+                DrawEpisodeNumber(skCanvas, episodeMetadata, settings, safeArea);
+                numberTop = safeArea.Bottom - (safeArea.Height * NumberZoneHeightRatio);
             }
 
             if (settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
@@ -80,27 +89,28 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // DrawEpisodeNumber
-        // Draws the zero-padded episode number large at the bottom-left of the safe area.
-        // Returns the top edge of the drawn number so the title can stack above it.
-        private static float DrawEpisodeNumber(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, SKRect safeArea)
+        // Draws the zero padded episode number at its fixed spot. The size comes from a
+        // fixed reference string so the digits themselves cannot change it. Numbers with
+        // three or more digits shrink to fit without moving the anchor.
+        private static void DrawEpisodeNumber(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, SKRect safeArea)
         {
             var numberText = (episodeMetadata.EpisodeNumberStart ?? 0).ToString("D2", CultureInfo.InvariantCulture);
             var typeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
 
-            // The number is the focal element: auto-size it to the solid side of the fade.
-            float maxWidth = safeArea.Width * 0.45f;
-            float maxHeight = safeArea.Height * 0.3f;
-            float fontSize = FontUtils.CalculateOptimalFontSize(numberText, typeface, maxWidth, maxHeight);
+            float maxWidth = safeArea.Width * NumberZoneWidthRatio;
+            float maxHeight = safeArea.Height * NumberZoneHeightRatio;
+            float fontSize = FontUtils.CalculateOptimalFontSize("00", typeface, maxWidth, maxHeight);
+
+            var bounds = FontUtils.MeasureTextDimensions(numberText, typeface, fontSize);
+            if (bounds.Width > maxWidth)
+            {
+                fontSize *= maxWidth / bounds.Width;
+            }
 
             using var numberPaint = PaintFactory.CreateTextPaint(ColorUtils.ParseHexColor(config.EpisodeFontColor), fontSize, typeface, SKTextAlign.Left);
             using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface, SKTextAlign.Left);
 
-            var bounds = FontUtils.MeasureTextDimensions(numberText, typeface, fontSize);
-            float baselineY = safeArea.Bottom;
-
-            PaintFactory.DrawTextWithShadow(canvas, numberText, safeArea.Left, baselineY, numberPaint, shadowPaint);
-
-            return baselineY - bounds.Height;
+            PaintFactory.DrawTextWithShadow(canvas, numberText, safeArea.Left, safeArea.Bottom, numberPaint, shadowPaint);
         }
 
         // DrawVerticalTitle
