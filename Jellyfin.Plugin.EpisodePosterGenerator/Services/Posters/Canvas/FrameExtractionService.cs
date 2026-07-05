@@ -81,6 +81,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             string? bestFramePath = null;
             double bestQualityScore = 0.0;
+            var seekPhase = Random.Shared.NextDouble();
 
             for (int attempt = 0; attempt < MaxRetries; attempt++)
             {
@@ -89,7 +90,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
                 try
                 {
-                    var seekSeconds = GenerateSeekTime(videoDurationSeconds, attempt, config);
+                    var seekSeconds = GenerateSeekTime(videoDurationSeconds, attempt, seekPhase, config);
                     var offset = TimeSpan.FromSeconds(seekSeconds);
 
                     extractedPath = await _mediaEncoder.ExtractVideoImage(
@@ -183,7 +184,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return null;
         }
 
-        private int GenerateSeekTime(double videoDurationSeconds, int attempt, PosterSettings config)
+        private int GenerateSeekTime(double videoDurationSeconds, int attempt, double seekPhase, PosterSettings config)
         {
             var startPercent = config.ExtractWindowStart / 100.0;
             var endPercent = config.ExtractWindowEnd / 100.0;
@@ -201,8 +202,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             // Low-discrepancy (golden ratio) sequence: successive attempts land far apart and
             // never resample the same region, unlike random seeks which can cluster or repeat.
-            // Deterministic per attempt, so a retried episode probes the same candidate frames.
-            var fraction = (0.5 + attempt * 0.6180339887498949) % 1.0;
+            // The phase is randomized per run so refreshing an episode probes new frames.
+            var fraction = (seekPhase + attempt * 0.6180339887498949) % 1.0;
             return (int)(startTime + fraction * (endTime - startTime));
         }
 
