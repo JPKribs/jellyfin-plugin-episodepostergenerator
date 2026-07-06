@@ -192,6 +192,11 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Tasks
 
                 if (!string.IsNullOrEmpty(result.BackdropPath) && File.Exists(result.BackdropPath))
                 {
+                    foreach (var image in episode.GetImages(ImageType.Backdrop).ToList())
+                    {
+                        await episode.DeleteImageAsync(ImageType.Backdrop, episode.GetImageIndex(image)).ConfigureAwait(false);
+                    }
+
                     using var backdropStream = File.OpenRead(result.BackdropPath);
 
                     await _providerManager.SaveImage(

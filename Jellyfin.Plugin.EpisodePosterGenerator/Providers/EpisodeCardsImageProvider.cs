@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Common.Configuration;
@@ -147,6 +148,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
 
             try
             {
+                await RemoveExistingBackdropsAsync(episode).ConfigureAwait(false);
+
                 using (var backdropStream = File.OpenRead(backdropPath))
                 {
                     await _providerManager.SaveImage(
@@ -163,6 +166,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to save backdrop image for episode: {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
+            }
+        }
+
+        // RemoveExistingBackdropsAsync
+        // Deletes any backdrop images already attached to the episode so the extracted
+        // frame becomes the sole backdrop.
+        private static async Task RemoveExistingBackdropsAsync(Episode episode)
+        {
+            foreach (var image in episode.GetImages(ImageType.Backdrop).ToList())
+            {
+                await episode.DeleteImageAsync(ImageType.Backdrop, episode.GetImageIndex(image)).ConfigureAwait(false);
             }
         }
     }
