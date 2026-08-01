@@ -24,6 +24,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         // Initialize
         // Builds the series-to-settings lookup from the plugin configuration.
         // Uses atomic swap to avoid race conditions with concurrent readers.
+        //
+        // Deliberately never writes the configuration back. This runs from the plugin
+        // constructor, before anything has established that the file on disk loaded
+        // correctly — and if it did not, saving here overwrites the user's real settings
+        // with freshly minted defaults, turning a recoverable load failure into permanent
+        // data loss. A synthesized default or a migrated legacy flag therefore lives in
+        // memory only; both are recomputed identically on the next startup, and the user's
+        // next save in the configuration page persists them for good.
         public void Initialize(PluginConfiguration config)
         {
             MigrateLegacySettings(config);
@@ -34,7 +42,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
             if (defaults.Count == 0)
             {
-                _logger.LogInformation("No default poster configuration found, creating one");
+                _logger.LogInformation("No default poster configuration found, creating one in memory");
                 var newDefault = new PosterConfiguration
                 {
                     Name = "Default",
@@ -42,8 +50,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 };
                 config.PosterConfigurations.Insert(0, newDefault);
                 newDefaultSettings = newDefault.Settings;
-
-                Plugin.Instance?.SaveConfiguration();
             }
             else if (defaults.Count > 1)
             {
@@ -83,8 +89,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // MigrateLegacySettings
-        // Migrates the pre-10.11.23 ExtractPoster boolean to the CanvasSource enum.
-        // Persists the configuration once if any settings were migrated.
+        // Migrates the pre-10.11.23 ExtractPoster boolean to the CanvasSource enum, in memory.
+        // The migration is idempotent, so re-running it on each startup until the user's next
+        // save is cheaper than the risk of writing during construction (see Initialize).
         private void MigrateLegacySettings(PluginConfiguration config)
         {
             var migrated = false;
@@ -103,7 +110,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             if (migrated)
             {
                 _logger.LogInformation("Migrated legacy ExtractPoster setting to CanvasSource");
-                Plugin.Instance?.SaveConfiguration();
             }
         }
 

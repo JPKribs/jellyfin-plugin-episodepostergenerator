@@ -1,11 +1,10 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
-using MediaBrowser.Controller;
+using Jellyfin.Plugin.EpisodePosterGenerator.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -45,8 +44,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
             return Ok(plugin.Configuration);
         }
 
-        // MARK: POST
-        // GetPosterStyles
+        // MARK: PosterStyles
         // Returns each poster style and its description, read from the generators themselves so the UI
         // no longer hardcodes them.
         [HttpGet("PosterStyles")]
@@ -57,9 +55,25 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
             return Ok(styles);
         }
 
+        // MARK: Fonts
+        // Returns the font families actually installed on the server. The configuration page uses
+        // this instead of a hardcoded list, which on a container image would offer fonts that are
+        // not present and silently fall back to the Skia default.
+        [HttpGet("Fonts")]
+        public IActionResult GetFonts()
+        {
+            return Ok(FontUtils.GetAvailableFontFamilies());
+        }
+
+        // MARK: POST
         [HttpPost("Configuration")]
         public IActionResult UpdateConfiguration([FromBody] PluginConfiguration newConfig)
         {
+            if (newConfig == null)
+            {
+                return BadRequest(new { success = false, error = "Configuration payload is required." });
+            }
+
             try
             {
                 var plugin = Plugin.Instance;
@@ -69,7 +83,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
                     return StatusCode(StatusCodes.Status500InternalServerError, "Plugin not initialized.");
                 }
 
-                _logger.LogInformation("Received config: {@newConfig}", newConfig);
+                // Debug rather than Information: this fires on every save and expands the whole
+                // configuration, including every poster config, into the server log.
+                _logger.LogDebug("Received config: {@NewConfig}", newConfig);
 
                 var currentConfig = plugin.Configuration;
                 CopyConfigurationProperties(newConfig, currentConfig);
@@ -121,7 +137,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
 
         // MARK: PreviewComponent
         [HttpGet("Preview/Component/{component}")]
-        [AllowAnonymous]
         public IActionResult GetPreviewComponent([FromRoute] string component)
         {
             var plugin = Plugin.Instance;
@@ -140,62 +155,49 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Controllers
             return File(result.Value.Bytes, result.Value.ContentType);
         }
 
-        // MARK: ResetHistory
-        [HttpPost("ResetHistory")]
-        public async Task<IActionResult> ResetHistory()
+        // MARK: Generated
+        // Serves a poster already rendered for the Edit Images picker.
+        //
+        // Anonymous by necessity: Jellyfin fetches picker thumbnails and downloads the chosen
+        // image using the server's own HTTP client, which sends no user credentials. Nothing is
+        // generated here — the handler only resolves an unguessable, expiring token minted during
+        // an authenticated provider call — so an unauthenticated caller has no work to trigger and
+        // nothing to enumerate.
+        [HttpGet("Generated/{token}")]
+        [AllowAnonymous]
+        public IActionResult GetGeneratedImage([FromRoute] string token)
         {
-            try
+            var plugin = Plugin.Instance;
+            if (plugin == null)
             {
-                var plugin = Plugin.Instance;
-                if (plugin == null)
-                {
-                    _logger.LogError("Plugin instance was null in ResetHistory.");
-                    return StatusCode(StatusCodes.Status500InternalServerError, "Plugin not initialized.");
-                }
-
-                // Wait for database initialization before accessing tracking service
-                var dbReady = await plugin.WaitForDatabaseAsync().ConfigureAwait(false);
-                if (!dbReady)
-                {
-                    _logger.LogError("Episode tracking database not initialized in ResetHistory.");
-                    return StatusCode(StatusCodes.Status503ServiceUnavailable, "Database not initialized.");
-                }
-
-                // Get count before clearing for response
-                var clearedCount = await plugin.TrackingService.GetProcessedCountAsync().ConfigureAwait(false);
-                
-                // Clear all processed episodes
-                await plugin.TrackingService.ClearAllProcessedEpisodesAsync().ConfigureAwait(false);
-                
-                _logger.LogInformation("Processing history reset - cleared {Count} episodes", clearedCount);
-                
-                return Ok(new { 
-                    success = true, 
-                    clearedCount = clearedCount,
-                    message = "Processing history cleared successfully"
-                });
+                return StatusCode(StatusCodes.Status500InternalServerError, "Plugin not initialized.");
             }
-            catch (Exception ex)
+
+            if (!plugin.GeneratedImageCache.TryGet(token, out var imageBytes))
             {
-                _logger.LogError(ex, "Failed to reset processing history");
-                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to reset processing history");
+                return NotFound();
             }
+
+            return File(imageBytes, "image/jpeg");
         }
 
         // MARK: CopyConfigurationProperties
+        // Copies every settable property across. A failure here means the saved configuration
+        // would silently differ from what the user submitted, so it aborts the save rather than
+        // reporting success on a partial write.
         private void CopyConfigurationProperties(PluginConfiguration source, PluginConfiguration target)
         {
             foreach (var property in ConfigProperties)
             {
                 try
                 {
-                    var value = property.GetValue(source);
-                    property.SetValue(target, value);
+                    property.SetValue(target, property.GetValue(source));
                 }
                 catch (Exception ex)
                 {
                     var sanitizedName = property.Name.Replace(Environment.NewLine, string.Empty, StringComparison.Ordinal);
-                    _logger.LogWarning(ex, "Failed to copy property {PropertyName}", sanitizedName);
+                    _logger.LogError(ex, "Failed to copy property {PropertyName}", sanitizedName);
+                    throw new InvalidOperationException($"Could not apply configuration property '{sanitizedName}'.", ex);
                 }
             }
         }

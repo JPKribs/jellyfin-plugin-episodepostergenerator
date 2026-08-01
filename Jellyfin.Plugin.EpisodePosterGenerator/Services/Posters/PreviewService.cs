@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services;
+using MediaBrowser.Common.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using SkiaSharp;
@@ -13,7 +14,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
     /// <summary>
     /// Renders a single poster against bundled demo artwork so the configuration UI can show
     /// a live preview of the current settings. Runs the exact crop + generator pipeline the
-    /// scheduled task uses, but sourced from embedded sample images rather than a real episode,
+    /// image providers use, but sourced from embedded sample images rather than a real episode,
     /// so it requires no media, no IMediaEncoder, and no library access.
     /// </summary>
     public class PreviewService
@@ -28,14 +29,34 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<PreviewService> _logger;
         private readonly CroppingService _croppingService;
+        private readonly string _assetRoot;
         private readonly object _assetLock = new object();
-        private string? _assetDir;
+        private volatile string? _assetDir;
 
-        public PreviewService(ILoggerFactory loggerFactory)
+        public PreviewService(ILoggerFactory loggerFactory, IApplicationPaths applicationPaths)
+        {
+            ArgumentNullException.ThrowIfNull(applicationPaths);
+
+            _loggerFactory = loggerFactory;
+            _logger = loggerFactory.CreateLogger<PreviewService>();
+            _croppingService = new CroppingService(_loggerFactory.CreateLogger<CroppingService>());
+
+            // Kept under the plugin's own data directory rather than the shared system temp
+            // directory: on a multi-user host /tmp is world-writable, so a fixed path there
+            // could be pre-created by another local user and have its files replaced with
+            // symlinks that this process would then follow.
+            _assetRoot = Path.Combine(applicationPaths.DataPath, "episodeposter", "preview-assets");
+        }
+
+        /// <summary>
+        /// Test/offline constructor that materializes demo assets under the given directory.
+        /// </summary>
+        public PreviewService(ILoggerFactory loggerFactory, string assetRoot)
         {
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<PreviewService>();
             _croppingService = new CroppingService(_loggerFactory.CreateLogger<CroppingService>());
+            _assetRoot = assetRoot;
         }
 
         // GeneratePreview
@@ -86,52 +107,36 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 VideoMetadata = videoMetadata
             };
 
-            var outputPath = Path.Combine(Path.GetTempPath(), $"epg-preview-{Guid.NewGuid():N}.jpg");
+            var bytes = settings.CanvasSource == CanvasSource.None
+                ? RenderTransparentPoster(baseImage.Width, baseImage.Height, metadata, settings)
+                : RenderPoster(baseImage, metadata, settings);
 
-            try
+            if (bytes == null)
             {
-                var result = settings.CanvasSource == CanvasSource.None
-                    ? RenderTransparentPoster(baseImage.Width, baseImage.Height, metadata, settings, outputPath)
-                    : RenderPoster(baseImage, metadata, settings, outputPath);
-                if (result == null || !File.Exists(outputPath))
-                {
-                    _logger.LogWarning("Preview generation returned no output for style {Style}", settings.PosterStyle);
-                    return null;
-                }
+                _logger.LogWarning("Preview generation returned no output for style {Style}", settings.PosterStyle);
+            }
 
-                return File.ReadAllBytes(outputPath);
-            }
-            finally
-            {
-                try
-                {
-                    if (File.Exists(outputPath))
-                    {
-                        File.Delete(outputPath);
-                    }
-                }
-                catch (IOException ex)
-                {
-                    _logger.LogDebug(ex, "Failed to delete temporary preview file {Path}", outputPath);
-                }
-            }
+            return bytes;
         }
 
         // RenderPoster
-        // Shared render path: crops the base image, selects the style's generator, and renders to
-        // outputPath. Returns the generator's result path (or null). This is the single copy of the
-        // crop + generate pipeline — both the live preview and the offline demo image generator call it.
-        public string? RenderPoster(SKBitmap baseImage, EpisodeMetadata metadata, PosterSettings settings, string outputPath)
+        // Shared render path: crops the base image, selects the style's generator, and returns the
+        // encoded poster. This is the single copy of the crop + generate pipeline — both the live
+        // preview and the offline demo image generator call it.
+        public byte[]? RenderPoster(SKBitmap baseImage, EpisodeMetadata metadata, PosterSettings settings)
         {
             ArgumentNullException.ThrowIfNull(baseImage);
             ArgumentNullException.ThrowIfNull(metadata);
             ArgumentNullException.ThrowIfNull(settings);
 
-            var canvas = _croppingService.CropPoster(baseImage, metadata.VideoMetadata, settings);
+            var canvas = _croppingService.CropPoster(baseImage, settings);
             try
             {
+                metadata.VideoMetadata.VideoWidth = canvas.Width;
+                metadata.VideoMetadata.VideoHeight = canvas.Height;
+
                 var generator = CreateGenerator(settings.PosterStyle, _loggerFactory);
-                return generator.Generate(canvas, metadata, settings, outputPath);
+                return generator.Generate(canvas, metadata, settings);
             }
             finally
             {
@@ -146,7 +151,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         // Mirrors the runtime CanvasSource.None path: renders the style generator over a blank
         // transparent canvas (no crop, since cropping a transparent bitmap would trip letterbox
         // detection) so the preview honestly reflects a poster with no background image.
-        private string? RenderTransparentPoster(int width, int height, EpisodeMetadata metadata, PosterSettings settings, string outputPath)
+        private byte[]? RenderTransparentPoster(int width, int height, EpisodeMetadata metadata, PosterSettings settings)
         {
             using var canvas = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
             using (var skCanvas = new SKCanvas(canvas))
@@ -155,7 +160,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             }
 
             var generator = CreateGenerator(settings.PosterStyle, _loggerFactory);
-            return generator.Generate(canvas, metadata, settings, outputPath);
+            return generator.Generate(canvas, metadata, settings);
         }
 
         // CreateGenerator
@@ -234,13 +239,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // EnsureAssetsExtracted
-        // Materializes the embedded demo artwork to a temp folder once, since the crop and generator
+        // Materializes the embedded demo artwork to disk once, since the crop and generator
         // pipeline reads logo/poster/graphic art from file paths rather than streams.
         private string EnsureAssetsExtracted()
         {
-            if (_assetDir != null)
+            var cached = _assetDir;
+            if (cached != null)
             {
-                return _assetDir;
+                return cached;
             }
 
             lock (_assetLock)
@@ -250,16 +256,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                     return _assetDir;
                 }
 
-                var dir = Path.Combine(Path.GetTempPath(), "epg-preview-assets");
-                Directory.CreateDirectory(dir);
+                Directory.CreateDirectory(_assetRoot);
 
-                ExtractAsset("demo-base.png", dir);
-                ExtractAsset("demo-logo.png", dir);
-                ExtractAsset("demo-graphic.png", dir);
-                ExtractAsset("demo-poster.jpg", dir);
+                ExtractAsset("demo-base.png", _assetRoot);
+                ExtractAsset("demo-logo.png", _assetRoot);
+                ExtractAsset("demo-graphic.png", _assetRoot);
+                ExtractAsset("demo-poster.jpg", _assetRoot);
 
-                _assetDir = dir;
-                return dir;
+                _assetDir = _assetRoot;
+                return _assetRoot;
             }
         }
 

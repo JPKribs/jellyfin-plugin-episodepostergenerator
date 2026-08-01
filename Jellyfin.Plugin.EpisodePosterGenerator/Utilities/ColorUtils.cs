@@ -44,6 +44,24 @@ public static class ColorUtils
         return $"#{color.Alpha:X2}{color.Red:X2}{color.Green:X2}{color.Blue:X2}";
     }
 
+    // GetContrastingOutline
+    // Picks an outline color that reads against the given overlay: black over a light overlay,
+    // white over a dark one, and a mid grey in the band where neither would stand out.
+    // Shared by the Cutout text border and the Brush stroke outline so the two agree.
+    public static SKColor GetContrastingOutline(SKColor overlayColor)
+    {
+        float r = overlayColor.Red / 255f;
+        float g = overlayColor.Green / 255f;
+        float b = overlayColor.Blue / 255f;
+
+        r = r <= 0.03928f ? r / 12.92f : (float)Math.Pow((r + 0.055f) / 1.055f, 2.4f);
+        g = g <= 0.03928f ? g / 12.92f : (float)Math.Pow((g + 0.055f) / 1.055f, 2.4f);
+        b = b <= 0.03928f ? b / 12.92f : (float)Math.Pow((b + 0.055f) / 1.055f, 2.4f);
+
+        float luminance = (0.2126f * r) + (0.7152f * g) + (0.0722f * b);
+        return luminance > 0.5f ? SKColors.Black : luminance < 0.2f ? SKColors.White : new SKColor(64, 64, 64);
+    }
+
     // Darken
     // Returns the color with its channels scaled toward black by the given factor (0-1).
     public static SKColor Darken(SKColor color, float factor)

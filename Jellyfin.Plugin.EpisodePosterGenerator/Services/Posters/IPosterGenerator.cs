@@ -12,12 +12,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
     public interface IPosterGenerator
     {
         // Generate
-        // Generates a poster from a provided canvas and episode metadata using layered rendering.
-        string? Generate(
+        // Generates a poster from a provided canvas and episode metadata using layered rendering,
+        // returning the encoded JPEG bytes, or null when rendering failed.
+        byte[]? Generate(
             SKBitmap canvas,
             EpisodeMetadata episodeMetadata,
-            PosterSettings settings,
-            string? outputPath = null);
+            PosterSettings settings);
 
         // Style
         // The poster style this generator produces.
@@ -42,6 +42,26 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         // Returns the safe area margin as a percentage of the poster dimensions.
         protected static float GetSafeAreaMargin(PosterSettings settings) => settings.PosterSafeArea / 100f;
 
+        // GetElementSpacing
+        // The configured gap between stacked elements, in pixels for this poster height.
+        // Every style resolves spacing through here so one setting moves them all consistently.
+        protected static float GetElementSpacing(PosterSettings settings, float posterHeight)
+            => posterHeight * (Math.Max(0f, settings.ElementSpacing) / 100f);
+
+        // CenteredBaseline
+        // First baseline for a run of text lines centred vertically inside its slot.
+        //
+        // Title slots are reserved at a fixed two lines so the elements above them cannot shift
+        // between episodes with short and long titles. A one line title therefore leaves a line
+        // of slack, and centring splits it evenly above and below rather than pooling it all at
+        // one end — which reads as the block floating high or hanging low. A full two line title
+        // fills the slot, so this is a no-op for it.
+        protected static float CenteredBaseline(SKRect slot, int lineCount, float fontSize, float lineHeight)
+        {
+            var blockHeight = fontSize + (Math.Max(1, lineCount) - 1) * lineHeight;
+            return slot.Top + Math.Max(0f, (slot.Height - blockHeight) / 2f) + fontSize;
+        }
+
         // ApplySafeAreaConstraints
         // Calculates the safe area dimensions and offsets for a given poster size.
         // The margin is the safe area percent of the poster HEIGHT, applied as the same
@@ -59,8 +79,8 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         }
 
         // Generate
-        // Generates a poster using the 4-layer rendering pipeline and saves it to disk.
-        public string? Generate(SKBitmap canvas, EpisodeMetadata episodeMetadata, PosterSettings settings, string? outputPath = null)
+        // Generates a poster using the 4-layer rendering pipeline and returns the encoded JPEG.
+        public byte[]? Generate(SKBitmap canvas, EpisodeMetadata episodeMetadata, PosterSettings settings)
         {
             try
             {
@@ -96,9 +116,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 RenderTypography(skCanvas, episodeMetadata, settings, width, height);
 
                 using var finalImage = surface.Snapshot();
-                using var finalBitmap = SKBitmap.FromImage(finalImage);
+                using var data = finalImage.Encode(SKEncodedImageFormat.Jpeg, RenderConstants.JpegQuality);
 
-                return SavePoster(finalBitmap, settings, outputPath);
+                return data?.ToArray();
             }
             catch (Exception ex)
             {
@@ -184,7 +204,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 var secondaryColor = ColorUtils.ParseHexColor(settings.OverlaySecondaryColor);
                 if (secondaryColor.Alpha == 0) secondaryColor = primaryColor;
 
-                var gradient = CreateOverlayGradient(settings.OverlayGradient, rect, primaryColor, secondaryColor);
+                // SKPaint does not own its shader, so the gradient is disposed here rather
+                // than left to the finalizer — a full library run creates one per poster.
+                using var gradient = CreateOverlayGradient(settings.OverlayGradient, rect, primaryColor, secondaryColor);
                 if (gradient != null)
                 {
                     using var overlayPaint = new SKPaint
@@ -345,28 +367,5 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             };
         }
 
-        // SavePoster
-        // Encodes and saves the poster bitmap to the specified path as JPEG.
-        private string? SavePoster(SKBitmap bitmap, PosterSettings settings, string? outputPath)
-        {
-            if (string.IsNullOrWhiteSpace(outputPath))
-            {
-                outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.jpg");
-            }
-
-            using var image = SKImage.FromBitmap(bitmap);
-            using var data = image.Encode(SKEncodedImageFormat.Jpeg, RenderConstants.JpegQuality);
-
-            var directory = Path.GetDirectoryName(outputPath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                Directory.CreateDirectory(directory);
-
-            // File.Create truncates any existing file; OpenWrite would leave trailing bytes
-            // when the new encode is smaller than the previous one.
-            using var outputStream = File.Create(outputPath);
-            data.SaveTo(outputStream);
-
-            return outputPath;
-        }
     }
 }

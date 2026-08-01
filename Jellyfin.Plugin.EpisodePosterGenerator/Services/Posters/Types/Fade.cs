@@ -125,7 +125,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             using var titlePaint = PaintFactory.CreateTextPaint(ColorUtils.ParseHexColor(config.TitleFontColor), fontSize, typeface, SKTextAlign.Left);
             using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface, SKTextAlign.Left);
 
-            float spacing = height * RenderConstants.DefaultSpacingRatio;
+            float spacing = GetElementSpacing(config, height);
             float startY = numberTop - spacing;
             float availableRun = startY - safeArea.Top;
             if (availableRun <= fontSize)

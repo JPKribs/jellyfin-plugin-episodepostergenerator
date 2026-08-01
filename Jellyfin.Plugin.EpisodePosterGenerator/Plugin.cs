@@ -1,14 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services;
-using Jellyfin.Plugin.EpisodePosterGenerator.Services.Database;
+using Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
 using JPKribs.Jellyfin.Base;
 using MediaBrowser.Common.Configuration;
-using MediaBrowser.Common.Plugins;
-using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
@@ -16,22 +12,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator
 {
-    public class Plugin : PluginBase<Plugin, PluginConfiguration>, IDisposable
+    public class Plugin : PluginBase<Plugin, PluginConfiguration>
     {
         public override string Name => "Episode Poster Generator";
         public override Guid Id => Guid.Parse("b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e");
         public override string Description => "Automatically generates episode poster cards with titles overlaid on representative frames from video files.";
 
         private readonly ILogger<Plugin> _logger;
-        private readonly EpisodeTrackingService _trackingService;
-        private readonly EpisodeTrackingDatabase _trackingDatabase;
         private readonly PosterService _posterService;
         private readonly PosterConfigurationService _posterConfigService;
-        private readonly Services.Posters.PreviewService _previewService;
-
-        private readonly SemaphoreSlim _dbInitGate = new SemaphoreSlim(0, 1);
-        private bool _dbInitialized;
-        private bool _disposed;
+        private readonly PreviewService _previewService;
+        private readonly GeneratedImageCache _generatedImageCache;
 
         // Plugin
         // Initializes the plugin with all required services and dependencies.
@@ -40,19 +31,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             IXmlSerializer xmlSerializer,
             ILogger<Plugin> logger,
             ILoggerFactory loggerFactory,
-            IServerConfigurationManager configurationManager,
             IMediaEncoder mediaEncoder)
             : base(applicationPaths, xmlSerializer)
         {
             _logger = logger;
-
-            _trackingDatabase = new EpisodeTrackingDatabase(
-                loggerFactory.CreateLogger<EpisodeTrackingDatabase>(),
-                applicationPaths);
-            _trackingService = new EpisodeTrackingService(
-                loggerFactory.CreateLogger<EpisodeTrackingService>(),
-                _trackingDatabase,
-                new ConfigurationHashService());
 
             _posterConfigService = new PosterConfigurationService(
                 loggerFactory.CreateLogger<PosterConfigurationService>());
@@ -74,47 +56,33 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             _posterService = new PosterService(
                 loggerFactory.CreateLogger<PosterService>(),
                 canvasService,
-                configurationManager,
                 loggerFactory);
 
-            _previewService = new Services.Posters.PreviewService(loggerFactory);
+            _previewService = new PreviewService(loggerFactory, applicationPaths);
+            _generatedImageCache = new GeneratedImageCache(
+                loggerFactory.CreateLogger<GeneratedImageCache>());
 
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _trackingDatabase.InitializeAsync().ConfigureAwait(false);
-                    _dbInitialized = true;
-                    _logger.LogInformation("Episode tracking database initialized successfully");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to initialize episode tracking database");
-                }
-                finally
-                {
-                    _dbInitGate.Release();
-                }
-            });
+            // Container images ship almost none of the common desktop fonts, so a configured
+            // family often silently falls back to Skia's default. Surface it once per family.
+            Utilities.FontUtils.SetMissingFamilyReporter(family =>
+                _logger.LogWarning(
+                    "Font family '{Family}' is not installed on this server; falling back to the default font. Install the font, or pick one offered by the configuration page.",
+                    family));
 
             _logger.LogInformation("Episode Poster Generator plugin initialized");
         }
 
-        /// <summary>
-        /// Waits for database initialization to complete. Returns true if initialization succeeded.
-        /// </summary>
-        public async Task<bool> WaitForDatabaseAsync(CancellationToken cancellationToken = default)
-        {
-            await _dbInitGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-            _dbInitGate.Release(); // Allow other waiters through
-            return _dbInitialized;
-        }
-
-        public EpisodeTrackingService TrackingService => _trackingService;
         public PosterService PosterService => _posterService;
-        public PosterConfigurationService PosterConfigService => _posterConfigService;
-        public Services.Posters.PreviewService PreviewService => _previewService;
 
+        public PosterConfigurationService PosterConfigService => _posterConfigService;
+
+        public PreviewService PreviewService => _previewService;
+
+        /// <summary>
+        /// Gets the short-lived store backing the generated poster URLs handed to Jellyfin's
+        /// remote image picker.
+        /// </summary>
+        public GeneratedImageCache GeneratedImageCache => _generatedImageCache;
 
         // GetPages
         // Returns the plugin configuration page information.
@@ -157,26 +125,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator
             foreach (var page in GetSharedPages("epg"))
             {
                 yield return page;
-            }
-        }
-
-        // Dispose
-        // Releases resources used by the plugin.
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        // Dispose
-        // Releases managed resources when disposing is true.
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed && disposing)
-            {
-                _dbInitGate?.Dispose();
-                _trackingDatabase?.Dispose();
-                _disposed = true;
             }
         }
 

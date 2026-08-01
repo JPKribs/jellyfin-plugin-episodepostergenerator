@@ -60,6 +60,14 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Models
 
         public float PosterSafeArea { get; set; } = 5.0f;
 
+        /// <summary>
+        /// Vertical gap between stacked poster elements — logo, episode code, title, and the
+        /// blocks each style reserves for them — as a percentage of the poster height. This is
+        /// the single knob every style uses to keep elements apart, so raising it pushes them
+        /// further from each other everywhere rather than in one style.
+        /// </summary>
+        public float ElementSpacing { get; set; } = 2.0f;
+
         public bool ShowEpisode { get; set; } = true;
 
         public string EpisodeFontFamily { get; set; } = "Arial";

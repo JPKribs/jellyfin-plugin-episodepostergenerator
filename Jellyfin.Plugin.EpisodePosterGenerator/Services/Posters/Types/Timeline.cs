@@ -17,6 +17,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         // A short, user facing description of this style shown in the configuration UI.
         public override string Description => "Season progress bar with episode info and optional title. Clean and data driven.";
 
+        private const string TitleBlock = "title";
+        private const string LabelsBlock = "labels";
+        private const string BarBlock = "bar";
+
         private readonly ILogger<TimelinePosterGenerator> _logger;
 
         // TimelinePosterGenerator
@@ -32,36 +36,52 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         protected override void RenderTypography(SKCanvas skCanvas, EpisodeMetadata episodeMetadata, PosterSettings settings, int width, int height)
         {
             var safeArea = GetSafeAreaBounds(width, height, settings);
-            float spacing = height * RenderConstants.DefaultSpacingRatio;
+            var column = new LayoutColumn(safeArea, GetElementSpacing(settings, height), LayoutAnchor.Bottom);
 
             var episodeNumber = episodeMetadata.EpisodeNumberStart ?? 0;
             // When the season size is unknown the bar renders full rather than guessing.
             var totalEpisodes = episodeMetadata.SeasonEpisodeCount ?? episodeNumber;
 
-            float barTop = DrawProgressBar(skCanvas, settings, safeArea, height, episodeNumber, totalEpisodes);
-            float currentBottomY = barTop - spacing;
+            // Measured top-to-bottom: title, then the position labels, then the progress bar
+            // pinned to the bottom of the safe area.
+            column
+                .Add(TitleBlock, settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName)
+                    ? FontUtils.CalculateFontSizeFromPercentage(settings.TitleFontSize, height) * (1 + RenderConstants.LineHeightMultiplier)
+                    : 0f)
+                .Add(LabelsBlock, settings.ShowEpisode
+                    ? FontUtils.CalculateFontSizeFromPercentage(settings.EpisodeFontSize, height)
+                    : 0f)
+                .Add(BarBlock, MeasureProgressBar(height));
 
-            if (settings.ShowEpisode)
+            DrawProgressBar(skCanvas, settings, column.Slot(BarBlock), height, episodeNumber, totalEpisodes);
+
+            if (column.TryGetSlot(LabelsBlock, out var labelsSlot))
             {
-                DrawEpisodeLabels(skCanvas, episodeMetadata, settings, height, safeArea, currentBottomY, episodeNumber, totalEpisodes);
-                var labelFontSize = FontUtils.CalculateFontSizeFromPercentage(settings.EpisodeFontSize, height);
-                currentBottomY -= labelFontSize + spacing;
+                DrawEpisodeLabels(skCanvas, episodeMetadata, settings, height, labelsSlot, episodeNumber, totalEpisodes);
             }
 
-            if (settings.ShowTitle && !string.IsNullOrEmpty(episodeMetadata.EpisodeName))
+            if (column.TryGetSlot(TitleBlock, out var titleSlot))
             {
-                DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName, settings, height, safeArea, currentBottomY);
+                DrawEpisodeTitle(skCanvas, episodeMetadata.EpisodeName!, settings, height, titleSlot);
             }
+        }
+
+        // MeasureProgressBar
+        // Vertical extent of the bar including the marker dot, which overhangs the track.
+        private static float MeasureProgressBar(int height)
+        {
+            float barHeight = Math.Max(4f, height * 0.008f);
+            return barHeight * 3f;
         }
 
         // DrawProgressBar
         // Draws the season timeline: a rounded track across the safe width, filled to the
         // episode's position, with a marker dot at the fill point. Returns the bar's top edge.
-        private static float DrawProgressBar(SKCanvas canvas, PosterSettings config, SKRect safeArea, int height, int episodeNumber, int totalEpisodes)
+        private static void DrawProgressBar(SKCanvas canvas, PosterSettings config, SKRect safeArea, int height, int episodeNumber, int totalEpisodes)
         {
             float barHeight = Math.Max(4f, height * 0.008f);
             float dotRadius = barHeight * 1.5f;
-            float barY = safeArea.Bottom - dotRadius;
+            float barY = safeArea.MidY;
 
             float progress = totalEpisodes > 0
                 ? Math.Clamp((float)episodeNumber / totalEpisodes, 0f, 1f)
@@ -93,7 +113,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 Style = SKPaintStyle.Stroke,
                 StrokeCap = SKStrokeCap.Round,
                 IsAntialias = true,
-                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, RenderConstants.ShadowBlurSigma)
+                MaskFilter = PaintFactory.ShadowBlur
             };
 
             canvas.DrawLine(
@@ -110,14 +130,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 IsAntialias = true
             };
             canvas.DrawCircle(fillEndX, barY, dotRadius, dotPaint);
-
-            return barY - dotRadius;
         }
 
         // DrawEpisodeLabels
         // Draws the episode code left-aligned and the season position right-aligned
         // directly above the progress bar.
-        private static void DrawEpisodeLabels(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, int height, SKRect safeArea, float bottomY, int episodeNumber, int totalEpisodes)
+        private static void DrawEpisodeLabels(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, int height, SKRect slot, int episodeNumber, int totalEpisodes)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, height);
             var typeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
@@ -133,15 +151,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 ? string.Format(CultureInfo.InvariantCulture, "{0} OF {1}", episodeNumber, totalEpisodes)
                 : string.Format(CultureInfo.InvariantCulture, "EPISODE {0}", episodeNumber);
 
-            float baselineY = bottomY - Math.Abs(leftPaint.FontMetrics.Descent);
+            float baselineY = slot.Bottom - Math.Abs(leftPaint.FontMetrics.Descent);
 
-            PaintFactory.DrawTextWithShadow(canvas, codeText, safeArea.Left, baselineY, leftPaint, leftShadow);
-            PaintFactory.DrawTextWithShadow(canvas, positionText, safeArea.Right, baselineY, rightPaint, rightShadow);
+            PaintFactory.DrawTextWithShadow(canvas, codeText, slot.Left, baselineY, leftPaint, leftShadow);
+            PaintFactory.DrawTextWithShadow(canvas, positionText, slot.Right, baselineY, rightPaint, rightShadow);
         }
 
         // DrawEpisodeTitle
         // Draws the episode title left-aligned above the labels, wrapped to the safe width.
-        private static void DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int height, SKRect safeArea, float bottomY)
+        private static void DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int height, SKRect slot)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
             var typeface = FontUtils.ResolveTypeface(config.EffectiveTitleFontPath, config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
@@ -149,19 +167,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             using var titlePaint = PaintFactory.CreateTextPaint(ColorUtils.ParseHexColor(config.TitleFontColor), fontSize, typeface, SKTextAlign.Left);
             using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface, SKTextAlign.Left);
 
-            var maxWidth = safeArea.Width * RenderConstants.TextWidthMultiplier;
-            var lines = TextUtils.FitTitleLines(title, titlePaint, maxWidth, config.LongTitleHandling);
+            var lineHeight = fontSize * RenderConstants.LineHeightMultiplier;
+            var maxWidth = slot.Width * RenderConstants.TextWidthMultiplier;
+            var lines = TextUtils.FitTitleLines(title, titlePaint, maxWidth, slot.Height, lineHeight, config.LongTitleHandling);
             if (lines.Count == 0)
                 return;
 
-            var lineHeight = fontSize * RenderConstants.LineHeightMultiplier;
-            var totalHeight = (lines.Count - 1) * lineHeight + fontSize;
-            var startY = bottomY - totalHeight + fontSize;
+            var startY = CenteredBaseline(slot, lines.Count, fontSize, lineHeight);
 
             for (int i = 0; i < lines.Count; i++)
             {
-                var lineY = startY + (i * lineHeight);
-                PaintFactory.DrawTextWithShadow(canvas, lines[i], safeArea.Left, lineY, titlePaint, shadowPaint);
+                PaintFactory.DrawTextWithShadow(canvas, lines[i], slot.Left, startY + (i * lineHeight), titlePaint, shadowPaint);
             }
         }
 

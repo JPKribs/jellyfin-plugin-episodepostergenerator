@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using SkiaSharp;
 using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
@@ -25,10 +26,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 
         // CropPoster
         // Crops a source bitmap by removing letterbox/pillarbox and applying poster fill settings.
-        public SKBitmap CropPoster(SKBitmap source, VideoMetadata metadata, PosterSettings settings)
+        // Returns the source unchanged when nothing needed cropping. Takes no video metadata: it
+        // used to write the cropped dimensions back into the caller's metadata, which meant a crop
+        // could silently mutate state shared across episodes. Callers now read the dimensions off
+        // the returned bitmap.
+        public SKBitmap CropPoster(SKBitmap source, PosterSettings settings)
         {
             ArgumentNullException.ThrowIfNull(source);
-            ArgumentNullException.ThrowIfNull(metadata);
             ArgumentNullException.ThrowIfNull(settings);
 
             var result = source;
@@ -46,9 +50,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     var oldResult = result;
                     result = cropped;
                     if (oldResult != source) oldResult.Dispose();
-
-                    metadata.VideoWidth = cropped.Width;
-                    metadata.VideoHeight = cropped.Height;
                 }
             }
 
@@ -79,17 +80,19 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         // ParseAspectRatio
-        // Parses an aspect ratio string like "16:9" into a float value.
-        private static float ParseAspectRatio(string ratio)
+        // Parses an aspect ratio string like "16:9" or "2.35:1" into a float value.
+        // The ratio is user-entered free text, so it is parsed with the invariant culture:
+        // under a comma-decimal locale, current-culture parsing would read "2.35" as 235.
+        internal static float ParseAspectRatio(string ratio)
         {
             if (string.IsNullOrWhiteSpace(ratio))
                 return DefaultAspectRatio;
 
             var parts = ratio.Split(':');
             if (parts.Length == 2 &&
-                float.TryParse(parts[0], out float w) &&
-                float.TryParse(parts[1], out float h) &&
-                h > 0)
+                float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float w) &&
+                float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float h) &&
+                w > 0 && h > 0)
             {
                 return w / h;
             }
@@ -195,7 +198,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                     return outer;
             }
 
-            return 0;
+            // Every scanned row/column was black. Report the full scanned depth rather than
+            // zero ("no bar"); the caller's minimum-size guard rejects the degenerate result.
+            return outerMax;
         }
 
         // IsBlackPixel

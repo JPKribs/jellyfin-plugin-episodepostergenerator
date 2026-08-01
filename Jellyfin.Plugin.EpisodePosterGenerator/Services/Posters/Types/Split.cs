@@ -19,6 +19,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         // A short, user facing description of this style shown in the configuration UI.
         public override string Description => "Series poster beside the episode image with text. Magazine layout.";
 
+        private const string EpisodeBlock = "episode";
+        private const string SeparatorBlock = "separator";
+        private const string TitleBlock = "title";
+
         private readonly ILogger<SplitPosterGenerator> _logger;
 
         // SplitPosterGenerator
@@ -141,34 +145,34 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var episodeTitle = episodeMetadata.EpisodeName ?? "-";
 
             var safeArea = GetRightSideSafeArea(width, height, settings);
-            float spacingHeight = height * RenderConstants.DefaultSpacingRatio;
-            float currentBottomY = safeArea.Bottom;
+            var column = new LayoutColumn(safeArea, GetElementSpacing(settings, height), LayoutAnchor.Bottom);
 
-            // Both title and episode info enabled
-            if (settings.ShowTitle && settings.ShowEpisode)
+            var showSeparator = settings.ShowTitle && settings.ShowEpisode;
+
+            // Measured top-to-bottom, then placed: the separator and episode info sit above a fixed
+            // two line title zone, so a wrapped or dropped title cannot move them between episodes.
+            column
+                .Add(EpisodeBlock, settings.ShowEpisode
+                    ? FontUtils.CalculateFontSizeFromPercentage(settings.EpisodeFontSize, height)
+                    : 0f)
+                .Add(SeparatorBlock, showSeparator ? RenderConstants.SeparatorLineHeight : 0f)
+                .Add(TitleBlock, settings.ShowTitle
+                    ? FontUtils.CalculateFontSizeFromPercentage(settings.TitleFontSize, height) * (1 + RenderConstants.LineHeightMultiplier)
+                    : 0f);
+
+            if (column.TryGetSlot(EpisodeBlock, out var episodeSlot))
             {
-                DrawEpisodeTitle(skCanvas, episodeTitle, settings, width, height, currentBottomY, safeArea);
-
-                // The separator and episode info sit above a fixed two line title zone,
-                // so a wrapped or dropped title can never move them between episodes.
-                var titleFontSize = FontUtils.CalculateFontSizeFromPercentage(settings.TitleFontSize, height);
-                var titleZone = titleFontSize * (1 + RenderConstants.LineHeightMultiplier);
-                currentBottomY -= titleZone + spacingHeight;
-
-                var lineHeight = DrawSeparatorLine(settings, skCanvas, currentBottomY, safeArea);
-                currentBottomY -= lineHeight + spacingHeight;
-
-                DrawEpisodeInfo(skCanvas, seasonNumber, episodeNumber, settings, height, currentBottomY, safeArea);
+                DrawEpisodeInfo(skCanvas, seasonNumber, episodeNumber, settings, height, episodeSlot);
             }
-            // Only title enabled
-            else if (settings.ShowTitle)
+
+            if (column.TryGetSlot(SeparatorBlock, out var separatorSlot))
             {
-                DrawEpisodeTitle(skCanvas, episodeTitle, settings, width, height, currentBottomY, safeArea);
+                DrawSeparatorLine(settings, skCanvas, separatorSlot);
             }
-            // Only episode info enabled
-            else if (settings.ShowEpisode)
+
+            if (column.TryGetSlot(TitleBlock, out var titleSlot))
             {
-                DrawEpisodeInfo(skCanvas, seasonNumber, episodeNumber, settings, height, currentBottomY, safeArea);
+                DrawEpisodeTitle(skCanvas, episodeTitle, settings, height, titleSlot);
             }
         }
 
@@ -207,7 +211,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
         // DrawEpisodeTitle
         // Draws the episode title with shadow effect and returns the total height used.
-        private static float DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int canvasWidth, int canvasHeight, float bottomY, SKRect safeArea)
+        private static void DrawEpisodeTitle(SKCanvas canvas, string title, PosterSettings config, int canvasHeight, SKRect slot)
         {
             var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight);
             var typeface = FontUtils.ResolveTypeface(config.EffectiveTitleFontPath, config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
@@ -216,44 +220,37 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             using var titlePaint = PaintFactory.CreateTextPaint(titleColor, fontSize, typeface);
             using var shadowPaint = PaintFactory.CreateShadowTextPaint(fontSize, typeface);
 
-            var safeWidth = safeArea.Width * RenderConstants.TextWidthMultiplier;
-            var lines = TextUtils.FitTitleLines(title, titlePaint, safeWidth, config.LongTitleHandling);
-            if (lines.Count == 0)
-                return 0;
-
             var lineHeight = fontSize * RenderConstants.LineHeightMultiplier;
-            var totalHeight = (lines.Count - 1) * lineHeight + fontSize;
+            var safeWidth = slot.Width * RenderConstants.TextWidthMultiplier;
+            var lines = TextUtils.FitTitleLines(title, titlePaint, safeWidth, slot.Height, lineHeight, config.LongTitleHandling);
+            if (lines.Count == 0)
+                return;
 
-            var centerX = safeArea.MidX;
-            var startY = bottomY - totalHeight + fontSize;
+            var startY = CenteredBaseline(slot, lines.Count, fontSize, lineHeight);
 
             for (int i = 0; i < lines.Count; i++)
             {
-                var lineY = startY + (i * lineHeight);
-                PaintFactory.DrawTextWithShadow(canvas, lines[i], centerX, lineY, titlePaint, shadowPaint);
+                PaintFactory.DrawTextWithShadow(canvas, lines[i], slot.MidX, startY + (i * lineHeight), titlePaint, shadowPaint);
             }
-
-            return totalHeight;
         }
 
         // DrawSeparatorLine
         // Draws a horizontal separator line with shadow effect.
-        private static float DrawSeparatorLine(PosterSettings config, SKCanvas canvas, float y, SKRect safeArea)
+        private static void DrawSeparatorLine(PosterSettings config, SKCanvas canvas, SKRect slot)
         {
-            var startX = safeArea.Left;
-            var endX = safeArea.Right;
+            var y = slot.MidY;
+            var startX = slot.Left;
+            var endX = slot.Right;
 
             using var shadowPaint = PaintFactory.CreateShadowLinePaint();
             using var linePaint = PaintFactory.CreateLinePaint(ColorUtils.ParseHexColor(config.EpisodeFontColor));
 
             PaintFactory.DrawLineWithShadow(canvas, startX, y, endX, y, linePaint, shadowPaint);
-
-            return RenderConstants.SeparatorLineHeight;
         }
 
         // DrawEpisodeInfo
         // Draws the season and episode numbers with a bullet separator.
-        private static void DrawEpisodeInfo(SKCanvas canvas, int seasonNumber, int episodeNumber, PosterSettings config, int canvasHeight, float bottomY, SKRect safeArea)
+        private static void DrawEpisodeInfo(SKCanvas canvas, int seasonNumber, int episodeNumber, PosterSettings config, int canvasHeight, SKRect slot)
         {
             var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, canvasHeight);
             var episodeColor = ColorUtils.ParseHexColor(config.EpisodeFontColor ?? "#FFFFFF");
@@ -270,13 +267,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var bulletText = " • ";
 
             var fontMetrics = episodePaint.FontMetrics;
-            var baselineY = bottomY - Math.Abs(fontMetrics.Descent);
+            var baselineY = slot.Bottom - Math.Abs(fontMetrics.Descent);
 
             var seasonWidth = episodePaint.MeasureText(seasonText);
             var episodeWidth = episodePaint.MeasureText(episodeText);
             var bulletWidth = bulletPaint.MeasureText(bulletText);
 
-            var centerX = safeArea.MidX;
+            var centerX = slot.MidX;
             var bulletX = centerX;
             var seasonX = bulletX - (bulletWidth / 2f) - (seasonWidth / 2f);
             var episodeX = bulletX + (bulletWidth / 2f) + (episodeWidth / 2f);

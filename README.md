@@ -6,7 +6,12 @@ A Jellyfin plugin that automatically generates custom episode posters using smar
 
 Episode Poster Generator scans each episode file, evaluates multiple frames, and selects a strong candidate while avoiding fades, black screens, and letterboxed shots. The selected frame is turned into a poster and optionally styled with configurable text such as episode title or numbering.
 
-Posters are uploaded directly into Jellyfin as a metadata provider.
+The plugin runs entirely as a Jellyfin metadata provider. There are two ways to get a poster:
+
+* **Automatically** — a metadata refresh generates a poster for any episode that has no image. This is the default; it can be turned off in Settings.
+* **By hand** — open an episode, choose **Edit Images**, and press the search button on the Primary image. Generated posters appear alongside the usual providers, each rendered from a different frame, so you can pick the one you like instead of refreshing until a good frame comes up.
+
+There is no scheduled task. Use Jellyfin's own metadata refresh, on a library or a single item, to generate in bulk.
 
 ## Poster Styles
 
@@ -107,7 +112,8 @@ The foundation layer that provides the visual background for the poster.
 
 **Options:**
 
-- **Video Frame Extraction**: Automatically extracts a frame from the episode video file using configurable extraction windows. Candidate frames are sampled at evenly distributed points across the window until a frame with adequate brightness and sharpness is found. The best scoring candidate is used as a fallback.
+- **Video Frame Extraction**: Automatically extracts a frame from the episode video file using configurable extraction windows. Candidates are sampled at widely spaced points across the window until one with adequate brightness and sharpness is found; the best scoring candidate is used as a fallback. The sampling starts from a different point on each run, so refreshing an episode offers a different frame rather than the same one.
+- **Series Backdrop**: Uses the series' own backdrop image as the poster background, falling back to a transparent canvas when the series has none.
 - **Transparent Background**: Creates a solid color or transparent canvas.
 
 **Processing:**
@@ -137,13 +143,15 @@ The top layer containing all text elements, episode information, and series logo
 
 **Elements:**
 - Episode numbers and season information
-- Episode titles with automatic text wrapping
+- Episode titles with automatic text wrapping, and configurable handling for titles too long to fit
 - Series logos with configurable positioning
 - Style specific typography (Roman numerals, cutout text, etc.)
-- Drop shadows and contrasting borders for enhanced readability
+- Drop shadows and contrasting outlines for enhanced readability
 
 ### Rendering Pipeline
 Each poster style follows this exact four layer sequence. The modular approach allows for easy customization and additional poster styles.
+
+Elements that stack vertically — logo, episode code, title — are measured before any of them are placed, so they keep a consistent gap and cannot overlap. That gap is the **Element Spacing** setting, applied the same way by every style.
 
 ## Usage & Documentation
 

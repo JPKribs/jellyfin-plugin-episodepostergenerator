@@ -13,6 +13,9 @@ export default function (view) {
     var _savedConfigSnapshot = null;
     var _seriesModalTrigger = null;
     var _previewObjectUrl = null;
+    var _componentObjectUrls = [];
+    var _saving = false;
+    var _staticDataPromise = null;
 
     function getTabs() {
         return [
@@ -276,6 +279,7 @@ export default function (view) {
         }).catch(function (error) {
             console.error('Failed to load config:', error);
             Dashboard.hideLoadingMsg();
+            Dashboard.alert('Failed to load poster configurations. Please reload the page.', 'Error');
         });
     }
 
@@ -326,23 +330,12 @@ export default function (view) {
                 }
             } else if (el.getAttribute('data-type') === 'number') {
                 el.value = val || 0;
+            } else if (el.tagName === 'SELECT') {
+                applySelectValue(el, val);
             } else {
                 el.value = val || '';
             }
         });
-
-        // Default the Canvas Source when a config has none set. Legacy pre-10.11.23 ExtractPoster
-        // configs are migrated to CanvasSource by the backend on load, so the UI reads CanvasSource here.
-        var canvasSelect = view.querySelector('#selectCanvasSource');
-        if (canvasSelect && !canvasSelect.value) {
-            canvasSelect.value = settings.CanvasSource || 'Extract';
-        }
-
-        // Configs saved before 10.11.24.1 have no LongTitleHandling; default to Ellipsis.
-        var longTitleSelect = view.querySelector('#selectLongTitleHandling');
-        if (longTitleSelect && !longTitleSelect.value) {
-            longTitleSelect.value = settings.LongTitleHandling || 'Ellipsis';
-        }
 
         updateSeriesAssignment();
         updateVisibility();
@@ -353,6 +346,40 @@ export default function (view) {
 
     function getCurrentConfig() {
         return fullConfig.PosterConfigurations.find(function (c) { return c.Id === currentConfigId; });
+    }
+
+    // Assigns a stored value to a <select>, falling back to the setting's declared default when
+    // the value is missing or names an option that no longer exists.
+    //
+    // Assigning an unknown value to a <select> leaves it with selectedIndex -1 and an empty
+    // string value, which would then be written back on save. The server cannot deserialize ""
+    // into an enum, so the save would fail with a 400. This affects every setting added after a
+    // config was last written, so it is handled here once for all selects rather than being
+    // patched per setting. The default comes from data-default because for seven of these the
+    // correct default is not the first option.
+    function applySelectValue(el, val) {
+        var fallback = el.getAttribute('data-default');
+
+        if (val !== undefined && val !== null && val !== '') {
+            el.value = val;
+            if (el.selectedIndex !== -1) return;
+
+            // The stored value is not offered any more — keep it selectable rather than
+            // silently rewriting the user's setting (e.g. a font that is not installed here).
+            var preserved = document.createElement('option');
+            preserved.value = val;
+            preserved.textContent = val + ' (unavailable)';
+            el.insertBefore(preserved, el.firstChild);
+            el.value = val;
+            return;
+        }
+
+        if (fallback) {
+            el.value = fallback;
+            if (el.selectedIndex !== -1) return;
+        }
+
+        el.selectedIndex = 0;
     }
 
     // ── Series Management ───────────────────────────────────
@@ -634,6 +661,7 @@ export default function (view) {
                     PosterFill: 'Original',
                     PosterDimensionRatio: '16:9',
                     PosterSafeArea: 5.0,
+                    ElementSpacing: 2.0,
                     ShowEpisode: true,
                     EpisodeFontFamily: 'Arial',
                     EpisodeUseCustomFont: false,
@@ -891,11 +919,27 @@ export default function (view) {
             return;
         }
 
+        if (_saving) return;
+        _saving = true;
+
         Dashboard.showLoadingMsg();
-        shared.saveConfig(fullConfig).then(function (result) {
+
+        // Read-modify-write: the plugin-wide settings on the other tab live in the same
+        // configuration object, so only the poster configurations are overwritten here.
+        shared.getConfig().then(function (serverConfig) {
+            serverConfig.PosterConfigurations = fullConfig.PosterConfigurations;
+            return shared.saveConfig(serverConfig);
+        }).then(function (result) {
             markClean();
             flashSaveSuccess();
             Dashboard.processPluginConfigurationUpdateResult(result);
+        }).catch(function (error) {
+            // Without this the loading overlay would stay up forever on a failed save.
+            console.error('Failed to save poster configurations:', error);
+            Dashboard.hideLoadingMsg();
+            Dashboard.alert('Failed to save. Please check the server log and try again.', 'Error');
+        }).finally(function () {
+            _saving = false;
         });
     }
 
@@ -913,6 +957,48 @@ export default function (view) {
             (styles || []).forEach(function (s) { posterStyleDescriptions[s.value] = s.description; });
             updateStyleDescription();
         });
+    }
+
+    // ── Fonts ───────────────────────────────────────────────
+
+    // Replace the font dropdowns with the families actually installed on the server. The old
+    // hardcoded list was desktop fonts (Arial, Calibri, ...) that a container image does not
+    // ship, so picking one silently rendered in the fallback face instead.
+    function loadFontFamilies() {
+        return ApiClient.ajax({
+            type: 'GET',
+            url: ApiClient.getUrl('Plugins/EpisodePosterGenerator/Fonts'),
+            dataType: 'json'
+        }).then(function (families) {
+            if (!families || !families.length) return;
+
+            view.querySelectorAll('#selectEpisodeFontFamily, #selectTitleFontFamily').forEach(function (select) {
+                select.innerHTML = '';
+                families.forEach(function (family) {
+                    var option = document.createElement('option');
+                    option.value = family;
+                    option.textContent = family;
+                    select.appendChild(option);
+                });
+
+                // Keep a sensible default selectable when the server has no Arial.
+                if (families.indexOf(select.getAttribute('data-default')) === -1) {
+                    select.setAttribute('data-default', families[0]);
+                }
+            });
+        }).catch(function (error) {
+            // Non-fatal: fall back to the built-in list already in the markup.
+            console.error('Failed to load server font families:', error);
+        });
+    }
+
+    // Static data shared by every config: loaded once, and always before the first config is
+    // applied so a stored font or style is never treated as an unknown option.
+    function loadStaticData() {
+        if (!_staticDataPromise) {
+            _staticDataPromise = Promise.all([loadPosterStyles(), loadFontFamilies()]);
+        }
+        return _staticDataPromise;
     }
 
     function updateStyleDescription() {
@@ -1012,16 +1098,34 @@ export default function (view) {
         var componentTitles = {
             canvas: 'Canvas Image',
             poster: 'Series Poster',
-            logo: 'Series Logo'
+            logo: 'Series Logo',
+            graphic: 'Static Graphic'
         };
 
+        // Fetched through ApiClient rather than assigned straight to img.src: a bare <img>
+        // request carries no auth header, which is why this endpoint used to have to allow
+        // anonymous access. Loading the bytes here keeps it behind the admin policy.
         view.querySelectorAll('.poster-component-img').forEach(function (img) {
             var component = img.getAttribute('data-component');
-            img.src = ApiClient.getUrl('Plugins/EpisodePosterGenerator/Preview/Component/' + component);
-            img.onerror = function () {
+            var hide = function () {
                 var wrapper = img.closest('.poster-component');
                 if (wrapper) wrapper.style.display = 'none';
             };
+
+            ApiClient.ajax({
+                type: 'GET',
+                url: ApiClient.getUrl('Plugins/EpisodePosterGenerator/Preview/Component/' + component)
+            }).then(function (response) {
+                if (!response.ok) throw new Error('Component request failed: ' + response.status);
+                return response.blob();
+            }).then(function (blob) {
+                var objectUrl = URL.createObjectURL(blob);
+                _componentObjectUrls.push(objectUrl);
+                img.src = objectUrl;
+            }).catch(function (error) {
+                console.error('Failed to load preview component "' + component + '":', error);
+                hide();
+            });
         });
 
         view.querySelectorAll('.poster-component').forEach(function (comp) {
@@ -1116,6 +1220,36 @@ export default function (view) {
             var cb = view.querySelector('#' + el.getAttribute('data-hide-when-checked'));
             el.style.display = (cb && cb.checked) ? 'none' : 'block';
         });
+
+        updatePaletteMode();
+    }
+
+    // With Palette-Derived Colors on, the renderer replaces the overlay RGB channels with the
+    // dominant color sampled from each episode's image and keeps only the alpha. Leaving a colour
+    // swatch and an ARGB field on screen implies the chosen colour still applies, so those are
+    // dropped and the field becomes what it actually controls: opacity.
+    function updatePaletteMode() {
+        var paletteCb = view.querySelector('#chkPaletteDerivedColors');
+        var on = !!(paletteCb && paletteCb.checked);
+
+        view.querySelectorAll('[data-palette-aware]').forEach(function (group) {
+            group.classList.toggle('palette-derived', on);
+
+            var container = group.closest('.inputContainer');
+            if (!container) return;
+
+            var label = container.querySelector('.color-control-label');
+            if (label) {
+                var key = on ? 'data-opacity-label' : 'data-color-label';
+                if (label.getAttribute(key)) label.textContent = label.getAttribute(key);
+            }
+
+            var desc = container.querySelector('.fieldDescription');
+            if (desc) {
+                var dkey = on ? 'data-opacity-desc' : 'data-color-desc';
+                if (desc.getAttribute(dkey)) desc.textContent = desc.getAttribute(dkey);
+            }
+        });
     }
 
     // ── Event Binding ───────────────────────────────────────
@@ -1166,7 +1300,7 @@ export default function (view) {
         var visibilityControls = [
             '#selectPosterStyle', '#chkShowTitle', '#chkShowEpisode', '#selectCanvasSource',
             '#chkEnableLetterboxDetection', '#selectPosterFill', '#selectOverlayGradient',
-            '#chkEpisodeUseCustomFont', '#chkTitleUseCustomFont'
+            '#chkEpisodeUseCustomFont', '#chkTitleUseCustomFont', '#chkPaletteDerivedColors'
         ];
         visibilityControls.forEach(function (selector) {
             var el = view.querySelector(selector);
@@ -1213,11 +1347,23 @@ export default function (view) {
             bindEventListeners();
             bindColorControls();
             loadPreviewComponents();
-            loadPosterStyles();
         }
 
         window.addEventListener('beforeunload', onBeforeUnload);
-        loadConfig();
+
+        // Styles and fonts must be in the DOM before the first config is applied, otherwise a
+        // stored value would look like an option that no longer exists.
+        loadStaticData().then(loadConfig);
+    });
+
+    view.addEventListener('viewdestroy', function () {
+        // Release the blobs backing the live preview and the component thumbnails.
+        if (_previewObjectUrl) {
+            URL.revokeObjectURL(_previewObjectUrl);
+            _previewObjectUrl = null;
+        }
+        _componentObjectUrls.forEach(URL.revokeObjectURL);
+        _componentObjectUrls = [];
     });
 
     view.addEventListener('viewbeforehide', function (e) {

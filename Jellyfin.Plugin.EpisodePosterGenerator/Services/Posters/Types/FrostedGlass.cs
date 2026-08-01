@@ -17,6 +17,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         // A short, user facing description of this style shown in the configuration UI.
         public override string Description => "Episode text on a frosted glass panel that blurs the image behind it.";
 
+        private const string EpisodeBlock = "episode";
+        private const string TitleBlock = "title";
+
         private readonly ILogger<FrostedGlassPosterGenerator> _logger;
 
         // The base canvas bitmap, captured during the canvas layer so the typography layer
@@ -79,15 +82,17 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 return;
 
             float titleLineHeight = titleFontSize * RenderConstants.LineHeightMultiplier;
-            float spacing = height * RenderConstants.DefaultSpacingRatio;
+            float spacing = GetElementSpacing(settings, height);
 
-            float contentHeight = 0;
-            if (episodeText != null)
-                contentHeight += episodeFontSize;
-            if (episodeText != null && titleLines.Count > 0)
-                contentHeight += spacing;
-            if (titleLines.Count > 0)
-                contentHeight += (titleLines.Count - 1) * titleLineHeight + titleFontSize;
+            // The panel is sized from the same column that positions its contents, so the box can
+            // never be measured from one set of numbers and filled from another.
+            var content = new LayoutColumn(SKRect.Create(safeArea.Left, 0, safeArea.Width, 0), spacing, LayoutAnchor.Top)
+                .Add(EpisodeBlock, episodeText != null ? episodeFontSize : 0f)
+                .Add(TitleBlock, titleLines.Count > 0
+                    ? ((titleLines.Count - 1) * titleLineHeight) + titleFontSize
+                    : 0f);
+
+            float contentHeight = content.Consumed;
 
             float contentWidth = 0;
             if (episodeText != null)
@@ -105,21 +110,29 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
 
             DrawFrostedPanel(skCanvas, roundedPanel, episodeMetadata, settings, width, height);
 
-            // Content, centered horizontally, stacked from the top padding down.
-            float currentY = panelTop + padY;
+            // Content, centered horizontally, placed from the column measured above.
+            var placed = new LayoutColumn(
+                SKRect.Create(panelRect.Left, panelTop + padY, panelRect.Width, contentHeight),
+                spacing,
+                LayoutAnchor.Top)
+                .Add(EpisodeBlock, episodeText != null ? episodeFontSize : 0f)
+                .Add(TitleBlock, titleLines.Count > 0
+                    ? ((titleLines.Count - 1) * titleLineHeight) + titleFontSize
+                    : 0f);
 
-            if (episodeText != null)
+            if (episodeText != null && placed.TryGetSlot(EpisodeBlock, out var episodeSlot))
             {
                 var metrics = episodePaint.FontMetrics;
-                skCanvas.DrawText(episodeText, panelRect.MidX, currentY - metrics.Ascent, episodePaint);
-                currentY += episodeFontSize + (titleLines.Count > 0 ? spacing : 0);
+                skCanvas.DrawText(episodeText, panelRect.MidX, episodeSlot.Top - metrics.Ascent, episodePaint);
             }
 
-            for (int i = 0; i < titleLines.Count; i++)
+            if (placed.TryGetSlot(TitleBlock, out var titleSlot))
             {
                 var metrics = titlePaint.FontMetrics;
-                skCanvas.DrawText(titleLines[i], panelRect.MidX, currentY - metrics.Ascent, titlePaint);
-                currentY += titleLineHeight;
+                for (int i = 0; i < titleLines.Count; i++)
+                {
+                    skCanvas.DrawText(titleLines[i], panelRect.MidX, titleSlot.Top + (i * titleLineHeight) - metrics.Ascent, titlePaint);
+                }
             }
         }
 
@@ -134,11 +147,15 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             if (_canvasBitmap != null)
             {
                 float blurSigma = Math.Max(8f, width * 0.01f);
+
+                // SKPaint does not own its image filter, so it is disposed explicitly rather
+                // than left for finalization on every poster rendered.
+                using var blurFilter = SKImageFilter.CreateBlur(blurSigma, blurSigma);
                 using var blurPaint = new SKPaint
                 {
                     IsAntialias = true,
                     FilterQuality = SKFilterQuality.High,
-                    ImageFilter = SKImageFilter.CreateBlur(blurSigma, blurSigma)
+                    ImageFilter = blurFilter
                 };
                 skCanvas.DrawBitmap(_canvasBitmap, 0, 0, blurPaint);
 

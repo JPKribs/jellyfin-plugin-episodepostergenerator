@@ -30,19 +30,24 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
                 _logger.LogDebug("Brightening bitmap by {Increase}%", brightnessIncrease);
 
                 var multiplier = 1.0f + (float)(brightnessIncrease / 100.0);
-                var pixels = bitmap.Pixels;
 
-                for (int i = 0; i < pixels.Length; i++)
+                // Redraw through a scaling color filter instead of round-tripping
+                // SKBitmap.Pixels, which would allocate and copy back the whole frame twice
+                // (~66 MB for a single 4K canvas).
+                using var filter = SKColorFilter.CreateColorMatrix(new[]
                 {
-                    var p = pixels[i];
-                    pixels[i] = new SKColor(
-                        (byte)Math.Min(255, (int)(p.Red * multiplier)),
-                        (byte)Math.Min(255, (int)(p.Green * multiplier)),
-                        (byte)Math.Min(255, (int)(p.Blue * multiplier)),
-                        p.Alpha);
-                }
+                    multiplier, 0, 0, 0, 0,
+                    0, multiplier, 0, 0, 0,
+                    0, 0, multiplier, 0, 0,
+                    0, 0, 0, 1, 0
+                });
 
-                bitmap.Pixels = pixels;
+                using var paint = new SKPaint { ColorFilter = filter };
+                using var snapshot = bitmap.Copy();
+                using var canvas = new SKCanvas(bitmap);
+
+                canvas.Clear(SKColors.Transparent);
+                canvas.DrawBitmap(snapshot, 0, 0, paint);
             }
             catch (Exception ex)
             {

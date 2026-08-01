@@ -4,9 +4,8 @@ Settings apply to the active configuration. Any series without its own configura
 
 ## Plugin
 
-* **Enable Provider**: generate a poster when Jellyfin requests an episode image. Default on.
-* **Enable Scheduled Task**: expose a batch generation task under Scheduled Tasks. Default on.
-* **Concurrent Episodes**: how many episodes the scheduled task processes at once, 1 to 8. Each episode runs its own ffmpeg extraction, so higher values need more CPU. Default 2.
+* **Enable Poster Generation**: generate posters for episodes, both automatically during a metadata refresh when an episode has no image and on demand from an episode's Edit Images dialog. Turning this off disables both. Default on.
+* **Choices In Edit Images**: how many alternate posters to offer when replacing an episode's poster from the Edit Images dialog, 1 to 10. Each one is rendered from a different frame and costs its own ffmpeg extraction, so higher values make the dialog slower to open. An episode with no poster yet is only offered one, because that request comes from an automatic refresh that keeps a single image. Default 3.
 
 ## Configurations
 
@@ -37,10 +36,14 @@ Settings apply to the active configuration. Any series without its own configura
 * **Fill Strategy**: how the canvas fits the poster. Original, Fill, or Fit. Default Original.
 * **Aspect Ratio**: output aspect ratio. Default 16:9.
 * **Safe Area**: margin kept clear around all edges. The percent applies to the poster height and the same pixel amount is used on all four sides. Default 5.
+* **Element Spacing**: gap kept between stacked elements such as the logo, episode code, and title, as a percent of the poster height. Every style resolves its spacing through this one value, so raising it pushes elements further apart everywhere. Default 2.
+
+## Outline (Style is Cutout or Brush)
+
+* **Enable Outline**: draw a contrasting outline around the cut-out shape — the episode code for Cutout, the brush stroke for Brush. Default on.
 
 ## Cutout (Style is Cutout)
 
-* **Enable Cutout Text Border**: draw a border around the cutout. Default on.
 * **Type**: what the cutout shows. Code such as S01E05, or Text spelled out. Default Code.
 
 ## Logo (Style is Logo)
@@ -72,7 +75,7 @@ Settings apply to the active configuration. Any series without its own configura
 
 ## Overlay
 
-* **Palette Derived Colors**: replace the overlay color channels with the dominant color sampled from each episode's image. The secondary color becomes a darker shade of it and the alpha values below still apply. Default off.
+* **Palette-Derived Colors**: replace the overlay color channels with the dominant color sampled from each episode's image. The secondary color becomes a darker shade of it and the alpha values below still apply. Default off.
 * **Overlay Color**: color drawn over the canvas as ARGB hex. Default #66000000.
 * **Overlay Gradient**: gradient direction. None, Left To Right, Bottom To Top, or a diagonal corner. Default None.
 * **Secondary Overlay Color**: the gradient's second color as ARGB hex. Default #66000000.

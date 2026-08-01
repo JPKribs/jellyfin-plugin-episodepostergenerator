@@ -1,4 +1,4 @@
-import { initCollapsibles, setTabs, createShared } from '/web/configurationpage?name=epg_jpkribs_shared.js';
+import { setTabs, createShared } from '/web/configurationpage?name=epg_jpkribs_shared.js';
 
 export default function (view) {
     'use strict';
@@ -19,12 +19,15 @@ export default function (view) {
 
     // ===== Unsaved Changes =====
 
-    function takeSnapshot() {
-        _savedSnapshot = JSON.stringify({
+    function currentState() {
+        return JSON.stringify({
             EnableProvider: view.querySelector('#chkEnableProvider').checked,
-            EnableTask: view.querySelector('#chkEnableTask').checked,
-            TaskConcurrency: view.querySelector('#txtTaskConcurrency').value
+            ImageChoiceCount: view.querySelector('#txtImageChoiceCount').value
         });
+    }
+
+    function takeSnapshot() {
+        _savedSnapshot = currentState();
     }
 
     function markDirty() {
@@ -64,12 +67,7 @@ export default function (view) {
 
     function checkDirty() {
         if (!_savedSnapshot) return;
-        var current = JSON.stringify({
-            EnableProvider: view.querySelector('#chkEnableProvider').checked,
-            EnableTask: view.querySelector('#chkEnableTask').checked,
-            TaskConcurrency: view.querySelector('#txtTaskConcurrency').value
-        });
-        if (current !== _savedSnapshot) {
+        if (currentState() !== _savedSnapshot) {
             markDirty();
         } else {
             _dirty = false;
@@ -84,14 +82,14 @@ export default function (view) {
         Dashboard.showLoadingMsg();
         shared.getConfig().then(function (config) {
             view.querySelector('#chkEnableProvider').checked = config.EnableProvider !== false;
-            view.querySelector('#chkEnableTask').checked = config.EnableTask !== false;
-            view.querySelector('#txtTaskConcurrency').value = config.TaskConcurrency || 2;
+            view.querySelector('#txtImageChoiceCount').value = config.ImageChoiceCount || 3;
             takeSnapshot();
             markClean();
             Dashboard.hideLoadingMsg();
         }).catch(function (error) {
             console.error('Failed to load config:', error);
             Dashboard.hideLoadingMsg();
+            Dashboard.alert('Failed to load settings. Please reload the page.', 'Error');
         });
     }
 
@@ -100,12 +98,16 @@ export default function (view) {
         _saving = true;
 
         Dashboard.showLoadingMsg();
+
+        // Read-modify-write: the poster configurations live in the same configuration object
+        // and are edited on the other tab, so a blind overwrite here would discard them.
         shared.getConfig().then(function (config) {
             config.EnableProvider = view.querySelector('#chkEnableProvider').checked;
-            config.EnableTask = view.querySelector('#chkEnableTask').checked;
-            var concurrency = parseInt(view.querySelector('#txtTaskConcurrency').value, 10);
-            if (isNaN(concurrency)) concurrency = 2;
-            config.TaskConcurrency = Math.min(8, Math.max(1, concurrency));
+
+            var choices = parseInt(view.querySelector('#txtImageChoiceCount').value, 10);
+            if (isNaN(choices)) choices = 3;
+            config.ImageChoiceCount = Math.min(10, Math.max(1, choices));
+
             return shared.saveConfig(config);
         }).then(function (result) {
             markClean();
@@ -114,41 +116,10 @@ export default function (view) {
         }).catch(function (error) {
             console.error('Failed to save settings:', error);
             Dashboard.hideLoadingMsg();
+            Dashboard.alert('Failed to save settings. Please try again.', 'Error');
         }).finally(function () {
             _saving = false;
         });
-    }
-
-    // ===== Reset History =====
-
-    function resetHistory() {
-        var confirmationHtml =
-            '<div class="reset-warning">' +
-            '<h3>Warning</h3>' +
-            '<p>This will permanently delete all episode processing history.</p>' +
-            '<p>After resetting, all episodes will be reprocessed on the next run, which may take considerable time for large libraries.</p>' +
-            '<p><strong>Are you sure you want to continue?</strong></p>' +
-            '</div>';
-
-        Dashboard.confirm(confirmationHtml, 'Reset Processing History', function (confirmed) {
-            if (confirmed) {
-                performReset();
-            }
-        });
-    }
-
-    function performReset() {
-        Dashboard.showLoadingMsg();
-
-        shared.apiRequest('ResetHistory', 'POST')
-            .then(function (data) {
-                Dashboard.hideLoadingMsg();
-                Dashboard.alert(((data && data.clearedCount) || 0) + ' Records Deleted', 'History Reset Complete');
-            })
-            .catch(function (error) {
-                Dashboard.hideLoadingMsg();
-                Dashboard.alert('Failed to reset processing history.', 'Error');
-            });
     }
 
     // ===== Lifecycle =====
@@ -165,12 +136,9 @@ export default function (view) {
 
         if (!_initialized) {
             _initialized = true;
-            initCollapsibles(view);
             view.querySelector('#btnSavePlugin').addEventListener('click', savePluginSettings);
-            view.querySelector('#btnResetHistory').addEventListener('click', resetHistory);
             view.querySelector('#chkEnableProvider').addEventListener('change', checkDirty);
-            view.querySelector('#chkEnableTask').addEventListener('change', checkDirty);
-            view.querySelector('#txtTaskConcurrency').addEventListener('input', checkDirty);
+            view.querySelector('#txtImageChoiceCount').addEventListener('input', checkDirty);
         }
 
         window.addEventListener('beforeunload', onBeforeUnload);

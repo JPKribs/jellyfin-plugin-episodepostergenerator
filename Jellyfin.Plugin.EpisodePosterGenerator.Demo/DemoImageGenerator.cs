@@ -37,7 +37,12 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.DemoGenerator
         {
             _loggerFactory = LoggerFactory.Create(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
             _logger = _loggerFactory.CreateLogger<DemoImageGenerator>();
-            _previewService = new PreviewService(_loggerFactory);
+
+            // Offline tool: no Jellyfin application paths available, so the demo art is
+            // materialized under the local temp directory instead of the plugin data folder.
+            _previewService = new PreviewService(
+                _loggerFactory,
+                Path.Combine(Path.GetTempPath(), "epg-demo-assets"));
 
             var assetDir = _previewService.GetDemoAssetDirectory();
             _baseImagePath = Path.Combine(assetDir, "demo-base.png");
@@ -154,14 +159,34 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.DemoGenerator
 
             // Render using the shared crop + generate pipeline (the same code path the live
             // preview and runtime use), so demos and previews can never drift apart.
-            var outputPath = Path.Combine(templateDir, $"Example{episodeNumber}.png");
-            var result = _previewService.RenderPoster(baseImage, metadata, settings, outputPath);
+            var imageBytes = _previewService.RenderPoster(baseImage, metadata, settings);
 
-            if (result == null)
+            if (imageBytes == null)
             {
-                throw new Exception($"Failed to generate poster for episode {episodeNumber}");
+                throw new InvalidOperationException($"Failed to generate poster for episode {episodeNumber}");
             }
+
+            // The generator encodes JPEG; the .png extension is kept because every README and
+            // docs page already links these filenames.
+            var outputPath = Path.Combine(templateDir, $"Example{episodeNumber}.png");
+            await File.WriteAllBytesAsync(outputPath, imageBytes).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Shape of the docs/examples/*/Template.json files. Local to this tool: the plugin
+        /// itself does template import/export in the configuration page, not on the server.
+        /// </summary>
+        private sealed class PosterTemplate
+        {
+            public string? Name { get; set; }
+
+            public string? Description { get; set; }
+
+            public string? Author { get; set; }
+
+            public string? Version { get; set; }
+
+            public PosterSettings? Settings { get; set; }
+        }
     }
 }

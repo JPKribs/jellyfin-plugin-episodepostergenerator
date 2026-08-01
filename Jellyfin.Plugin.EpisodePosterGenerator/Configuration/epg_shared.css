@@ -64,6 +64,25 @@
     cursor: pointer;
 }
 
+/* Palette-derived mode: the RGB channels are replaced per episode by the color sampled
+   from the image, so only the alpha the user picked survives. Showing a swatch and an
+   ARGB field that the renderer then overrides reads as if the color still applies, so
+   the group collapses to the one control that does: opacity. The hex input stays in the
+   DOM (it is where the alpha is stored and round-tripped) but is taken out of view. */
+.color-control-group.palette-derived .color-picker,
+.color-control-group.palette-derived .hex-input {
+    display: none;
+}
+
+.color-control-group.palette-derived .alpha-slider {
+    flex: 1;
+}
+
+.color-control-group.palette-derived .alpha-label::after {
+    content: " / 255";
+    opacity: 0.6;
+}
+
 .alpha-slider {
     width: 80px;
     height: 20px;
@@ -78,19 +97,6 @@
 .hex-input {
     flex: 1;
     min-width: 120px;
-}
-
-/* Reset group (.jpk-reset-*) and the destructive button (.jpk-button-destructive)
-   come from the base shared CSS. */
-
-/* ── Reset Messages ──────────────────────────────────── */
-.reset-warning {
-    background: rgba(211, 47, 47, 0.1);
-    border: 1px solid rgba(211, 47, 47, 0.3);
-    border-radius: 4px;
-    padding: 12px;
-    margin: 8px 0;
-    color: #ffcdd2;
 }
 
 /* ── Series Assignment ───────────────────────────────── */

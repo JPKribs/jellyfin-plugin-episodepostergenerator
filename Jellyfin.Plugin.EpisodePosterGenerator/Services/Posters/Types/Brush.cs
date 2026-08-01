@@ -81,17 +81,37 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 }
             }
 
+            // Sigma scales with the poster, so this one cannot use the shared cached filter.
+            // SKPaint does not own its mask filter, hence the explicit using.
+            using var punchBlur = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, Math.Max(2f, height * 0.002f));
             using var punchPaint = new SKPaint
             {
                 Color = SKColors.Black,
                 Style = SKPaintStyle.Fill,
                 BlendMode = SKBlendMode.DstOut,
                 IsAntialias = true,
-                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, Math.Max(2f, height * 0.002f))
+                MaskFilter = punchBlur
             };
             skCanvas.DrawPath(brushMask, punchPaint);
 
             skCanvas.Restore();
+
+            // Optional outline tracing the stroke edge, sharing the Cutout style's border toggle
+            // and its contrast rule. Drawn after the layer is restored: inside it, the DstOut
+            // punch above would erase the outline along with the overlay.
+            if (settings.CutoutBorder)
+            {
+                using var outlinePaint = new SKPaint
+                {
+                    Color = ColorUtils.GetContrastingOutline(primaryColor),
+                    Style = SKPaintStyle.Stroke,
+                    StrokeWidth = Math.Max(1f, height * 0.003f),
+                    IsAntialias = true,
+                    StrokeCap = SKStrokeCap.Round,
+                    StrokeJoin = SKStrokeJoin.Round
+                };
+                skCanvas.DrawPath(brushMask, outlinePaint);
+            }
         }
 
         // GenerateBrushSeed
@@ -134,10 +154,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         // Calculates the area that should remain clear for text elements.
         private SKRect CalculateTextKeepClearArea(SKRect safeArea, PosterSettings settings, int height, EpisodeMetadata episodeMetadata)
         {
-            var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(settings.EpisodeFontSize, height, settings.PosterSafeArea);
+            var episodeFontSize = FontUtils.CalculateFontSizeFromPercentage(settings.EpisodeFontSize, height);
 
             var episodeHeight = episodeFontSize;
-            var spacing = episodeFontSize * 0.3f;
+            var spacing = GetElementSpacing(settings, height);
             var titleHeight = MeasureTitleHeight(episodeMetadata, settings, safeArea, height);
             var totalTextHeight = episodeHeight + spacing + titleHeight;
             
@@ -169,7 +189,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 episodeMetadata.SeasonNumber ?? 0,
                 episodeMetadata.EpisodeNumberStart ?? 0);
             
-            var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, height, config.PosterSafeArea);
+            var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.EpisodeFontSize, height);
             var typeface = FontUtils.ResolveTypeface(config.EffectiveEpisodeFontPath, config.EpisodeFontFamily, FontUtils.GetFontStyle(config.EpisodeFontStyle));
 
             var textColor = ColorUtils.ParseHexColor(config.EpisodeFontColor);
@@ -195,15 +215,16 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 LcdRenderText = true,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Left,
-                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
+                MaskFilter = PaintFactory.ShadowBlur
             };
             
             var metrics = textPaint.FontMetrics;
-            var spacing = fontSize * 0.3f;
+            var spacing = GetElementSpacing(config, height);
 
-            // Reserve only the title's ACTUAL rendered height (it may wrap to 1+ lines),
-            // not a fixed multiple, so the gap between the code and title stays tight
-            // regardless of title length.
+            // Sits above a fixed two line reservation rather than the title's actual height,
+            // so the code lands in the same place on every episode regardless of how long its
+            // title is. DrawTitle fills that block from the top, so a one line title still
+            // renders directly beneath this.
             var titleHeight = MeasureTitleHeight(episodeMetadata, config, safeArea, height);
 
             float x = safeArea.Left;
@@ -222,7 +243,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             if (!config.ShowTitle || string.IsNullOrWhiteSpace(episodeMetadata.EpisodeName))
                 return 0f;
 
-            var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height, config.PosterSafeArea);
+            var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
             return 2f * fontSize * 1.2f;
         }
 
@@ -231,10 +252,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
         private void DrawTitle(SKCanvas canvas, EpisodeMetadata episodeMetadata, PosterSettings config, SKRect safeArea, int height)
         {
             var title = episodeMetadata.EpisodeName;
-            if (string.IsNullOrWhiteSpace(title))
+            if (!config.ShowTitle || string.IsNullOrWhiteSpace(title))
                 return;
 
-            var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height, config.PosterSafeArea);
+            var fontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, height);
             var typeface = FontUtils.ResolveTypeface(config.EffectiveTitleFontPath, config.TitleFontFamily, FontUtils.GetFontStyle(config.TitleFontStyle));
             
             using var titlePaint = new SKPaint
@@ -257,7 +278,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 LcdRenderText = true,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Left,
-                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
+                MaskFilter = PaintFactory.ShadowBlur
             };
             
             var maxTextWidth = safeArea.Width * 0.6f;
@@ -268,13 +289,19 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             var metrics = titlePaint.FontMetrics;
             float lineHeight = fontSize * 1.2f;
             float x = safeArea.Left;
-            float y = safeArea.Bottom - Math.Abs(metrics.Descent);
-            
-            for (int i = lines.Count - 1; i >= 0; i--)
+
+            // The block below the episode code is a fixed two lines tall so the code above it never
+            // shifts between episodes. A one line title leaves a line of slack, split evenly above
+            // and below by CenteredBaseline rather than pooled at one end.
+            float blockHeight = MeasureTitleHeight(episodeMetadata, config, safeArea, height);
+            var slot = SKRect.Create(safeArea.Left, safeArea.Bottom - blockHeight, safeArea.Width, blockHeight);
+            float y = CenteredBaseline(slot, lines.Count, fontSize, lineHeight) - Math.Abs(metrics.Descent);
+
+            foreach (var line in lines)
             {
-                canvas.DrawText(lines[i], x + 2f, y + 2f, shadowPaint);
-                canvas.DrawText(lines[i], x, y, titlePaint);
-                y -= lineHeight;
+                canvas.DrawText(line, x + 2f, y + 2f, shadowPaint);
+                canvas.DrawText(line, x, y, titlePaint);
+                y += lineHeight;
             }
         }
 

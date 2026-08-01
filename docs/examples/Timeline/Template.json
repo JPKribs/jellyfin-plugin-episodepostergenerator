@@ -2,7 +2,7 @@
   "name": "Timeline",
   "description": "Season progress bar with episode info and title over a bottom gradient.",
   "author": "Joseph Kribs",
-  "version": "10.11.24.1",
+  "version": "10.11.25.0",
   "createdDate": "2026-07-04T12:00:00.000Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -22,6 +22,7 @@
     "PosterFill": "Fit",
     "PosterDimensionRatio": "16:9",
     "PosterSafeArea": 5,
+    "ElementSpacing": 2,
     "ShowEpisode": true,
     "EpisodeFontFamily": "Trebuchet MS",
     "EpisodeUseCustomFont": false,

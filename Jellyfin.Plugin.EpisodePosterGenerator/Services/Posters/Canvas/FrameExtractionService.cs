@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -14,11 +15,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
     /// <summary>
     /// Extracts high-quality video frames using Jellyfin's media encoder,
-    /// scoring candidates by brightness and sharpness to select the best frame.
+    /// scoring candidates by brightness and sharpness to select the best frames.
     /// </summary>
     public class FrameExtractionService
     {
         private const int MaxRetries = 30;
+        private const int ExtraAttemptsPerCandidate = 6;
+        private const int MaxAttemptCeiling = 48;
         private const int EarlyExitAttemptThreshold = 5;
         private const double BrightnessThreshold = 0.05;
         private const double SharpnessThreshold = 100.0;
@@ -41,27 +44,31 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         }
 
         /// <summary>
-        /// Extracts the best available frame from an episode's video stream.
-        /// Tries multiple random offsets within the configured extraction window,
-        /// scoring each frame for brightness and sharpness.
+        /// Extracts up to <paramref name="count"/> distinct frames from an episode, best first.
+        /// Successive attempts walk a low-discrepancy sequence across the configured extraction
+        /// window, so candidates are spread through the episode rather than clustered. The caller
+        /// owns the returned files and is responsible for deleting them.
         /// </summary>
-        public async Task<string?> ExtractFrameAsync(
+        public async Task<IReadOnlyList<string>> ExtractFrameCandidatesAsync(
             Episode episode,
             PosterSettings config,
+            int count,
             CancellationToken cancellationToken = default)
         {
             if (episode == null || string.IsNullOrEmpty(episode.Path))
             {
                 _logger.LogError("Invalid episode provided to FrameExtractionService");
-                return null;
+                return Array.Empty<string>();
             }
+
+            count = Math.Max(1, count);
 
             var mediaSources = episode.GetMediaSources(false);
             var mediaSource = mediaSources?.Count > 0 ? mediaSources[0] : null;
             if (mediaSource == null)
             {
                 _logger.LogError("No media source found for episode: {Path}", episode.Path);
-                return null;
+                return Array.Empty<string>();
             }
 
             var videoStream = mediaSource.MediaStreams?
@@ -69,119 +76,187 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             if (videoStream == null)
             {
                 _logger.LogError("No video stream found for episode: {Path}", episode.Path);
-                return null;
+                return Array.Empty<string>();
             }
 
             var container = Path.GetExtension(episode.Path)?.TrimStart('.') ?? string.Empty;
             var videoDurationSeconds = (episode.RunTimeTicks ?? 0) / (double)TimeSpan.TicksPerSecond;
             if (videoDurationSeconds <= 0) videoDurationSeconds = DefaultDurationSeconds;
 
-            _logger.LogInformation("Extracting frame from {Path} (duration: {Duration}s, container: {Container})",
-                episode.Path, (int)videoDurationSeconds, container);
+            _logger.LogInformation("Extracting {Count} frame(s) from {Path} (duration: {Duration}s, container: {Container})",
+                count, episode.Path, (int)videoDurationSeconds, container);
 
-            string? bestFramePath = null;
-            double bestQualityScore = 0.0;
+            // Candidates kept so far, worst-scoring first so eviction is cheap.
+            var candidates = new List<FrameCandidate>(count);
+            var goodCount = 0;
             var seekPhase = Random.Shared.NextDouble();
 
-            for (int attempt = 0; attempt < MaxRetries; attempt++)
+            var maxAttempts = Math.Clamp(
+                MaxRetries + ((count - 1) * ExtraAttemptsPerCandidate),
+                MaxRetries,
+                MaxAttemptCeiling);
+
+            try
             {
-                string? extractedPath = null;
-                bool keepFile = false;
-
-                try
+                for (int attempt = 0; attempt < maxAttempts; attempt++)
                 {
-                    var seekSeconds = GenerateSeekTime(videoDurationSeconds, attempt, seekPhase, config);
-                    var offset = TimeSpan.FromSeconds(seekSeconds);
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                    extractedPath = await _mediaEncoder.ExtractVideoImage(
-                        episode.Path,
-                        container,
-                        mediaSource,
-                        videoStream,
-                        null,
-                        offset,
-                        cancellationToken).ConfigureAwait(false);
+                    string? extractedPath = null;
+                    bool keepFile = false;
 
-                    if (string.IsNullOrEmpty(extractedPath) || !File.Exists(extractedPath))
+                    try
                     {
-                        if (attempt == 0)
+                        var seekSeconds = GenerateSeekTime(videoDurationSeconds, attempt, seekPhase, config);
+                        var offset = TimeSpan.FromSeconds(seekSeconds);
+
+                        extractedPath = await _mediaEncoder.ExtractVideoImage(
+                            episode.Path,
+                            container,
+                            mediaSource,
+                            videoStream,
+                            null,
+                            offset,
+                            cancellationToken).ConfigureAwait(false);
+
+                        if (string.IsNullOrEmpty(extractedPath) || !File.Exists(extractedPath))
                         {
-                            _logger.LogWarning("ExtractVideoImage returned no output on first attempt");
+                            if (attempt == 0)
+                            {
+                                _logger.LogWarning("ExtractVideoImage returned no output on first attempt");
+                            }
+                            continue;
                         }
-                        continue;
+
+                        double brightness;
+                        double sharpness;
+                        using (var stream = File.OpenRead(extractedPath))
+                        using (var frameBitmap = SKBitmap.Decode(stream))
+                        {
+                            if (frameBitmap == null)
+                            {
+                                continue;
+                            }
+
+                            using var analysisBitmap = CreateAnalysisBitmap(frameBitmap);
+                            AnalyzeFrame(analysisBitmap, out brightness, out sharpness);
+                        }
+
+                        var qualityScore = CalculateQualityScore(brightness, sharpness);
+                        var isGood = brightness > BrightnessThreshold && sharpness >= SharpnessThreshold;
+
+                        if (attempt < EarlyExitAttemptThreshold || isGood)
+                        {
+                            _logger.LogDebug("Attempt {Attempt}: Brightness {Brightness:F3}, Sharpness {Sharpness:F1}, Score {Score:F3}",
+                                attempt + 1, brightness, sharpness, qualityScore);
+                        }
+
+                        keepFile = TryAddCandidate(candidates, count, extractedPath, qualityScore, isGood, ref goodCount);
+
+                        // Enough frames that clear both thresholds outright: stop early.
+                        if (goodCount >= count)
+                        {
+                            _logger.LogInformation("Found {Count} high-quality frame(s) after {Attempts} attempt(s)",
+                                goodCount, attempt + 1);
+                            break;
+                        }
+
+                        // Otherwise settle for a full set of merely acceptable frames once the
+                        // cheap attempts are spent, rather than exhausting every retry.
+                        if (candidates.Count >= count
+                            && attempt > EarlyExitAttemptThreshold
+                            && candidates.All(c => c.Score > EarlyExitScoreThreshold))
+                        {
+                            _logger.LogInformation("Found {Count} acceptable frame(s) after {Attempts} attempt(s)",
+                                candidates.Count, attempt + 1);
+                            break;
+                        }
                     }
-
-                    using var stream = File.OpenRead(extractedPath);
-                    using var frameBitmap = SKBitmap.Decode(stream);
-                    if (frameBitmap == null)
+                    catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        continue;
-                    }
-
-                    using var analysisBitmap = CreateAnalysisBitmap(frameBitmap);
-                    var brightness = analysisBitmap != null ? GetFrameBrightness(analysisBitmap) : 0.0;
-                    var sharpness = analysisBitmap != null ? GetFrameSharpness(analysisBitmap) : 0.0;
-                    var qualityScore = CalculateQualityScore(brightness, sharpness);
-
-                    var brightnessOk = brightness > BrightnessThreshold;
-                    var sharpnessOk = sharpness >= SharpnessThreshold;
-
-                    if (attempt < EarlyExitAttemptThreshold || (brightnessOk && sharpnessOk))
-                    {
-                        _logger.LogDebug("Attempt {Attempt}: Brightness {Brightness:F3}, Sharpness {Sharpness:F1}, Score {Score:F3}",
-                            attempt + 1, brightness, sharpness, qualityScore);
-                    }
-
-                    if (brightnessOk && sharpnessOk)
-                    {
-                        TryDeleteFile(bestFramePath);
-                        keepFile = true;
-                        _logger.LogInformation("Found high-quality frame on attempt {Attempt} (brightness: {Brightness:F3}, sharpness: {Sharpness:F1})",
-                            attempt + 1, brightness, sharpness);
-                        return extractedPath;
-                    }
-
-                    if (qualityScore > bestQualityScore)
-                    {
-                        TryDeleteFile(bestFramePath);
-                        bestFramePath = extractedPath;
-                        keepFile = true;
-                        bestQualityScore = qualityScore;
-                    }
-
-                    if (qualityScore > EarlyExitScoreThreshold && attempt > EarlyExitAttemptThreshold)
-                    {
-                        _logger.LogInformation("Found acceptable frame after {Attempts} attempts (score: {Score:F3})",
-                            attempt + 1, qualityScore);
+                        _logger.LogWarning(ex, "Frame extraction failed on attempt {Attempt}", attempt + 1);
+                        if (attempt < 3)
+                        {
+                            continue;
+                        }
                         break;
                     }
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    _logger.LogWarning(ex, "Frame extraction failed on attempt {Attempt}", attempt + 1);
-                    if (attempt < 3)
+                    finally
                     {
-                        continue;
-                    }
-                    break;
-                }
-                finally
-                {
-                    if (!keepFile)
-                    {
-                        TryDeleteFile(extractedPath);
+                        if (!keepFile)
+                        {
+                            TryDeleteFile(extractedPath);
+                        }
                     }
                 }
             }
-
-            if (bestFramePath != null)
+            catch (OperationCanceledException)
             {
-                _logger.LogInformation("Using best available frame (score: {Score:F3})", bestQualityScore);
-                return bestFramePath;
+                // Cancellation mid-run must not strand extracted frames on disk.
+                foreach (var candidate in candidates)
+                {
+                    TryDeleteFile(candidate.Path);
+                }
+
+                throw;
             }
 
-            _logger.LogError("Failed to extract any usable frames after {Attempts} attempts", MaxRetries);
-            return null;
+            if (candidates.Count == 0)
+            {
+                _logger.LogError("Failed to extract any usable frames after {Attempts} attempts", maxAttempts);
+                return Array.Empty<string>();
+            }
+
+            var ordered = candidates
+                .OrderByDescending(c => c.Score)
+                .Select(c => c.Path)
+                .ToArray();
+
+            _logger.LogInformation("Using {Count} frame(s) (best score: {Score:F3})",
+                ordered.Length, candidates.Max(c => c.Score));
+
+            return ordered;
+        }
+
+        // TryAddCandidate
+        // Keeps the frame if there is room or it beats the weakest candidate held so far.
+        // Returns true when the file was retained (and so must not be deleted by the caller).
+        private static bool TryAddCandidate(
+            List<FrameCandidate> candidates,
+            int capacity,
+            string path,
+            double score,
+            bool isGood,
+            ref int goodCount)
+        {
+            if (candidates.Count < capacity)
+            {
+                candidates.Add(new FrameCandidate(path, score, isGood));
+                if (isGood) goodCount++;
+                return true;
+            }
+
+            var weakestIndex = 0;
+            for (int i = 1; i < candidates.Count; i++)
+            {
+                if (candidates[i].Score < candidates[weakestIndex].Score)
+                {
+                    weakestIndex = i;
+                }
+            }
+
+            if (score <= candidates[weakestIndex].Score)
+            {
+                return false;
+            }
+
+            var evicted = candidates[weakestIndex];
+            TryDeleteFile(evicted.Path);
+            if (evicted.IsGood) goodCount--;
+
+            candidates[weakestIndex] = new FrameCandidate(path, score, isGood);
+            if (isGood) goodCount++;
+            return true;
         }
 
         private int GenerateSeekTime(double videoDurationSeconds, int attempt, double seekPhase, PosterSettings config)
@@ -223,54 +298,52 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             return resized;
         }
 
-        private static double GetFrameBrightness(SKBitmap analysis)
+        // AnalyzeFrame
+        // Computes mean luminance and Laplacian variance from a single pixel snapshot, so the
+        // analysis bitmap is only marshalled to managed memory once per frame.
+        private static void AnalyzeFrame(SKBitmap? analysis, out double brightness, out double sharpness)
         {
-            var pixels = analysis.Pixels;
-            if (pixels == null || pixels.Length == 0) return 0.0;
+            brightness = 0.0;
+            sharpness = 0.0;
 
-            double total = 0;
+            if (analysis == null) return;
+
+            var pixels = analysis.Pixels;
+            if (pixels == null || pixels.Length == 0) return;
+
+            int width = analysis.Width;
+            int height = analysis.Height;
+
+            var luma = new double[pixels.Length];
+            double totalLuma = 0;
             for (int i = 0; i < pixels.Length; i++)
             {
                 var c = pixels[i];
-                total += (0.2126 * c.Red + 0.7152 * c.Green + 0.0722 * c.Blue) / 255.0;
+                var value = (0.2126 * c.Red) + (0.7152 * c.Green) + (0.0722 * c.Blue);
+                luma[i] = value;
+                totalLuma += value;
             }
 
-            return total / pixels.Length;
-        }
-
-        private static double GetFrameSharpness(SKBitmap analysis)
-        {
-            int width = analysis.Width;
-            int height = analysis.Height;
-            var pixels = analysis.Pixels;
-            if (pixels == null || pixels.Length == 0) return 0.0;
+            brightness = totalLuma / pixels.Length / 255.0;
 
             double sum = 0;
             int count = 0;
-
             for (int y = 1; y < height - 1; y++)
             {
                 for (int x = 1; x < width - 1; x++)
                 {
-                    int c = y * width + x;
-                    int t = (y - 1) * width + x;
-                    int b = (y + 1) * width + x;
-                    int l = y * width + (x - 1);
-                    int r = y * width + (x + 1);
-
-                    double center = 0.2126 * pixels[c].Red + 0.7152 * pixels[c].Green + 0.0722 * pixels[c].Blue;
-                    double top    = 0.2126 * pixels[t].Red + 0.7152 * pixels[t].Green + 0.0722 * pixels[t].Blue;
-                    double bottom = 0.2126 * pixels[b].Red + 0.7152 * pixels[b].Green + 0.0722 * pixels[b].Blue;
-                    double left   = 0.2126 * pixels[l].Red + 0.7152 * pixels[l].Green + 0.0722 * pixels[l].Blue;
-                    double right  = 0.2126 * pixels[r].Red + 0.7152 * pixels[r].Green + 0.0722 * pixels[r].Blue;
-
-                    double lap = 4 * center - top - bottom - left - right;
+                    int c = (y * width) + x;
+                    double lap = (4 * luma[c])
+                        - luma[((y - 1) * width) + x]
+                        - luma[((y + 1) * width) + x]
+                        - luma[(y * width) + (x - 1)]
+                        - luma[(y * width) + (x + 1)];
                     sum += lap * lap;
                     count++;
                 }
             }
 
-            return count > 0 ? sum / count : 0.0;
+            sharpness = count > 0 ? sum / count : 0.0;
         }
 
         private static double CalculateQualityScore(double brightness, double sharpness)
@@ -292,5 +365,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
+
+        private readonly record struct FrameCandidate(string Path, double Score, bool IsGood);
     }
 }

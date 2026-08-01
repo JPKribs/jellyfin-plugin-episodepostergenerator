@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
@@ -15,21 +14,23 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
 {
+    /// <summary>
+    /// Generates an episode poster automatically during a metadata refresh when the episode
+    /// has no primary image. Users who want to choose between several frames instead go
+    /// through <see cref="EpisodePosterRemoteImageProvider"/> in the Edit Images dialog.
+    /// </summary>
     public class EpisodePosterImageProvider : IDynamicImageProvider
     {
         private readonly ILogger<EpisodePosterImageProvider> _logger;
-        private readonly IApplicationPaths _appPaths;
         private readonly IProviderManager _providerManager;
 
         // EpisodePosterImageProvider
-        // Initializes the image provider with logging and application paths.
+        // Initializes the image provider with logging and provider manager dependencies.
         public EpisodePosterImageProvider(
             ILogger<EpisodePosterImageProvider> logger,
-            IApplicationPaths appPaths,
             IProviderManager providerManager)
         {
             _logger = logger;
-            _appPaths = appPaths;
             _providerManager = providerManager;
         }
 
@@ -93,42 +94,30 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
             {
                 _logger.LogInformation("Starting to create poster for {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
 
-                var result = await posterService.GeneratePosterAsync(episode).ConfigureAwait(false);
+                var result = await posterService.GeneratePosterAsync(episode, cancellationToken).ConfigureAwait(false);
 
-                if (result == null || string.IsNullOrEmpty(result.PosterPath) || !File.Exists(result.PosterPath))
+                if (result == null)
                 {
                     _logger.LogWarning("Failed to generate image for episode: {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
                     return new DynamicImageResponse { HasImage = false };
                 }
 
-                await SaveBackdropIfPresentAsync(episode, result.BackdropPath, cancellationToken).ConfigureAwait(false);
-
-                var imageBytes = await File.ReadAllBytesAsync(result.PosterPath, cancellationToken).ConfigureAwait(false);
-
-                // Ownership note: DynamicImageResponse takes ownership of the stream and disposes it
-                var imageStream = new MemoryStream(imageBytes);
-
-                var trackingService = Plugin.Instance.TrackingService;
-                if (trackingService != null)
-                {
-                    try
-                    {
-                        await trackingService.MarkEpisodeProcessedAsync(episode, config).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to mark episode as processed in tracking service: {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
-                    }
-                }
+                await SaveBackdropIfPresentAsync(episode, result.Backdrop, cancellationToken).ConfigureAwait(false);
 
                 _logger.LogInformation("Poster created for {SeriesName} - {EpisodeName}", episode.SeriesName, episode.Name);
 
                 return new DynamicImageResponse
                 {
                     HasImage = true,
-                    Stream = imageStream,
+
+                    // DynamicImageResponse takes ownership of the stream and disposes it.
+                    Stream = new MemoryStream(result.Poster),
                     Format = ImageFormat.Jpg
                 };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -139,9 +128,9 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
 
         // SaveBackdropIfPresentAsync
         // Uploads the generated backdrop image to the episode when one was produced.
-        private async Task SaveBackdropIfPresentAsync(Episode episode, string? backdropPath, CancellationToken cancellationToken)
+        private async Task SaveBackdropIfPresentAsync(Episode episode, byte[]? backdrop, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrEmpty(backdropPath) || !File.Exists(backdropPath))
+            if (backdrop == null || backdrop.Length == 0)
             {
                 return;
             }
@@ -150,7 +139,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
             {
                 await RemoveExistingBackdropsAsync(episode).ConfigureAwait(false);
 
-                using (var backdropStream = File.OpenRead(backdropPath))
+                using (var backdropStream = new MemoryStream(backdrop))
                 {
                     await _providerManager.SaveImage(
                         episode,
@@ -162,6 +151,10 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Providers
                 }
 
                 await episode.UpdateToRepositoryAsync(ItemUpdateType.ImageUpdate, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {

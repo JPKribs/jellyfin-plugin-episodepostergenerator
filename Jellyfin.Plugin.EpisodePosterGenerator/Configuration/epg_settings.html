@@ -10,57 +10,18 @@
                         <h1 class="sectionTitle">Settings</h1>
                     </div>
 
-                    <!-- COLLAPSIBLE: Plugin -->
-                    <div class="jpk-collapsible-section">
-                        <button type="button" class="jpk-collapsible-header collapsed" aria-expanded="false" aria-controls="pluginContent" data-target="pluginContent">
-                            <span class="jpk-collapsible-title">Plugin</span>
-                            <span class="jpk-collapsible-icon">&#9660;</span>
-                        </button>
-                        <div id="pluginContent" class="jpk-collapsible-content collapsed">
-                            <div class="checkboxContainer">
-                                <label class="emby-checkbox-label">
-                                    <input is="emby-checkbox" type="checkbox" id="chkEnableProvider" />
-                                    <span class="checkboxLabel">Enable Provider</span>
-                                </label>
-                                <div class="fieldDescription">Enable the plugin as a metadata provider for episode posters.</div>
-                            </div>
-
-                            <div class="checkboxContainer">
-                                <label class="emby-checkbox-label">
-                                    <input is="emby-checkbox" type="checkbox" id="chkEnableTask" />
-                                    <span class="checkboxLabel">Enable Scheduled Task</span>
-                                </label>
-                                <div class="fieldDescription">Enable the plugin as a scheduled task for batch poster generation.</div>
-                            </div>
-
-                            <div class="inputContainer">
-                                <label for="txtTaskConcurrency">Concurrent Episodes:</label>
-                                <input is="emby-input" type="number" id="txtTaskConcurrency" min="1" max="8" step="1" />
-                                <div class="fieldDescription">How many episodes the task processes at once, 1 to 8. Higher values need more CPU. Default is 2.</div>
-                            </div>
-
-                        </div>
+                    <div class="checkboxContainer">
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="chkEnableProvider" />
+                            <span class="checkboxLabel">Enable Poster Generation</span>
+                        </label>
+                        <div class="fieldDescription">Generate posters for episodes: automatically during a metadata refresh when an episode has no image, and on demand from an episode's Edit Images dialog. Turning this off disables both.</div>
                     </div>
 
-                    <!-- COLLAPSIBLE: Troubleshooting -->
-                    <div class="jpk-collapsible-section">
-                        <button type="button" class="jpk-collapsible-header collapsed" aria-expanded="false" aria-controls="troubleshootingContent" data-target="troubleshootingContent">
-                            <span class="jpk-collapsible-title">Troubleshooting</span>
-                            <span class="jpk-collapsible-icon">&#9660;</span>
-                        </button>
-                        <div id="troubleshootingContent" class="jpk-collapsible-content collapsed">
-                            <div class="jpk-reset-group">
-                                <div class="jpk-reset-row jpk-reset-row-nuclear">
-                                    <div class="jpk-reset-info">
-                                        <div>Reset Processing History</div>
-                                        <div class="fieldDescription">Clear all episode processing history. All episodes will be reprocessed on the next run.</div>
-                                    </div>
-                                    <button is="emby-button" type="button" id="btnResetHistory" class="raised jpk-button-destructive jpk-button-small">
-                                        <span>Reset</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="inputContainer">
+                        <label for="txtImageChoiceCount">Choices In Edit Images:</label>
+                        <input is="emby-input" type="number" id="txtImageChoiceCount" min="1" max="10" step="1" />
+                        <div class="fieldDescription">How many alternate posters to offer in an episode's Edit Images dialog, 1 to 10. Each one is rendered from a different frame, so higher values make the dialog slower to open. Default is 3.</div>
                     </div>
 
                     <!-- Save -->

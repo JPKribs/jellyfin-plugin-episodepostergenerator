@@ -2,7 +2,7 @@
   "name": "Partial Frame",
   "description": "Frame poster with a thin, black overlay and only title information.",
   "author": "Joseph Kribs",
-  "version": "10.11.24.1",
+  "version": "10.11.25.0",
   "createdDate": "2025-10-21T12:51:17.440Z",
   "settings": {
     "CanvasSource": "Extract",
@@ -22,6 +22,7 @@
     "PosterFill": "Fit",
     "PosterDimensionRatio": "16:9",
     "PosterSafeArea": 5,
+    "ElementSpacing": 2,
     "ShowEpisode": false,
     "EpisodeFontFamily": "Arial",
     "EpisodeUseCustomFont": false,

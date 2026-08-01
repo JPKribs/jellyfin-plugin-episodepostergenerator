@@ -85,7 +85,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 LcdRenderText = true,
                 Typeface = titlePaint.Typeface,
                 TextAlign = SKTextAlign.Center,
-                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, RenderConstants.ShadowBlurSigma)
+                MaskFilter = PaintFactory.ShadowBlur
             };
 
             var centerX = safeArea.MidX;
@@ -133,7 +133,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             {
                 using var borderPaint = new SKPaint
                 {
-                    Color = GetContrastingBorderColor(overlayColor),
+                    Color = ColorUtils.GetContrastingOutline(overlayColor),
                     Style = SKPaintStyle.Stroke,
                     StrokeWidth = Math.Max(1f, fontSize * 0.015f),
                     IsAntialias = true,
@@ -161,21 +161,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             DrawCutoutTextCentered(canvas, words, cutoutPaint, cutoutArea);
         }
 
-        // GetContrastingBorderColor
-        // Returns a border color that contrasts with the overlay based on luminance.
-        private SKColor GetContrastingBorderColor(SKColor overlayColor)
-        {
-            float r = overlayColor.Red / 255f;
-            float g = overlayColor.Green / 255f;
-            float b = overlayColor.Blue / 255f;
-
-            r = r <= 0.03928f ? r / 12.92f : (float)Math.Pow((r + 0.055f) / 1.055f, 2.4f);
-            g = g <= 0.03928f ? g / 12.92f : (float)Math.Pow((g + 0.055f) / 1.055f, 2.4f);
-            b = b <= 0.03928f ? b / 12.92f : (float)Math.Pow((b + 0.055f) / 1.055f, 2.4f);
-
-            float luminance = 0.2126f * r + 0.7152f * g + 0.0722f * b;
-            return luminance > 0.5f ? SKColors.Black : luminance < 0.2f ? SKColors.White : new SKColor(64, 64, 64);
-        }
 
         // CalculateCutoutArea
         // Calculates the available area for cutout text, reserving space for title if needed.
@@ -187,7 +172,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             float titleFontSize = FontUtils.CalculateFontSizeFromPercentage(config.TitleFontSize, canvasHeight);
             // Reserve room for a wrapped two-line title (line height 1.2x + the base line).
             float titleSpace = titleFontSize * 2.4f;
-            float cutoutBuffer = canvasHeight * 0.05f;
+            float cutoutBuffer = GetElementSpacing(config, canvasHeight);
 
             float availableHeight = Math.Max(safeArea.Height - titleSpace - cutoutBuffer, safeArea.Height * 0.6f);
 

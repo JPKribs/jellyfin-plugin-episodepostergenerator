@@ -76,7 +76,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 TextSize = fontSize,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Center,
-                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
+                MaskFilter = PaintFactory.ShadowBlur
             };
 
             float centerX = area.MidX;
@@ -114,7 +114,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
                 LcdRenderText = true,
                 Typeface = typeface,
                 TextAlign = SKTextAlign.Center,
-                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
+                MaskFilter = PaintFactory.ShadowBlur
             };
 
             var availableWidth = safeArea.Width * 0.9f;

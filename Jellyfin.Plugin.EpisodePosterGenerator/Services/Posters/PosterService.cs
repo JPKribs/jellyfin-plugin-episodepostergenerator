@@ -1,22 +1,26 @@
 using System;
-using System.IO;
+using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities.TV;
-using Jellyfin.Plugin.EpisodePosterGenerator.Configuration;
 using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters;
+using Jellyfin.Plugin.EpisodePosterGenerator.Utilities;
 using Microsoft.Extensions.Logging;
-using MediaBrowser.Common.Configuration;
 using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
 {
     public class PosterService
     {
+        /// <summary>
+        /// Upper bound on how many alternate posters a single request may ask for. Each one
+        /// costs a frame extraction, so this caps the worst case for the Edit Images picker.
+        /// </summary>
+        public const int MaxCandidates = 10;
+
         private readonly ILogger<PosterService> _logger;
         private readonly CanvasService _canvasService;
-        private readonly IServerConfigurationManager _configurationManager;
         private readonly ILoggerFactory _loggerFactory;
 
         // PosterService
@@ -24,137 +28,131 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services
         public PosterService(
             ILogger<PosterService> logger,
             CanvasService canvasService,
-            IServerConfigurationManager configurationManager,
             ILoggerFactory loggerFactory)
         {
             _logger = logger;
             _canvasService = canvasService;
-            _configurationManager = configurationManager;
             _loggerFactory = loggerFactory;
         }
 
         // GeneratePosterAsync
-        // Generates a poster for an episode and returns the path to the generated file,
-        // along with an optional backdrop image derived from the extracted canvas.
-        public async Task<PosterGenerationResult?> GeneratePosterAsync(Episode episode)
+        // Generates a single poster for an episode, plus an optional backdrop derived from
+        // the extracted canvas. Returns null when no usable frame or canvas could be produced.
+        public async Task<PosterGenerationResult?> GeneratePosterAsync(Episode episode, CancellationToken cancellationToken = default)
         {
+            var results = await GeneratePosterCandidatesAsync(episode, 1, cancellationToken).ConfigureAwait(false);
+            return results.Count > 0 ? results[0] : null;
+        }
+
+        // GeneratePosterCandidatesAsync
+        // Generates up to <paramref name="count"/> posters for an episode, each drawn over a
+        // different extracted frame so the Edit Images picker can offer a real choice. Styles
+        // that do not extract frames have only one possible output, so a single result is returned.
+        public async Task<IReadOnlyList<PosterGenerationResult>> GeneratePosterCandidatesAsync(
+            Episode episode,
+            int count,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(episode);
+
             if (Plugin.Instance == null)
             {
                 _logger.LogError("Plugin instance not available");
-                return null;
-            }
-
-            var config = Plugin.Instance.Configuration;
-            if (config == null)
-            {
-                _logger.LogError("Plugin configuration not available");
-                return null;
+                return Array.Empty<PosterGenerationResult>();
             }
 
             var posterSettings = Plugin.Instance.PosterConfigService.GetSettingsForEpisode(episode);
 
-            _logger.LogInformation("Generating poster for {SeriesName} - {EpisodeName}",
+            // Only an extracted frame varies between candidates; every other canvas source
+            // produces an identical poster, so asking for more would just burn CPU.
+            var requested = posterSettings.CanvasSource == CanvasSource.Extract
+                ? Math.Clamp(count, 1, MaxCandidates)
+                : 1;
+
+            _logger.LogInformation(
+                "Generating {Count} poster candidate(s) for {SeriesName} - {EpisodeName}",
+                requested,
                 episode.Series?.Name ?? "Unknown Series",
                 episode.Name ?? "Unknown Episode");
 
             var episodeMetadata = EpisodeMetadata.CreateFromEpisode(episode);
 
-            using var bitmap = await _canvasService.GenerateCanvasAsync(episode, episodeMetadata, posterSettings).ConfigureAwait(false);
-            if (bitmap == null)
+            var canvases = await _canvasService
+                .GenerateCanvasesAsync(episode, episodeMetadata, posterSettings, requested, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (canvases.Count == 0)
             {
-                _logger.LogWarning("Failed to generate canvas for episode: {EpisodeName}", episode.Name);
-                return null;
+                _logger.LogWarning("Failed to generate any canvas for episode: {EpisodeName}", episode.Name);
+                return Array.Empty<PosterGenerationResult>();
             }
 
-            // Capture the cropped canvas as a backdrop before the poster layers are rendered onto it.
-            string? backdropPath = null;
-            if (posterSettings.CanvasSource == CanvasSource.Extract && posterSettings.GenerateBackdrop)
+            var generator = PreviewService.CreateGenerator(posterSettings.PosterStyle, _loggerFactory);
+
+            // Only the single-candidate call feeds the refresh path, which is the one that uploads
+            // a backdrop. Encoding one per candidate for the image picker would spend a full-size
+            // JPEG encode on every alternate poster and then discard all of them.
+            var wantsBackdrop = posterSettings.CanvasSource == CanvasSource.Extract
+                && posterSettings.GenerateBackdrop
+                && canvases.Count == 1;
+
+            var results = new List<PosterGenerationResult>(canvases.Count);
+
+            try
             {
-                backdropPath = GetTemporaryBackdropPath(episode.Id);
-                if (!TrySaveBackdrop(bitmap, backdropPath))
+                foreach (var canvas in canvases)
                 {
-                    backdropPath = null;
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    // The backdrop is the bare cropped canvas, captured before the poster
+                    // layers are rendered on top of it.
+                    var backdrop = wantsBackdrop ? EncodeJpeg(canvas) : null;
+
+                    var poster = generator.Generate(canvas, episodeMetadata, posterSettings);
+                    if (poster == null)
+                    {
+                        _logger.LogWarning("Poster rendering failed for episode: {EpisodeName}", episode.Name);
+                        continue;
+                    }
+
+                    results.Add(new PosterGenerationResult(poster, backdrop, canvas.Width, canvas.Height));
+                }
+            }
+            finally
+            {
+                foreach (var canvas in canvases)
+                {
+                    canvas.Dispose();
                 }
             }
 
-            IPosterGenerator generator = PreviewService.CreateGenerator(posterSettings.PosterStyle, _loggerFactory);
-
-            var tempFilePath = GetTemporaryPosterPath(episode.Id);
-
-            var generatedPath = generator.Generate(bitmap, episodeMetadata, posterSettings, tempFilePath);
-
-            if (generatedPath == null)
+            if (results.Count > 0)
             {
-                _logger.LogError("Failed to generate poster for episode: {EpisodeName}", episode.Name);
-                DeleteTemporaryFile(backdropPath);
-                return null;
+                _logger.LogInformation(
+                    "Generated {Count} poster(s) for {SeriesName} - {EpisodeName}",
+                    results.Count,
+                    episode.Series?.Name ?? "Unknown Series",
+                    episode.Name ?? "Unknown Episode");
             }
 
-            _logger.LogInformation("Successfully generated poster for {SeriesName} - {EpisodeName}",
-                episode.Series?.Name ?? "Unknown Series",
-                episode.Name ?? "Unknown Episode");
-
-            return new PosterGenerationResult
-            {
-                PosterPath = generatedPath,
-                BackdropPath = backdropPath
-            };
+            return results;
         }
 
-        // TrySaveBackdrop
-        // Encodes the canvas bitmap to a JPEG file for use as the episode backdrop.
-        private bool TrySaveBackdrop(SKBitmap bitmap, string outputPath)
+        // EncodeJpeg
+        // Encodes a bitmap to JPEG bytes, returning null if encoding fails.
+        private byte[]? EncodeJpeg(SKBitmap bitmap)
         {
             try
             {
                 using var image = SKImage.FromBitmap(bitmap);
-                using var data = image.Encode(SKEncodedImageFormat.Jpeg, Utilities.RenderConstants.JpegQuality);
-                using var stream = File.Create(outputPath);
-                data.SaveTo(stream);
-                return true;
+                using var data = image.Encode(SKEncodedImageFormat.Jpeg, RenderConstants.JpegQuality);
+                return data?.ToArray();
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to save backdrop image to {OutputPath}", outputPath);
-                return false;
+                _logger.LogWarning(ex, "Failed to encode backdrop image");
+                return null;
             }
-        }
-
-        // DeleteTemporaryFile
-        // Removes a temporary file, ignoring any cleanup errors.
-        private void DeleteTemporaryFile(string? path)
-        {
-            if (string.IsNullOrEmpty(path) || !File.Exists(path))
-            {
-                return;
-            }
-
-            try
-            {
-                File.Delete(path);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to clean up temporary file: {Path}", path);
-            }
-        }
-
-        // GetTemporaryBackdropPath
-        // Constructs the temporary file path for the generated backdrop.
-        private string GetTemporaryBackdropPath(Guid episodeId)
-        {
-            var tempDir = _configurationManager.GetTranscodePath();
-            var fileName = $"{episodeId}-backdrop.jpg";
-            return Path.Combine(tempDir, fileName);
-        }
-
-        // GetTemporaryPosterPath
-        // Constructs the temporary file path for the generated poster.
-        private string GetTemporaryPosterPath(Guid episodeId)
-        {
-            var tempDir = _configurationManager.GetTranscodePath();
-            var fileName = $"{episodeId}.jpg";
-            return Path.Combine(tempDir, fileName);
         }
     }
 }

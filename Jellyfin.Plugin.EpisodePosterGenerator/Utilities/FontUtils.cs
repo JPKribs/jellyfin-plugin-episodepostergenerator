@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using SkiaSharp;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Utilities;
@@ -11,6 +13,22 @@ public static class FontUtils
     // Thread-safe cache for loaded typefaces to avoid repeated font loading.
     private static readonly ConcurrentDictionary<string, SKTypeface> TypefaceCache = new();
 
+    // Families already reported as unavailable, so the warning is logged once rather than
+    // once per episode.
+    private static readonly ConcurrentDictionary<string, byte> ReportedMissingFamilies = new(StringComparer.OrdinalIgnoreCase);
+
+    private static Action<string>? _missingFamilyReporter;
+
+    /// <summary>
+    /// Registers a callback invoked the first time a configured font family cannot be resolved
+    /// on this system. Container images ship almost none of the common desktop fonts, and the
+    /// resulting fallback to Skia's default is otherwise invisible to the user.
+    /// </summary>
+    public static void SetMissingFamilyReporter(Action<string>? reporter)
+    {
+        _missingFamilyReporter = reporter;
+    }
+
     // GetCacheKey
     // Creates a unique cache key from font family and style parameters.
     private static string GetCacheKey(string? fontFamily, SKFontStyle style)
@@ -18,27 +36,41 @@ public static class FontUtils
         return $"{fontFamily ?? "default"}_{style.Weight}_{style.Width}_{style.Slant}";
     }
 
-    // CreateTypeface
-    // Creates or retrieves a cached typeface from a font family name and style.
-    public static SKTypeface CreateTypeface(string fontFamilyName, SKFontStyle style)
+    // GetAvailableFontFamilies
+    // Returns the font families installed on this system, sorted for display.
+    public static IReadOnlyList<string> GetAvailableFontFamilies()
     {
-        var cacheKey = GetCacheKey(fontFamilyName, style);
-        return TypefaceCache.GetOrAdd(cacheKey, _ =>
-        {
-            var fontManager = SKFontManager.Default;
-            return fontManager.MatchFamily(fontFamilyName, style);
-        });
+        return SKFontManager.Default.FontFamilies
+            .Where(f => !string.IsNullOrWhiteSpace(f))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     // CreateTypeface
-    // Creates or retrieves a cached typeface using the default font family with the specified style.
-    public static SKTypeface CreateTypeface(SKFontStyle style)
+    // Creates or retrieves a cached typeface from a font family name and style.
+    //
+    // MatchFamily does not report a miss: asked for a family the system does not have, it
+    // quietly returns a substitute (on a container image, almost every desktop font name maps
+    // to the one bundled face). The substitution is therefore detected by comparing the
+    // resolved family name against the requested one, and reported once per family so the
+    // fallback is visible in the server log instead of silently changing every poster.
+    public static SKTypeface CreateTypeface(string fontFamilyName, SKFontStyle style)
     {
-        var cacheKey = GetCacheKey(null, style);
-        return TypefaceCache.GetOrAdd(cacheKey, _ =>
+        var cacheKey = GetCacheKey(fontFamilyName, style);
+
+        var typeface = TypefaceCache.GetOrAdd(
+            cacheKey,
+            _ => SKFontManager.Default.MatchFamily(fontFamilyName, style) ?? SKTypeface.Default);
+
+        if (!string.IsNullOrWhiteSpace(fontFamilyName)
+            && !string.Equals(typeface.FamilyName, fontFamilyName, StringComparison.OrdinalIgnoreCase)
+            && ReportedMissingFamilies.TryAdd(fontFamilyName, 0))
         {
-            return SKFontManager.Default.MatchFamily(null, style);
-        });
+            _missingFamilyReporter?.Invoke(fontFamilyName);
+        }
+
+        return typeface;
     }
 
     // CreateTypefaceFromFile
@@ -61,16 +93,25 @@ public static class FontUtils
             return null;
 
         var typeface = SKTypeface.FromFile(filePath);
-        if (typeface != null)
+        if (typeface == null)
         {
-            TypefaceCache.TryAdd(cacheKey, typeface);
+            return null;
+        }
+
+        if (!TypefaceCache.TryAdd(cacheKey, typeface))
+        {
+            // Another thread won the race; drop this duplicate rather than leaking its handle.
+            typeface.Dispose();
+            return TypefaceCache.TryGetValue(cacheKey, out var winner) ? winner : null;
         }
 
         return typeface;
     }
 
     // ResolveTypeface
-    // Tries to load a typeface from file path first, then falls back to font family name.
+    // Tries to load a typeface from file path first, then falls back to font family name,
+    // and finally to Skia's default face. Never returns null, so callers can render text
+    // without null-checking every paint they build.
     public static SKTypeface ResolveTypeface(string? fontPath, string fontFamily, SKFontStyle style)
     {
         if (!string.IsNullOrWhiteSpace(fontPath))
@@ -84,10 +125,21 @@ public static class FontUtils
     }
 
     // ClearCache
-    // Clears the typeface cache to free memory.
+    // Clears the typeface cache, disposing the cached typefaces so their native handles are
+    // released immediately rather than left to finalization. The shared default face is
+    // process-wide and is never disposed here.
     public static void ClearCache()
     {
-        TypefaceCache.Clear();
+        foreach (var key in TypefaceCache.Keys)
+        {
+            if (TypefaceCache.TryRemove(key, out var typeface)
+                && !ReferenceEquals(typeface, SKTypeface.Default))
+            {
+                typeface.Dispose();
+            }
+        }
+
+        ReportedMissingFamilies.Clear();
     }
 
     // MeasureTextDimensions

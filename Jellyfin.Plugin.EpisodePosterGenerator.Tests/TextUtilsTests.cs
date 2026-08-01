@@ -1,4 +1,6 @@
+using Jellyfin.Plugin.EpisodePosterGenerator.Models;
 using Jellyfin.Plugin.EpisodePosterGenerator.Utilities;
+using SkiaSharp;
 using Xunit;
 
 namespace Jellyfin.Plugin.EpisodePosterGenerator.Tests;
@@ -53,5 +55,76 @@ public class TextUtilsTests
     public void AbbreviateTitle_UsesEveryWordWithPeriodsAndKeepsDividers(string title, string expected)
     {
         Assert.Equal(expected, TextUtils.AbbreviateTitle(title));
+    }
+
+    /// <summary>
+    /// The width-only fit can return two lines for a slot that only has room for one, which is why
+    /// styles used to reserve a fixed two lines regardless. The height-aware overload is what lets
+    /// them reserve what is actually drawn.
+    /// </summary>
+    [Fact]
+    public void FitTitleLines_RespectsTheHeightItIsGiven()
+    {
+        using var paint = new SKPaint { TextSize = 20f };
+        const string longTitle = "A Fairly Long Episode Title That Wraps";
+
+        var twoLines = TextUtils.FitTitleLines(longTitle, paint, 150f, LongTitleHandling.Ellipsis);
+        Assert.True(twoLines.Count > 1, "precondition: this title should wrap at that width");
+
+        // Room for one line only.
+        var oneLine = TextUtils.FitTitleLines(longTitle, paint, 150f, 24f, 24f, LongTitleHandling.Ellipsis);
+        Assert.Single(oneLine);
+
+        // Room for two.
+        var fits = TextUtils.FitTitleLines(longTitle, paint, 150f, 60f, 24f, LongTitleHandling.Ellipsis);
+        Assert.Equal(twoLines.Count, fits.Count);
+    }
+
+    [Fact]
+    public void FitTitleLines_HeightAware_NeverExceedsTheAllowedLineCount()
+    {
+        using var paint = new SKPaint { TextSize = 20f };
+        const string longTitle = "An Extremely Long Episode Title That Will Wrap Several Times Over";
+
+        foreach (var handling in new[] { LongTitleHandling.Ellipsis, LongTitleHandling.Abbreviate, LongTitleHandling.DropName })
+        {
+            var lines = TextUtils.FitTitleLines(longTitle, paint, 120f, 24f, 24f, handling);
+            Assert.True(lines.Count <= 1, $"{handling} returned {lines.Count} lines for a one line slot");
+        }
+    }
+
+    [Fact]
+    public void FitTitleLines_HeightAware_IsAPassThroughWhenHeightIsUnconstrained()
+    {
+        using var paint = new SKPaint { TextSize = 20f };
+        const string title = "Short Title";
+
+        var plain = TextUtils.FitTitleLines(title, paint, 500f, LongTitleHandling.Ellipsis);
+        var sized = TextUtils.FitTitleLines(title, paint, 500f, 0f, 0f, LongTitleHandling.Ellipsis);
+
+        Assert.Equal(plain, sized);
+    }
+
+    /// <summary>
+    /// A run of n lines occupies fontSize + (n-1) * lineHeight. Dividing the block height by
+    /// lineHeight undercounts, which silently collapsed two line titles down to one.
+    /// </summary>
+    [Theory]
+    [InlineData(1.0f, 1)]    // room for exactly one line
+    [InlineData(2.2f, 2)]    // the styles' fixed "two line" reservation
+    [InlineData(3.4f, 3)]
+    public void FitTitleLines_CountsLinesTheWayTheStylesDrawThem(float zoneInFontSizes, int expectedMaxLines)
+    {
+        using var paint = new SKPaint { TextSize = 20f };
+        var fontSize = paint.TextSize;
+        var lineHeight = fontSize * 1.2f;
+        const string longTitle = "One Two Three Four Five Six Seven Eight Nine Ten Eleven Twelve";
+
+        var lines = TextUtils.FitTitleLines(
+            longTitle, paint, 90f, fontSize * zoneInFontSizes, lineHeight, LongTitleHandling.Ellipsis);
+
+        Assert.True(
+            lines.Count <= expectedMaxLines,
+            $"zone of {zoneInFontSizes}x fontSize produced {lines.Count} lines, expected at most {expectedMaxLines}");
     }
 }

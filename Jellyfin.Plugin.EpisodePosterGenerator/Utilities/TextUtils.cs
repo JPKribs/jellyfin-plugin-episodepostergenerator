@@ -11,42 +11,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utilities;
 
 public static class TextUtils
 {
-    private const float ShadowOffset = 2f;
-    private const byte ShadowAlpha = 180;
-    private const float LineSpacingMultiplier = 1.2f;
-
-    // DrawTitle
-    // Renders title text on a canvas with automatic wrapping, positioning, and shadow effects.
-    public static void DrawTitle(
-        SKCanvas canvas,
-        string title,
-        Position position,
-        Alignment alignment,
-        PosterSettings settings,
-        float canvasWidth,
-        float canvasHeight)
-    {
-        if (string.IsNullOrWhiteSpace(title))
-            return;
-
-        var fontSize = FontUtils.CalculateFontSizeFromPercentage(settings.TitleFontSize, canvasHeight, settings.PosterSafeArea);
-        var typeface = FontUtils.ResolveTypeface(settings.EffectiveTitleFontPath, settings.TitleFontFamily, FontUtils.GetFontStyle(settings.TitleFontStyle));
-
-        using var titlePaint = CreateTextPaint(settings.TitleFontColor, fontSize, typeface, alignment);
-        using var shadowPaint = CreateShadowPaint(fontSize, typeface, alignment);
-
-        var safeArea = CalculateSafeArea(canvasWidth, canvasHeight, settings);
-        var safeAreaMargin = settings.PosterSafeArea / 100f;
-        var horizontalPadding = 1.0f - (2 * safeAreaMargin);
-        var maxTextWidth = safeArea.Width * horizontalPadding;
-        var lines = FitTextToWidth(title, titlePaint, maxTextWidth);
-        var textBounds = CalculateTextBounds(lines, titlePaint, fontSize);
-        var alignmentX = CalculateAlignmentX(alignment, canvasWidth, safeArea);
-        var baseY = CalculateBaseY(position, safeArea, textBounds.Height, fontSize, titlePaint);
-
-        DrawTextLines(canvas, lines, alignmentX, baseY, fontSize, titlePaint, shadowPaint);
-    }
-
     // Divider between title segments: a spaced dash of any kind, or a colon.
     private static readonly Regex SegmentSeparator = new Regex(@"(\s+[-–—]\s+|:\s*)", RegexOptions.Compiled);
 
@@ -77,6 +41,61 @@ public static class TextUtils
 
         var abbreviation = FitAbbreviation(AbbreviateTitle(title), paint, maxWidth);
         return abbreviation != null ? new[] { abbreviation } : Array.Empty<string>();
+    }
+
+    // FitTitleLines
+    // Height-aware variant: fits the title to the width, then checks the resulting block against
+    // the vertical space it has been given and re-fits if it would overflow.
+    //
+    // The width-only overload can return two lines for a slot that only has room for one, which is
+    // why styles used to reserve a fixed two lines whether or not two were used — a guess that left
+    // a hole when the title was short and still overflowed when it was not. Passing the real height
+    // lets long title handling engage on vertical overflow the same way it does on horizontal.
+    public static IReadOnlyList<string> FitTitleLines(
+        string title,
+        SKPaint paint,
+        float maxWidth,
+        float maxHeight,
+        float lineHeight,
+        LongTitleHandling handling)
+    {
+        var lines = FitTitleLines(title, paint, maxWidth, handling);
+        if (lines.Count == 0 || lineHeight <= 0f || maxHeight <= 0f)
+        {
+            return lines;
+        }
+
+        // A run of n lines occupies fontSize + (n-1) * lineHeight, not n * lineHeight: the first
+        // line contributes only its own height, and each line after it adds the leading. Dividing
+        // the block height by lineHeight undercounts and would refuse the last line that fits.
+        var fontSize = paint.TextSize;
+        var slack = lineHeight * 0.01f;
+        var maxLines = maxHeight + slack < fontSize
+            ? 1
+            : 1 + (int)Math.Floor((maxHeight - fontSize + slack) / lineHeight);
+
+        if (lines.Count <= maxLines)
+        {
+            return lines;
+        }
+
+        // Too tall. Ellipsis keeps as many lines as fit and trims the last; the other modes are
+        // asking for a shorter title, so re-run them against the width a single line really has.
+        if (handling == LongTitleHandling.Ellipsis)
+        {
+            var kept = lines.Take(maxLines).ToList();
+            kept[^1] = TruncateWithEllipsis(kept[^1] + "…", paint, maxWidth);
+            return kept;
+        }
+
+        var single = FitTitleLine(title, paint, maxWidth * maxLines, handling);
+        if (single == null)
+        {
+            return Array.Empty<string>();
+        }
+
+        var refit = FitTitleLines(single, paint, maxWidth, handling);
+        return refit.Count <= maxLines ? refit : refit.Take(maxLines).ToList();
     }
 
     // FitTitleLine
@@ -319,96 +338,6 @@ public static class TextUtils
         return lines;
     }
 
-    // CreateTextPaint
-    // Creates a configured SKPaint object for main text rendering.
-    private static SKPaint CreateTextPaint(string hexColor, int fontSize, SKTypeface typeface, Alignment alignment)
-    {
-        return new SKPaint
-        {
-            Color = ColorUtils.ParseHexColor(hexColor),
-            TextSize = fontSize,
-            IsAntialias = true,
-            SubpixelText = true,
-            LcdRenderText = true,
-            Typeface = typeface,
-            TextAlign = GetSKTextAlign(alignment)
-        };
-    }
-
-    // CreateShadowPaint
-    // Creates a configured SKPaint object for drop shadow text rendering.
-    private static SKPaint CreateShadowPaint(int fontSize, SKTypeface typeface, Alignment alignment)
-    {
-        return new SKPaint
-        {
-            Color = SKColors.Black.WithAlpha(ShadowAlpha),
-            TextSize = fontSize,
-            IsAntialias = true,
-            SubpixelText = true,
-            LcdRenderText = true,
-            Typeface = typeface,
-            TextAlign = GetSKTextAlign(alignment),
-            MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 1.5f)
-        };
-    }
-
-    // GetSKTextAlign
-    // Converts plugin alignment enum to SkiaSharp text alignment.
-    private static SKTextAlign GetSKTextAlign(Alignment alignment)
-    {
-        return alignment switch
-        {
-            Alignment.Left => SKTextAlign.Left,
-            Alignment.Center => SKTextAlign.Center,
-            Alignment.Right => SKTextAlign.Right,
-            _ => SKTextAlign.Center
-        };
-    }
-
-    // CalculateAlignmentX
-    // Calculates horizontal pixel position for text based on alignment.
-    private static float CalculateAlignmentX(Alignment alignment, float canvasWidth, SKRect safeArea)
-    {
-        return alignment switch
-        {
-            Alignment.Left => safeArea.Left,
-            Alignment.Center => canvasWidth / 2f,
-            Alignment.Right => safeArea.Right,
-            _ => canvasWidth / 2f
-        };
-    }
-
-    // CalculateBaseY
-    // Calculates vertical baseline position using font metrics and positioning preferences.
-    private static float CalculateBaseY(Position position, SKRect safeArea, float textHeight, int fontSize, SKPaint paint)
-    {
-        var fontMetrics = paint.FontMetrics;
-        float bottomPadding = fontSize * 0.5f;
-
-        return position switch
-        {
-            Position.Top => safeArea.Top - fontMetrics.Ascent,
-            Position.Center => safeArea.MidY - (textHeight / 2f) - fontMetrics.Ascent,
-            Position.Bottom => safeArea.Bottom - textHeight - bottomPadding - fontMetrics.Ascent,
-            _ => safeArea.Bottom - textHeight - bottomPadding - fontMetrics.Ascent
-        };
-    }
-
-    // CalculateSafeArea
-    // Calculates the safe drawing area within canvas boundaries accounting for margins.
-    private static SKRect CalculateSafeArea(float canvasWidth, float canvasHeight, PosterSettings settings)
-    {
-        // Same pixel margin on all sides, derived from the poster height.
-        var margin = canvasHeight * (settings.PosterSafeArea / 100f);
-
-        return new SKRect(
-            margin,
-            margin,
-            canvasWidth - margin,
-            canvasHeight - margin
-        );
-    }
-
     // FindOptimalSplitPoint
     // Finds the optimal word split point for balanced two-line text layouts.
     private static int FindOptimalSplitPoint(string[] words, SKPaint paint, float maxWidth)
@@ -461,39 +390,5 @@ public static class TextUtils
         }
 
         return ellipsis;
-    }
-
-    // CalculateTextBounds
-    // Calculates the bounding rectangle for a collection of text lines.
-    private static SKRect CalculateTextBounds(IReadOnlyList<string> lines, SKPaint paint, int fontSize)
-    {
-        float maxWidth = lines.Count > 0 ? lines.Max(line => paint.MeasureText(line)) : 0;
-
-        float lineHeight = fontSize * LineSpacingMultiplier;
-        float totalHeight = (lines.Count - 1) * lineHeight + fontSize;
-
-        return new SKRect(0, 0, maxWidth, totalHeight);
-    }
-
-    // DrawTextLines
-    // Renders multiple lines of text with drop shadow effects on the canvas.
-    private static void DrawTextLines(
-        SKCanvas canvas,
-        IReadOnlyList<string> lines,
-        float alignmentX,
-        float baseY,
-        int fontSize,
-        SKPaint titlePaint,
-        SKPaint shadowPaint)
-    {
-        float lineHeight = fontSize * LineSpacingMultiplier;
-        float currentY = baseY;
-
-        foreach (var line in lines)
-        {
-            canvas.DrawText(line, alignmentX + ShadowOffset, currentY + ShadowOffset, shadowPaint);
-            canvas.DrawText(line, alignmentX, currentY, titlePaint);
-            currentY += lineHeight;
-        }
     }
 }

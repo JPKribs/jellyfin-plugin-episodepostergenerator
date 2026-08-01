@@ -13,8 +13,6 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utilities
         public const byte ShadowAlpha = 180;
         public const float TextWidthMultiplier = 0.9f;
 
-        // Spacing constants
-        public const float DefaultSpacingRatio = 0.02f;
 
         // Separator line constants
         public const float SeparatorStrokeWidth = 2f;

@@ -11,6 +11,13 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utilities
         private static readonly Lazy<SKMaskFilter> ShadowBlurFilter = new Lazy<SKMaskFilter>(
             () => SKMaskFilter.CreateBlur(SKBlurStyle.Normal, RenderConstants.ShadowBlurSigma));
 
+        /// <summary>
+        /// Gets the shared standard-sigma shadow blur. SKPaint does not own its mask filter, so
+        /// generators assign this rather than allocating (and then abandoning to the finalizer)
+        /// an identical filter for every poster they render.
+        /// </summary>
+        public static SKMaskFilter ShadowBlur => ShadowBlurFilter.Value;
+
         // CreateTextPaint
         // Creates a text paint with standard rendering settings.
         public static SKPaint CreateTextPaint(
