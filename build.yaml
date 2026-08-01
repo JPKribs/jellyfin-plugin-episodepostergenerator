@@ -35,6 +35,7 @@ changelog:
   - Saving the Posters tab no longer hangs on a spinner when the save fails, and no longer overwrites the settings on the other tab
   - Settings added in a newer version no longer break saving for configurations written by an older one
   developer:
+  - Resolved the CodeQL warnings: the frosted panel shape and the brush stroke paths are disposed even when an exception unwinds, and unused base kit sources no longer compile generated code into the assembly
   - Poster elements are positioned by a shared measure-then-place layout column instead of each style walking its own offsets, and titles are fitted to the height they are given as well as the width
   - Poster configuration is never written back during plugin startup, so a failed config load can no longer overwrite good settings with defaults
   - Poster rendering returns encoded bytes rather than temp files

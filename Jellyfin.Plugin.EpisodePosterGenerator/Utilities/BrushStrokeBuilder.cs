@@ -14,9 +14,31 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utilities
         }
 
         // BuildStrokePath
+        // Builds the stroke geometry. Exactly one SKPath is returned; any other path allocated
+        // along the way is released, including when stroke building or Simplify throws part way
+        // through — these are native handles, so they cannot be left to the success path alone.
         public SKPath BuildStrokePath(SKRect bounds, SKRect textArea, float canvasHeight)
         {
-            var combined = new SKPath { FillType = SKPathFillType.Winding };
+            SKPath? combined = new SKPath { FillType = SKPathFillType.Winding };
+            SKPath? simplified = null;
+
+            try
+            {
+                return BuildStrokePathCore(bounds, textArea, canvasHeight, ref combined, ref simplified);
+            }
+            finally
+            {
+                simplified?.Dispose();
+                combined?.Dispose();
+            }
+        }
+
+        // BuildStrokePathCore
+        // Hands ownership of whichever path it returns back to the caller by nulling the
+        // corresponding ref, so the caller's finally disposes only the one left behind.
+        private SKPath BuildStrokePathCore(SKRect bounds, SKRect textArea, float canvasHeight, ref SKPath? combined, ref SKPath? simplified)
+        {
+            var working = combined!;
 
             var textBuffer = bounds.Height * 0.05f;
             var keepClear = new SKRect(
@@ -48,22 +70,24 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Utilities
             {
                 float centerY = firstCenterY + s * spacing
                     + (float)(_random.NextDouble() - 0.5f) * perStrokeHeight * 0.03f;
-                AppendBrushStroke(combined, bounds, centerY, perStrokeHeight, s);
+                AppendBrushStroke(working, bounds, centerY, perStrokeHeight, s);
             }
 
             // Final normalization: resolve any subtle self-intersections from sharp
             // wobble/drift combinations that could leave winding-0 carve-outs. With
             // all subpaths already wound CW this is a no-op for clean inputs and a
             // cleanup for edge cases.
-            var simplified = new SKPath();
-            if (combined.Simplify(simplified) && !simplified.IsEmpty)
+            simplified = new SKPath();
+
+            if (working.Simplify(simplified) && !simplified.IsEmpty)
             {
-                combined.Dispose();
-                return simplified;
+                var result = simplified;
+                simplified = null;
+                return result;
             }
 
-            simplified.Dispose();
-            return combined;
+            combined = null;
+            return working;
         }
 
         // AppendBrushStroke

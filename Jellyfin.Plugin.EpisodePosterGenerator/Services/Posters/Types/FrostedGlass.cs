@@ -106,7 +106,7 @@ namespace Jellyfin.Plugin.EpisodePosterGenerator.Services.Posters
             float panelTop = safeArea.Bottom - panelHeight;
             var panelRect = new SKRect(panelLeft, panelTop, panelLeft + panelWidth, panelTop + panelHeight);
             float cornerRadius = height * 0.02f;
-            var roundedPanel = new SKRoundRect(panelRect, cornerRadius);
+            using var roundedPanel = new SKRoundRect(panelRect, cornerRadius);
 
             DrawFrostedPanel(skCanvas, roundedPanel, episodeMetadata, settings, width, height);
 

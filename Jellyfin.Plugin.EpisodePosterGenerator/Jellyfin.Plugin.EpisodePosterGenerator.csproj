@@ -28,6 +28,21 @@
     <InternalsVisibleTo Include="Jellyfin.Plugin.EpisodePosterGenerator.Tests" />
   </ItemGroup>
 
+  <!--
+    The base kit compiles every one of its shared sources into each consuming plugin. This plugin
+    uses none of the status page helpers, and two of them carry [GeneratedRegex], which pulls the
+    regex source generator's output into this assembly — where CodeQL then reports findings against
+    machine generated code nobody here wrote. Dropping what is unused removes the generated file
+    along with the dead code. FaviconResolver is self contained and TemplateLoader is used only by
+    StatusPage, so the three come out together.
+  -->
+  <Target Name="RemoveUnusedBaseSources" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Compile Remove="@(Compile)"
+               Condition="'%(Filename)' == 'FaviconResolver' Or '%(Filename)' == 'TemplateLoader' Or '%(Filename)' == 'StatusPage'" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <EmbeddedResource Include="Configuration\epg_posters.html" />
     <EmbeddedResource Include="Configuration\epg_posters.js" />
