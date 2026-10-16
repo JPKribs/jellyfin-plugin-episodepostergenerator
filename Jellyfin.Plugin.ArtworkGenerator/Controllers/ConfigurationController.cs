@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Reflection;
 using Jellyfin.Plugin.ArtworkGenerator.Configuration;
 using Jellyfin.Plugin.ArtworkGenerator.Models;
 using Jellyfin.Plugin.ArtworkGenerator.Services.Posters;
@@ -18,11 +17,6 @@ namespace Jellyfin.Plugin.ArtworkGenerator.Controllers
     public class ConfigurationController : ControllerBase
     {
         // Cache reflection results — PluginConfiguration properties don't change at runtime
-        private static readonly PropertyInfo[] ConfigProperties = typeof(PluginConfiguration)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanRead && p.CanWrite)
-            .ToArray();
-
         private readonly ILogger<ConfigurationController> _logger;
 
         public ConfigurationController(ILogger<ConfigurationController> logger)
@@ -159,10 +153,10 @@ namespace Jellyfin.Plugin.ArtworkGenerator.Controllers
                 // configuration into the server log.
                 _logger.LogDebug("Received config: {@NewConfig}", newConfig);
 
-                var currentConfig = plugin.Configuration;
-                CopyConfigurationProperties(newConfig, currentConfig);
-
-                plugin.SaveConfiguration();
+                // UpdateConfiguration rather than copying into the live configuration and saving: it
+                // swaps the whole object in one step, so a reader never sees half the new values, and
+                // it runs the plugin's override that rebuilds the design lookups and the frame pool.
+                plugin.UpdateConfiguration(newConfig);
 
                 _logger.LogInformation("Configuration saved successfully.");
                 return Ok(new { success = true });
@@ -290,27 +284,6 @@ namespace Jellyfin.Plugin.ArtworkGenerator.Controllers
             }
 
             return File(imageBytes, contentType);
-        }
-
-        // MARK: CopyConfigurationProperties
-        // Copies every settable property across. A failure here means the saved configuration
-        // would silently differ from what the user submitted, so it aborts the save rather than
-        // reporting success on a partial write.
-        private void CopyConfigurationProperties(PluginConfiguration source, PluginConfiguration target)
-        {
-            foreach (var property in ConfigProperties)
-            {
-                try
-                {
-                    property.SetValue(target, property.GetValue(source));
-                }
-                catch (Exception ex)
-                {
-                    var sanitizedName = property.Name.Replace(Environment.NewLine, string.Empty, StringComparison.Ordinal);
-                    _logger.LogError(ex, "Failed to copy property {PropertyName}", sanitizedName);
-                    throw new InvalidOperationException($"Could not apply configuration property '{sanitizedName}'.", ex);
-                }
-            }
         }
     }
 }

@@ -6,7 +6,7 @@
 name: Artwork Generator
 guid: b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e
 imageUrl: https://raw.githubusercontent.com/JPKribs/jellyfin-plugin-artworkgenerator/refs/heads/master/Jellyfin.Plugin.ArtworkGenerator/Assets/Logo.png
-version: 12.0.4.1
+version: 12.2.1.0
 targetAbi: 12.0.0.0
 framework: net10.0
 overview: Generate artwork from your own video
@@ -18,4 +18,4 @@ artifacts:
 - Jellyfin.Plugin.ArtworkGenerator.dll
 changelog:
   developer:
-  - Updated AI Disclaimer in README.
+  - Updated JPKribs.Jellyfin.Base to 2026.10.16.

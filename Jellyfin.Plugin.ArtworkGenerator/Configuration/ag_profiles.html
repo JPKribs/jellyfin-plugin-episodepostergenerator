@@ -74,7 +74,7 @@
     </div>
 
     <!-- Series Selection Modal -->
-    <div id="pickerModal" class="jpk-dialog" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+    <div id="pickerModal" class="jpk-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
         <div class="jpk-dialog-content picker-content">
             <button type="button" id="btnClosePicker" class="jpk-dialog-close" aria-label="Close">&times;</button>
             <h2 id="pickerTitle" class="jpk-modal-title">Select Series</h2>
@@ -89,25 +89,6 @@
                 </button>
                 <button is="emby-button" type="button" id="btnConfirmPicker" class="raised button-submit jpk-modal-button">
                     <span>Save Selection</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Input Modal -->
-    <div id="inputModal" class="jpk-dialog" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="inputModalTitle">
-        <div class="jpk-dialog-content jpk-dialog-content-narrow">
-            <button type="button" id="btnCloseInputModal" class="jpk-dialog-close" aria-label="Close">&times;</button>
-            <h2 id="inputModalTitle" class="jpk-modal-title"></h2>
-            <div class="jpk-modal-body">
-                <div id="inputModalFields"></div>
-            </div>
-            <div class="jpk-modal-button-row">
-                <button is="emby-button" type="button" id="btnCancelInputModal" class="raised jpk-modal-button">
-                    <span>Cancel</span>
-                </button>
-                <button is="emby-button" type="button" id="btnConfirmInputModal" class="raised button-submit jpk-modal-button">
-                    <span>OK</span>
                 </button>
             </div>
         </div>

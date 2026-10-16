@@ -1,13 +1,11 @@
-import { initCollapsibles, setTabs, createShared, generateGuid } from '/web/configurationpage?name=ag_jpkribs_shared.js';
+import { initCollapsibles, createConfigPage, generateGuid, debounce, bindDialog, downloadJson, pickJsonFile } from './configurationpage?name=ag_jpkribs_shared.js';
 
 export default function (view) {
     'use strict';
 
     var pluginId = 'b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e';
-    var shared = createShared(view, pluginId, 'Plugins/ArtworkGenerator');
     var fullConfig = null;
     var currentConfigId = null;
-    var _initialized = false;
     var _dirty = false;
     var _savedConfigSnapshot = null;
     var _previewUrls = { Landscape: null, Portrait: null };
@@ -23,6 +21,36 @@ export default function (view) {
             { href: 'configurationpage?name=ag_settings', name: 'Settings' }
         ];
     }
+
+    var page = createConfigPage(view, {
+        pluginId: pluginId,
+        apiPrefix: 'Plugins/ArtworkGenerator',
+        tabsKey: 'ag',
+        tabIndex: 0,
+        tabs: getTabs(),
+        leaveMessage: 'You have unsaved changes. Are you sure you want to leave?',
+        isDirty: function () { return _dirty; },
+        bind: function () {
+            initCollapsibles(view);
+            bindEventListeners();
+            bindColorControls();
+            loadPreviewComponents();
+        },
+
+        // Styles and fonts must be in the DOM before the first config is applied, otherwise a
+        // stored value would look like an option that no longer exists.
+        load: function () {
+            loadStaticData().then(loadConfig);
+        }
+    });
+    var shared = page.shared;
+
+    // The enlarged live preview and the enlarged preview component. Escape, the backdrop, and
+    // the corner button close them.
+    var imageDialogs = {
+        previewModal: bindDialog('previewModal', { root: view }),
+        componentModal: bindDialog('componentModal', { root: view })
+    };
 
     // ── Utilities ────────────────────────────────────────────
 
@@ -57,15 +85,6 @@ export default function (view) {
             e.preventDefault();
             first.focus();
         }
-    }
-
-    function debounce(fn, delay) {
-        var timer = null;
-        return function () {
-            var ctx = this, args = arguments;
-            clearTimeout(timer);
-            timer = setTimeout(function () { fn.apply(ctx, args); }, delay);
-        };
     }
 
     // ── Unsaved Changes ─────────────────────────────────────
@@ -487,65 +506,50 @@ export default function (view) {
     }
 
     function importCurrentConfig() {
-        var fileInput = view.querySelector('#templateFileInput');
+        pickJsonFile().then(function (template) {
+            if (!template) return;
+            if (!template.settings) {
+                Dashboard.alert('Invalid template file: missing settings.');
+                return;
+            }
 
-        fileInput.onchange = function (e) {
-            var file = e.target.files[0];
-            if (!file) return;
+            showInputModal('Import Configuration', [
+                { label: 'Name', value: template.name || 'Imported Configuration', required: true, description: 'Enter a name for the imported configuration.' }
+            ], function (values) {
+                if (!values) return;
+                var nameInput = values[0];
 
-            var reader = new FileReader();
-            reader.onload = function (event) {
-                try {
-                    var template = JSON.parse(event.target.result);
-                    if (!template.settings) {
-                        Dashboard.alert('Invalid template file: missing settings.');
-                        return;
-                    }
-
-                    showInputModal('Import Configuration', [
-                        { label: 'Name', value: template.name || 'Imported Configuration', required: true, description: 'Enter a name for the imported configuration.' }
-                    ], function (values) {
-                        if (!values) return;
-                        var nameInput = values[0];
-
-                        if (!nameInput || nameInput.trim() === '') return;
-                        if (nameInput.trim().toLowerCase() === 'default') {
-                            Dashboard.alert('The name "Default" is reserved and cannot be used.');
-                            return;
-                        }
-                        if (fullConfig.PosterConfigurations.some(function (c) {
-                            return c.Name && c.Name.toLowerCase() === nameInput.trim().toLowerCase();
-                        })) {
-                            Dashboard.alert('A configuration with this name already exists.');
-                            return;
-                        }
-
-                        fullConfig.PosterConfigurations.push({
-                            Id: generateGuid(),
-                            Name: nameInput.trim(),
-                            Settings: template.settings,
-                            SeriesIds: [],
-                            IsDefault: false
-                        });
-                        currentConfigId = fullConfig.PosterConfigurations[fullConfig.PosterConfigurations.length - 1].Id;
-                        populateConfigDropdown();
-                        markDirty();
-
-                        Dashboard.alert('Template imported successfully! Version: ' + (template.version || 'unknown') +
-                            (template.author ? '\nAuthor: ' + template.author : '') +
-                            (template.description ? '\nDescription: ' + template.description : ''));
-                    });
-                } catch (error) {
-                    console.error('Import error:', error);
-                    Dashboard.alert('Failed to import template. Please ensure the file is a valid JSON template.');
+                if (!nameInput || nameInput.trim() === '') return;
+                if (nameInput.trim().toLowerCase() === 'default') {
+                    Dashboard.alert('The name "Default" is reserved and cannot be used.');
+                    return;
                 }
-            };
+                if (fullConfig.PosterConfigurations.some(function (c) {
+                    return c.Name && c.Name.toLowerCase() === nameInput.trim().toLowerCase();
+                })) {
+                    Dashboard.alert('A configuration with this name already exists.');
+                    return;
+                }
 
-            reader.readAsText(file);
-            fileInput.value = '';
-        };
+                fullConfig.PosterConfigurations.push({
+                    Id: generateGuid(),
+                    Name: nameInput.trim(),
+                    Settings: template.settings,
+                    SeriesIds: [],
+                    IsDefault: false
+                });
+                currentConfigId = fullConfig.PosterConfigurations[fullConfig.PosterConfigurations.length - 1].Id;
+                populateConfigDropdown();
+                markDirty();
 
-        fileInput.click();
+                Dashboard.alert('Template imported successfully! Version: ' + (template.version || 'unknown') +
+                    (template.author ? '\nAuthor: ' + template.author : '') +
+                    (template.description ? '\nDescription: ' + template.description : ''));
+            });
+        }).catch(function (error) {
+            console.error('Import error:', error);
+            Dashboard.alert('Failed to import template. Please ensure the file is a valid JSON template.');
+        });
     }
 
     function exportCurrentConfig() {
@@ -569,24 +573,14 @@ export default function (view) {
             Dashboard.showLoadingMsg();
             shared.getConfig().then(function (pluginConfig) {
                 var ver = pluginConfig.Version;
-                var json = JSON.stringify({
+                downloadJson(config.Name.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_') + '_v' + ver + '.json', {
                     name: config.Name,
                     description: description.trim(),
                     author: author.trim(),
                     version: ver,
                     createdDate: new Date().toISOString(),
                     settings: config.Settings
-                }, null, 2);
-
-                var blob = new Blob([json], { type: 'application/json' });
-                var url = URL.createObjectURL(blob);
-                var a = document.createElement('a');
-                a.href = url;
-                a.download = config.Name.replace(/[^a-z0-9\s]/gi, '').replace(/\s+/g, '_') + '_v' + ver + '.json';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                });
 
                 Dashboard.hideLoadingMsg();
                 Dashboard.alert('Template exported successfully!');
@@ -930,9 +924,9 @@ export default function (view) {
             status.style.display = 'none';
 
             // Keep the enlarged modal in sync when it's open on this shape during live edits.
-            var modal = view.querySelector('#previewModal');
+            var modal = imageDialogs.previewModal;
             var modalImg = view.querySelector('#posterPreviewModalImage');
-            if (modal && modalImg && modal.style.display !== 'none' && modal.getAttribute('data-shape') === shape) {
+            if (modalImg && modal.isOpen() && modal.element.getAttribute('data-shape') === shape) {
                 modalImg.src = _previewUrls[shape];
             }
         }).catch(function (error) {
@@ -947,31 +941,18 @@ export default function (view) {
 
     // openImageModal
     // Opens one of the base jpk-dialog image modals with the given image and title.
-    function openImageModal(modalId, closeButtonId, imageId, src, title) {
-        var modal = view.querySelector('#' + modalId);
+    function openImageModal(modalId, imageId, src, title) {
+        var dialog = imageDialogs[modalId];
         var modalImg = view.querySelector('#' + imageId);
-        if (!modal || !modalImg || !src) return;
+        if (!dialog || !modalImg || !src) return;
 
         if (title) {
-            var titleEl = modal.querySelector('.jpk-modal-title');
+            var titleEl = dialog.element.querySelector('.jpk-modal-title');
             if (titleEl) titleEl.textContent = title;
         }
 
         modalImg.src = src;
-        modal.style.display = 'flex';
-
-        function close() {
-            modal.style.display = 'none';
-            modal.removeEventListener('click', onBackdrop);
-            document.removeEventListener('keydown', onKeydown);
-        }
-        function onBackdrop(e) { if (e.target === modal) close(); }
-        function onKeydown(e) { if (e.key === 'Escape') { e.preventDefault(); close(); } }
-
-        var btnClose = view.querySelector('#' + closeButtonId);
-        if (btnClose) btnClose.onclick = close;
-        modal.addEventListener('click', onBackdrop);
-        document.addEventListener('keydown', onKeydown);
+        dialog.open();
     }
 
     function loadPreviewComponents() {
@@ -992,14 +973,7 @@ export default function (view) {
                 if (wrapper) wrapper.style.display = 'none';
             };
 
-            ApiClient.ajax({
-                type: 'GET',
-                url: ApiClient.getUrl('Plugins/ArtworkGenerator/Preview/Component/' + component)
-            }).then(function (response) {
-                if (!response.ok) throw new Error('Component request failed: ' + response.status);
-                return response.blob();
-            }).then(function (blob) {
-                var objectUrl = URL.createObjectURL(blob);
+            shared.fetchObjectUrl('Preview/Component/' + component).then(function (objectUrl) {
                 _componentObjectUrls.push(objectUrl);
                 img.src = objectUrl;
             }).catch(function (error) {
@@ -1013,7 +987,7 @@ export default function (view) {
                 var img = comp.querySelector('.poster-component-img');
                 if (!img || !img.src) return;
                 var component = comp.getAttribute('data-component');
-                openImageModal('componentModal', 'btnCloseComponentModal', 'componentModalImage',
+                openImageModal('componentModal', 'componentModalImage',
                     img.src, componentTitles[component] || 'Component');
             });
         });
@@ -1215,7 +1189,7 @@ export default function (view) {
 
                 var modal = view.querySelector('#previewModal');
                 if (modal) modal.setAttribute('data-shape', shape);
-                openImageModal('previewModal', 'btnClosePreviewModal', 'posterPreviewModalImage',
+                openImageModal('previewModal', 'posterPreviewModalImage',
                     _previewUrls[shape], shape + ' Preview');
             });
         });
@@ -1258,31 +1232,6 @@ export default function (view) {
 
     // ── Lifecycle ───────────────────────────────────────────
 
-    function onBeforeUnload(e) {
-        if (_dirty) {
-            e.preventDefault();
-            e.returnValue = '';
-        }
-    }
-
-    view.addEventListener('viewshow', function () {
-        setTabs('ag', 0, getTabs());
-
-        if (!_initialized) {
-            _initialized = true;
-            initCollapsibles(view);
-            bindEventListeners();
-            bindColorControls();
-            loadPreviewComponents();
-        }
-
-        window.addEventListener('beforeunload', onBeforeUnload);
-
-        // Styles and fonts must be in the DOM before the first config is applied, otherwise a
-        // stored value would look like an option that no longer exists.
-        loadStaticData().then(loadConfig);
-    });
-
     view.addEventListener('viewdestroy', function () {
         // Release the blobs backing the live preview and the component thumbnails.
         Object.keys(_previewUrls).forEach(function (shape) {
@@ -1293,17 +1242,5 @@ export default function (view) {
         });
         _componentObjectUrls.forEach(URL.revokeObjectURL);
         _componentObjectUrls = [];
-    });
-
-    view.addEventListener('viewbeforehide', function (e) {
-        window.removeEventListener('beforeunload', onBeforeUnload);
-
-        if (_dirty) {
-            var confirmed = confirm('You have unsaved changes. Are you sure you want to leave?');
-            if (!confirmed) {
-                e.preventDefault();
-                setTabs('ag', 0, getTabs());
-            }
-        }
     });
 }

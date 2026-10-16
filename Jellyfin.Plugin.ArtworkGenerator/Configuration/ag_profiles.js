@@ -1,18 +1,15 @@
-import { initCollapsibles, setTabs, createShared, generateGuid } from '/web/configurationpage?name=ag_jpkribs_shared.js';
+import { initCollapsibles, createConfigPage, generateGuid, debounce, promptDialog, bindDialog } from './configurationpage?name=ag_jpkribs_shared.js';
 
 export default function (view) {
     'use strict';
 
     var pluginId = 'b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e';
-    var shared = createShared(view, pluginId, 'Plugins/ArtworkGenerator');
     var fullConfig = null;
     var currentProfileId = null;
     var logoDesigns = [];
-    var _initialized = false;
     var _dirty = false;
     var _saving = false;
     var _snapshot = null;
-    var _modalTrigger = null;
     var _modalTarget = null;
 
     var EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
@@ -47,33 +44,29 @@ export default function (view) {
         ];
     }
 
+    var page = createConfigPage(view, {
+        pluginId: pluginId,
+        apiPrefix: 'Plugins/ArtworkGenerator',
+        tabsKey: 'ag',
+        tabIndex: 2,
+        tabs: getTabs(),
+        leaveMessage: 'You have unsaved changes. Are you sure you want to leave?',
+        isDirty: function () { return _dirty; },
+        bind: function () {
+            initCollapsibles(view);
+            bindEventListeners();
+        },
+        load: loadConfig
+    });
+    var shared = page.shared;
+
+    // The series, movie, and video picker. Escape, the backdrop, and the corner button close it.
+    var pickerDialog = bindDialog('pickerModal', {
+        root: view,
+        onClose: function () { _modalTarget = null; }
+    });
+
     // ── Utilities ────────────────────────────────────────────
-
-    function trapFocus(container, e) {
-        if (e.key !== 'Tab') return;
-        var focusable = container.querySelectorAll(
-            'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length === 0) return;
-        var first = focusable[0];
-        var last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-        }
-    }
-
-    function debounce(fn, delay) {
-        var timer = null;
-        return function () {
-            var ctx = this, args = arguments;
-            clearTimeout(timer);
-            timer = setTimeout(function () { fn.apply(ctx, args); }, delay);
-        };
-    }
 
     function sameId(a, b) {
         return String(a || '').replace(/-/g, '').toLowerCase() === String(b || '').replace(/-/g, '').toLowerCase();
@@ -122,75 +115,13 @@ export default function (view) {
 
     // ── Input Modal ─────────────────────────────────────────
 
-    function showInputModal(title, fields, callback) {
-        var triggerElement = document.activeElement;
-        var modal = view.querySelector('#inputModal');
-        var modalContent = view.querySelector('#inputModal .jpk-dialog-content');
-        var fieldsContainer = view.querySelector('#inputModalFields');
-        var btnConfirm = view.querySelector('#btnConfirmInputModal');
-        var btnCancel = view.querySelector('#btnCancelInputModal');
-        var btnClose = view.querySelector('#btnCloseInputModal');
-
-        view.querySelector('#inputModalTitle').textContent = title;
-        fieldsContainer.innerHTML = '';
-
-        fields.forEach(function (field, index) {
-            var container = document.createElement('div');
-            container.className = 'jpk-modal-field';
-
-            var label = document.createElement('label');
-            label.className = 'jpk-modal-field-label';
-            label.setAttribute('for', 'inputModalField_' + index);
-            label.textContent = field.label;
-            container.appendChild(label);
-
-            var input = document.createElement('input');
-            input.setAttribute('is', 'emby-input');
-            input.type = 'text';
-            input.id = 'inputModalField_' + index;
-            input.value = field.value || '';
-            if (field.placeholder) input.placeholder = field.placeholder;
-            container.appendChild(input);
-
-            fieldsContainer.appendChild(container);
-        });
-
-        modal.style.display = 'flex';
-        var firstInput = fieldsContainer.querySelector('input');
-        if (firstInput) {
-            setTimeout(function () { firstInput.focus(); firstInput.select(); }, 100);
-        }
-
-        function cleanup() {
-            btnConfirm.removeEventListener('click', onConfirm);
-            btnCancel.removeEventListener('click', onCancel);
-            btnClose.removeEventListener('click', onCancel);
-            modal.removeEventListener('click', onBackdrop);
-            document.removeEventListener('keydown', onKeydown);
-            modal.style.display = 'none';
-            if (triggerElement && triggerElement.focus) triggerElement.focus();
-        }
-
-        function onConfirm() {
-            var values = [];
-            fieldsContainer.querySelectorAll('input').forEach(function (input) { values.push(input.value); });
-            cleanup();
-            callback(values);
-        }
-
-        function onCancel() { cleanup(); callback(null); }
-        function onBackdrop(e) { if (e.target === modal) onCancel(); }
-        function onKeydown(e) {
-            if (e.key === 'Enter') { e.preventDefault(); onConfirm(); }
-            else if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
-            else { trapFocus(modalContent, e); }
-        }
-
-        btnConfirm.addEventListener('click', onConfirm);
-        btnCancel.addEventListener('click', onCancel);
-        btnClose.addEventListener('click', onCancel);
-        modal.addEventListener('click', onBackdrop);
-        document.addEventListener('keydown', onKeydown);
+    // Asks for a profile name. promptDialog focuses its close button first, so the caret is put
+    // in the name, selected, the way the page's own modal did.
+    function promptName(title, field) {
+        var result = promptDialog([{ name: 'name', label: 'Name', value: field.value || '', placeholder: field.placeholder }], { title: title });
+        var input = document.body.lastElementChild && document.body.lastElementChild.querySelector('.jpk-dialog input');
+        if (input) { input.focus(); input.select(); }
+        return result;
     }
 
     // ── Loading ─────────────────────────────────────────────
@@ -759,14 +690,11 @@ export default function (view) {
             return;
         }
 
-        _modalTrigger = document.activeElement;
-        _modalTarget = target;
-
         view.querySelector('#pickerTitle').textContent = target.modalTitle;
         view.querySelector('#pickerSearch').placeholder = target.search;
-        view.querySelector('#pickerModal').style.display = 'flex';
+        pickerDialog.open();
+        _modalTarget = target;
 
-        document.addEventListener('keydown', onSelectionModalKeydown);
         populateSelectionModal();
     }
 
@@ -859,21 +787,8 @@ export default function (view) {
         checkDirty();
     }
 
-    function onSelectionModalKeydown(e) {
-        if (e.key === 'Escape') {
-            e.preventDefault();
-            closeSelectionModal();
-        } else {
-            trapFocus(view.querySelector('.picker-content'), e);
-        }
-    }
-
     function closeSelectionModal() {
-        view.querySelector('#pickerModal').style.display = 'none';
-        document.removeEventListener('keydown', onSelectionModalKeydown);
-        if (_modalTrigger && _modalTrigger.focus) _modalTrigger.focus();
-        _modalTrigger = null;
-        _modalTarget = null;
+        pickerDialog.close();
     }
 
     function removeAssignment(target, id) {
@@ -892,9 +807,9 @@ export default function (view) {
     }
 
     function createNewProfile() {
-        showInputModal('New Profile', [{ label: 'Name', placeholder: 'Anime' }], function (values) {
+        promptName('New Profile', { placeholder: 'Anime' }).then(function (values) {
             if (!values) return;
-            var name = (values[0] || '').trim();
+            var name = (values.name || '').trim();
 
             if (!name) { Dashboard.alert('Profile name is required.'); return; }
             if (name.toLowerCase() === 'default') { Dashboard.alert('The name "Default" is reserved.'); return; }
@@ -919,9 +834,9 @@ export default function (view) {
         var profile = getCurrentProfile();
         if (profile.IsDefault) return;
 
-        showInputModal('Rename Profile', [{ label: 'Name', value: profile.Name || '' }], function (values) {
+        promptName('Rename Profile', { value: profile.Name || '' }).then(function (values) {
             if (!values) return;
-            var name = (values[0] || '').trim();
+            var name = (values.name || '').trim();
 
             if (!name) return;
             if (name.toLowerCase() === 'default') { Dashboard.alert('The name "Default" is reserved.'); return; }
@@ -1003,11 +918,7 @@ export default function (view) {
         view.querySelector('#btnDeleteProfile').addEventListener('click', deleteCurrentProfile);
 
         view.querySelector('#btnCancelPicker').addEventListener('click', closeSelectionModal);
-        view.querySelector('#btnClosePicker').addEventListener('click', closeSelectionModal);
         view.querySelector('#btnConfirmPicker').addEventListener('click', confirmSelection);
-        view.querySelector('#pickerModal').addEventListener('click', function (e) {
-            if (e.target === this) closeSelectionModal();
-        });
         view.querySelector('#pickerSearch').addEventListener('input', filterSelectionList);
 
         view.querySelectorAll('[data-backdrop-setting]').forEach(function (el) {
@@ -1018,38 +929,4 @@ export default function (view) {
             });
         });
     }
-
-    // ── Lifecycle ───────────────────────────────────────────
-
-    function onBeforeUnload(e) {
-        if (_dirty) {
-            e.preventDefault();
-            e.returnValue = '';
-        }
-    }
-
-    view.addEventListener('viewshow', function () {
-        setTabs('ag', 2, getTabs());
-
-        if (!_initialized) {
-            _initialized = true;
-            initCollapsibles(view);
-            bindEventListeners();
-        }
-
-        window.addEventListener('beforeunload', onBeforeUnload);
-        loadConfig();
-    });
-
-    view.addEventListener('viewbeforehide', function (e) {
-        window.removeEventListener('beforeunload', onBeforeUnload);
-
-        if (_dirty) {
-            var confirmed = confirm('You have unsaved changes. Are you sure you want to leave?');
-            if (!confirmed) {
-                e.preventDefault();
-                setTabs('ag', 2, getTabs());
-            }
-        }
-    });
 }

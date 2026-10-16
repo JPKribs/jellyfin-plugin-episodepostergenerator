@@ -4,10 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using JPKribs.Jellyfin.Base;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Entities;
-using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.ArtworkGenerator.Tasks
@@ -24,7 +24,7 @@ namespace Jellyfin.Plugin.ArtworkGenerator.Tasks
     /// without its file would be found again by the next library scan. It has no default schedule:
     /// it runs when started by hand or on a trigger the administrator adds.
     /// </remarks>
-    public sealed class CleanupBackdropsTask : IScheduledTask
+    public sealed class CleanupBackdropsTask : PluginScheduledTask
     {
         private readonly ILibraryManager _libraryManager;
         private readonly ILogger<CleanupBackdropsTask> _logger;
@@ -36,19 +36,19 @@ namespace Jellyfin.Plugin.ArtworkGenerator.Tasks
         }
 
         /// <inheritdoc />
-        public string Name => "Cleanup Backdrops";
+        public override string Name => "Cleanup Backdrops";
 
         /// <inheritdoc />
-        public string Key => "ArtworkGeneratorCleanupBackdrops";
+        public override string Key => "ArtworkGeneratorCleanupBackdrops";
 
         /// <inheritdoc />
-        public string Description => "Reduces every item on the server to a single backdrop, keeping the first and deleting the rest along with their files.";
+        public override string Description => "Reduces every item on the server to a single backdrop, keeping the first and deleting the rest along with their files.";
 
         /// <inheritdoc />
-        public string Category => "Library";
+        public override string Category => "Library";
 
         /// <inheritdoc />
-        public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
+        public override async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(progress);
 
@@ -114,9 +114,6 @@ namespace Jellyfin.Plugin.ArtworkGenerator.Tasks
                 trimmed,
                 freed / (1024d * 1024d));
         }
-
-        /// <inheritdoc />
-        public IEnumerable<TaskTriggerInfo> GetDefaultTriggers() => Array.Empty<TaskTriggerInfo>();
 
         // Extras
         // Every backdrop after the first, which is the one clients show.

@@ -1,14 +1,10 @@
-import { initCollapsibles, setTabs, createShared } from '/web/configurationpage?name=ag_jpkribs_shared.js';
+import { initCollapsibles, createConfigPage } from './configurationpage?name=ag_jpkribs_shared.js';
 
 export default function (view) {
     'use strict';
 
     var pluginId = 'b8715e44-6b77-4c88-9c74-2b6f4c7b9a1e';
-    var shared = createShared(view, pluginId, 'Plugins/ArtworkGenerator');
-    var _initialized = false;
     var _saving = false;
-    var _dirty = false;
-    var _savedSnapshot = null;
 
     function getTabs() {
         return [
@@ -18,6 +14,21 @@ export default function (view) {
             { href: 'configurationpage?name=ag_settings', name: 'Settings' }
         ];
     }
+
+    var page = createConfigPage(view, {
+        pluginId: pluginId,
+        apiPrefix: 'Plugins/ArtworkGenerator',
+        tabsKey: 'ag',
+        tabIndex: 3,
+        tabs: getTabs(),
+        leaveMessage: 'You have unsaved changes. Are you sure you want to leave?',
+        bind: bindPage,
+        load: function () {
+            loadFrameText();
+            loadConfig();
+        }
+    });
+    var shared = page.shared;
 
     // ===== Unsaved Changes =====
 
@@ -32,25 +43,11 @@ export default function (view) {
         });
     }
 
-    function takeSnapshot() {
-        _savedSnapshot = currentState();
-    }
+    // Snapshots the fields; the indicator shows while they differ from the last load or save.
+    var tracker = shared.createChangeTracker({ serialize: currentState, indicatorId: 'unsavedIndicator' });
+    page.guardUnsaved(tracker);
 
-    function markDirty() {
-        if (!_dirty) {
-            _dirty = true;
-            var indicator = view.querySelector('#unsavedIndicator');
-            if (indicator) indicator.classList.add('visible');
-        }
-    }
-
-    function markClean() {
-        _dirty = false;
-        var indicator = view.querySelector('#unsavedIndicator');
-        if (indicator) indicator.classList.remove('visible');
-        takeSnapshot();
-    }
-
+    // The base flash keeps the "Unsaved changes" wording, so this one swaps in "Saved!" itself.
     function flashSaveSuccess() {
         var indicator = view.querySelector('#unsavedIndicator');
         if (!indicator) return;
@@ -69,17 +66,6 @@ export default function (view) {
                 indicator.innerHTML = '<span class="jpk-unsaved-dot"></span> Unsaved changes';
             }, 300);
         }, 2000);
-    }
-
-    function checkDirty() {
-        if (!_savedSnapshot) return;
-        if (currentState() !== _savedSnapshot) {
-            markDirty();
-        } else {
-            _dirty = false;
-            var indicator = view.querySelector('#unsavedIndicator');
-            if (indicator) indicator.classList.remove('visible');
-        }
     }
 
     // ===== Config =====
@@ -151,8 +137,7 @@ export default function (view) {
             });
 
             updateFrameVisibility();
-            takeSnapshot();
-            markClean();
+            tracker.markClean();
             Dashboard.hideLoadingMsg();
         }).catch(function (error) {
             console.error('Failed to load config:', error);
@@ -201,7 +186,7 @@ export default function (view) {
 
             return shared.saveConfig(config);
         }).then(function (result) {
-            markClean();
+            tracker.markClean();
             flashSaveSuccess();
             Dashboard.processPluginConfigurationUpdateResult(result);
         }).catch(function (error) {
@@ -215,46 +200,18 @@ export default function (view) {
 
     // ===== Lifecycle =====
 
-    function onBeforeUnload(e) {
-        if (_dirty) {
-            e.preventDefault();
-            e.returnValue = '';
-        }
-    }
+    function bindPage() {
+        initCollapsibles(view);
+        view.querySelector('#btnSavePlugin').addEventListener('click', savePluginSettings);
+        view.querySelector('#txtImageChoiceCount').addEventListener('input', tracker.check);
+        view.querySelector('#txtImageCacheMinutes').addEventListener('input', tracker.check);
+        view.querySelector('#txtFixedSeed').addEventListener('input', tracker.check);
 
-    view.addEventListener('viewshow', function () {
-        setTabs('ag', 3, getTabs());
-
-        if (!_initialized) {
-            _initialized = true;
-            initCollapsibles(view);
-            view.querySelector('#btnSavePlugin').addEventListener('click', savePluginSettings);
-            view.querySelector('#txtImageChoiceCount').addEventListener('input', checkDirty);
-            view.querySelector('#txtImageCacheMinutes').addEventListener('input', checkDirty);
-            view.querySelector('#txtFixedSeed').addEventListener('input', checkDirty);
-
-            frameFields().forEach(function (el) {
-                el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', function () {
-                    updateFrameVisibility();
-                    checkDirty();
-                });
+        frameFields().forEach(function (el) {
+            el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', function () {
+                updateFrameVisibility();
+                tracker.check();
             });
-        }
-
-        window.addEventListener('beforeunload', onBeforeUnload);
-        loadFrameText();
-        loadConfig();
-    });
-
-    view.addEventListener('viewbeforehide', function (e) {
-        window.removeEventListener('beforeunload', onBeforeUnload);
-
-        if (_dirty) {
-            var confirmed = confirm('You have unsaved changes. Are you sure you want to leave?');
-            if (!confirmed) {
-                e.preventDefault();
-                setTabs('ag', 3, getTabs());
-            }
-        }
-    });
+        });
+    }
 }
